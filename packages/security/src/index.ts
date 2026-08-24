@@ -1,1 +1,1 @@
-export const PACKAGE_NAME = "@transfergo/security";
+export * from "./session-token.js";
