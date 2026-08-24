@@ -12,3 +12,5 @@ out/
 Thumbs.db
 coverage/
 *.tsbuildinfo
+
+.superpowers/
