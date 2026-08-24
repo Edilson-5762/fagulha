@@ -14,7 +14,7 @@
       "persistent": true
     },
     "lint": {},
-    "typecheck": { "dependsOn": ["^typecheck"] },
+    "typecheck": { "dependsOn": ["^typecheck", "build"] },
     "test": { "dependsOn": ["^test"] }
   }
 }
