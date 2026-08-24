@@ -1,6 +1,7 @@
 export {
   AlertTriangle,
   CheckCircle2,
+  Clock,
   Construction,
   Github,
   Inbox,
@@ -10,5 +11,6 @@ export {
   ShieldCheck,
   Wifi,
   WifiOff,
+  XCircle,
   type LucideIcon
 } from "lucide-react";
