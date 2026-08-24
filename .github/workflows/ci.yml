@@ -23,4 +23,4 @@ jobs:
 
       - run: pnpm format:check
 
-      - run: pnpm turbo run lint typecheck test build
+      - run: pnpm turbo run lint typecheck test build build-storybook

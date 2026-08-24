@@ -12,6 +12,7 @@ export default tseslint.config(
       "**/.turbo/**",
       "**/dist/**",
       "**/coverage/**",
+      "**/storybook-static/**",
       "**/next-env.d.ts"
     ]
   },
