@@ -1,4 +1,4 @@
-import { Lock, ShieldCheck, Wifi } from "@transfergo/ui";
+import { Card, Lock, ShieldCheck, Wifi } from "@transfergo/ui";
 
 const POINTS = [
   {
@@ -21,13 +21,14 @@ const POINTS = [
 export function TrustSection() {
   return (
     <section className="border-t border-border px-6 py-16">
-      <div className="mx-auto grid max-w-4xl gap-8 sm:grid-cols-3">
+      <h2 className="text-center text-2xl font-semibold text-text">Segurança e privacidade</h2>
+      <div className="mx-auto mt-10 grid max-w-4xl gap-8 sm:grid-cols-3">
         {POINTS.map((point) => (
-          <div key={point.title} className="rounded-lg border border-border bg-bg-elevated/60 p-6">
+          <Card key={point.title}>
             <point.icon className="size-5 text-accent" aria-hidden="true" />
             <h3 className="mt-3 text-sm font-semibold text-text">{point.title}</h3>
             <p className="mt-2 text-sm text-text-muted">{point.description}</p>
-          </div>
+          </Card>
         ))}
       </div>
     </section>
