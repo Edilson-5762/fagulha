@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { AlertTriangle, CheckCircle2, Inbox, WifiOff } from "../icons/index.js";
+import { AlertTriangle, CheckCircle2, Inbox, ShieldCheck, WifiOff } from "../icons/index.js";
 import { StateScreen } from "./StateScreen.js";
 
 const meta: Meta<typeof StateScreen> = {
@@ -42,6 +42,18 @@ export const Error: Story = {
     tone: "danger",
     title: "Sessão expirada",
     description: "Peça um novo link ao remetente.",
-    action: { label: "Voltar ao início", onClick: () => {} }
+    actions: [{ label: "Voltar ao início", onClick: () => {} }]
+  }
+};
+
+export const Invite: Story = {
+  args: {
+    icon: ShieldCheck,
+    title: "Convite de transferência",
+    description: "Alguém quer iniciar uma transferência de arquivos com você.",
+    actions: [
+      { label: "Aceitar", variant: "primary", onClick: () => {} },
+      { label: "Recusar", variant: "secondary", onClick: () => {} }
+    ]
   }
 };

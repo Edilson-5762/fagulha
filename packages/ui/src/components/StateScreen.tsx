@@ -25,17 +25,18 @@ const iconWrapperVariants = cva("mb-4 flex size-12 items-center justify-center r
 export interface StateScreenAction {
   label: string;
   onClick: () => void;
+  variant?: "primary" | "secondary";
 }
 
 export interface StateScreenProps extends VariantProps<typeof iconWrapperVariants> {
   icon: LucideIcon;
   title: string;
   description: string;
-  action?: StateScreenAction;
+  actions?: StateScreenAction[];
   className?: string;
 }
 
-export function StateScreen({ icon: Icon, tone, title, description, action, className }: StateScreenProps) {
+export function StateScreen({ icon: Icon, tone, title, description, actions, className }: StateScreenProps) {
   return (
     <div className={cn("flex flex-col items-center px-6 py-12 text-center", className)}>
       <div className={cn(iconWrapperVariants({ tone }))}>
@@ -43,10 +44,14 @@ export function StateScreen({ icon: Icon, tone, title, description, action, clas
       </div>
       <h2 className="text-lg font-semibold text-text">{title}</h2>
       <p className="mt-2 max-w-sm text-sm text-text-muted">{description}</p>
-      {action ? (
-        <Button className="mt-6" onClick={action.onClick}>
-          {action.label}
-        </Button>
+      {actions && actions.length > 0 ? (
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          {actions.map((action) => (
+            <Button key={action.label} variant={action.variant ?? "primary"} onClick={action.onClick}>
+              {action.label}
+            </Button>
+          ))}
+        </div>
       ) : null}
     </div>
   );

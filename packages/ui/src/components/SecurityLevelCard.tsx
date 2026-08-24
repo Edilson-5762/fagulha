@@ -32,6 +32,12 @@ export interface SecurityLevelCardProps {
 export function SecurityLevelCard({ level, action }: SecurityLevelCardProps) {
   const config = LEVEL_CONFIG[level];
   return (
-    <StateScreen icon={config.icon} tone={config.tone} title={config.title} description={config.description} action={action} />
+    <StateScreen
+      icon={config.icon}
+      tone={config.tone}
+      title={config.title}
+      description={config.description}
+      actions={action ? [action] : undefined}
+    />
   );
 }
