@@ -5,3 +5,5 @@ export * from "./components/Card.js";
 export * from "./components/Badge.js";
 export * from "./components/ProgressBar.js";
 export * from "./components/Spinner.js";
+export * from "./components/Dialog.js";
+export * from "./components/Tooltip.js";
