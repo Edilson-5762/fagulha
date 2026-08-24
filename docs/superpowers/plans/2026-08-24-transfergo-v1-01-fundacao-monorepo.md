@@ -24,6 +24,7 @@
 ## Task 1: Root monorepo tooling + `packages/shared`
 
 **Files:**
+
 - Create: `package.json` (root)
 - Create: `pnpm-workspace.yaml`
 - Create: `turbo.json`
@@ -40,6 +41,7 @@
 - Test: `packages/shared/src/states.test.ts`
 
 **Interfaces:**
+
 - Produces: `TransferState` (union type) and `TRANSFER_STATES` (readonly array of all 10 states) exported from `@transfergo/shared`. Every later task/plan that needs the transfer state enum imports it from here — never redefines it.
 
 - [ ] **Step 1: Create root `package.json`**
@@ -131,13 +133,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [
-      "**/node_modules/**",
-      "**/.next/**",
-      "**/.turbo/**",
-      "**/dist/**",
-      "**/coverage/**"
-    ]
+    ignores: ["**/node_modules/**", "**/.next/**", "**/.turbo/**", "**/dist/**", "**/coverage/**"]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -333,6 +329,7 @@ git commit -m "feat: bootstrap pnpm+turborepo monorepo with @transfergo/shared"
 ## Task 2: `apps/signaling-server` scaffold + health check
 
 **Files:**
+
 - Create: `apps/signaling-server/package.json`
 - Create: `apps/signaling-server/tsconfig.json`
 - Create: `apps/signaling-server/vitest.config.ts`
@@ -341,6 +338,7 @@ git commit -m "feat: bootstrap pnpm+turborepo monorepo with @transfergo/shared"
 - Test: `apps/signaling-server/src/server.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from Task 1 yet (no shared import in this task).
 - Produces: `createServer(): http.Server` from `apps/signaling-server/src/server.ts`, an HTTP server with `GET /health` → `200 { status: "ok" }` and everything else → `404 { error: "not_found" }`. Later plans (WebSocket/signaling) extend this same `createServer` function rather than creating a second server.
 
@@ -515,6 +513,7 @@ git commit -m "feat: add signaling-server scaffold with health check endpoint"
 ## Task 3: `apps/web` scaffold (Next.js) consuming `@transfergo/shared`
 
 **Files:**
+
 - Create: `apps/web/package.json`
 - Create: `apps/web/tsconfig.json`
 - Create: `apps/web/next.config.ts`
@@ -526,6 +525,7 @@ git commit -m "feat: add signaling-server scaffold with health check endpoint"
 - Test: `apps/web/src/app/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `TRANSFER_STATES` from `@transfergo/shared` (Task 1) — proves cross-package workspace resolution works through Next's `transpilePackages`.
 - Produces: `HomePage` default export at `apps/web/src/app/page.tsx` — Plan 2 (Design System) replaces its contents but keeps the file path.
 
@@ -734,6 +734,7 @@ git commit -m "feat: add Next.js web app scaffold consuming @transfergo/shared"
 ## Task 4: `packages/transfer-engine`, `packages/security`, `packages/ui` scaffolds
 
 **Files:**
+
 - Create: `packages/transfer-engine/package.json`, `tsconfig.json`, `vitest.config.ts`, `src/index.ts`
 - Test: `packages/transfer-engine/src/index.test.ts`
 - Create: `packages/security/package.json`, `tsconfig.json`, `vitest.config.ts`, `src/index.ts`
@@ -742,6 +743,7 @@ git commit -m "feat: add Next.js web app scaffold consuming @transfergo/shared"
 - Test: `packages/ui/src/index.test.ts`
 
 **Interfaces:**
+
 - Produces: three empty-but-wired workspace packages (`@transfergo/transfer-engine`, `@transfergo/security`, `@transfergo/ui`), each exporting a `PACKAGE_NAME` string constant as a build/lint/test sanity check. Plan 2 fills in `@transfergo/ui`; Plan 5 fills in `@transfergo/transfer-engine`; Plan 7 fills in `@transfergo/security`. No later plan should need to touch these packages' `package.json`/`tsconfig.json`/`vitest.config.ts` — only their `src/`.
 
 This task repeats the same scaffold shape three times. Each package gets its own config below — none of them import from each other.
@@ -1006,9 +1008,11 @@ git commit -m "feat: scaffold transfer-engine, security and ui workspace package
 ## Task 5: Continuous Integration (GitHub Actions)
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Consumes: the `lint`, `typecheck`, `test`, `build` root scripts produced by Tasks 1–4.
 - Produces: a GitHub Actions workflow named `CI` that later plans extend (e.g. adding a deploy job) rather than replace.
 
@@ -1059,15 +1063,17 @@ Open `https://github.com/Edilson-5762/transfergo/actions` (or run `gh run watch`
 ## Task 6: Root README + final full-repo verification
 
 **Files:**
+
 - Create: `README.md`
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: nothing later tasks depend on programmatically — this is documentation + a final manual gate.
 
 - [ ] **Step 1: Create `README.md`**
 
-```markdown
+````markdown
 # TransferGo
 
 Plataforma web de transferência remota, bidirecional e segura de arquivos
@@ -1095,10 +1101,12 @@ pnpm lint
 pnpm typecheck
 pnpm build
 ```
+````
 
 > Um README completo (demo pública, arquitetura, screenshots, instalação
 > detalhada, limitações, roadmap) será adicionado conforme a V1 avança.
-```
+
+````
 
 - [ ] **Step 2: Run the full verification suite**
 
@@ -1116,7 +1124,7 @@ Expected: both `apps/web` (port 3000) and `apps/signaling-server` (port 4000) st
 git add README.md
 git commit -m "docs: add project README with setup instructions"
 git push origin HEAD
-```
+````
 
 ---
 

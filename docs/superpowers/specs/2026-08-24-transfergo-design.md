@@ -20,15 +20,15 @@
 A SPEC 1.0 do autor already decide praticamente toda a arquitetura funcional e de
 segurança. As lacunas que restavam eram técnicas/operacionais. Ficaram assim:
 
-| Lacuna na v1.0 | Decisão tomada |
-|---|---|
+| Lacuna na v1.0                                     | Decisão tomada                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hospedagem Node.js (Hostinger premium não suporta) | Frontend Next.js na **Vercel**; signaling server Node+WebSocket na **Railway** (ou Fly.io como equivalente); domínio permanece na Hostinger, apontado via DNS para os dois serviços (ex.: `app.dominio.com` → Vercel, `ws.dominio.com` → Railway). Sem VPS, sem custo de hospedagem nova. |
-| TURN (item 16) | Provedor de TURN **gerenciado com free tier** (Metered.ca ou Cloudflare Calls TURN), credenciais temporárias via API. Sem coturn auto-hospedado na V1. |
-| Camada WebRTC (item 80) | **APIs nativas do navegador** (`RTCPeerConnection`/`RTCDataChannel`) com wrapper próprio no pacote `transfer-engine`, em vez de biblioteca de abstração (simple-peer/PeerJS) — necessário para controle fino de backpressure, múltiplos arquivos e retomada (itens 20–26). |
-| Ferramenta de monorepo (item 81) | `pnpm workspaces` + `Turborepo` orquestrando `apps/*` e `packages/*`. |
-| Bibliotecas específicas (item 80) | Decididas na fase de plano de implementação (writing-plans), não nesta spec. |
-| Banco de dados (item 85) | Confirmado: nenhum banco na V1. Escolha de banco adiada para quando a V3 for formalizada. |
-| Método de autenticação (item 39) | Adiado para V3, conforme a v1.0 já previa. |
+| TURN (item 16)                                     | Provedor de TURN **gerenciado com free tier** (Metered.ca ou Cloudflare Calls TURN), credenciais temporárias via API. Sem coturn auto-hospedado na V1.                                                                                                                                    |
+| Camada WebRTC (item 80)                            | **APIs nativas do navegador** (`RTCPeerConnection`/`RTCDataChannel`) com wrapper próprio no pacote `transfer-engine`, em vez de biblioteca de abstração (simple-peer/PeerJS) — necessário para controle fino de backpressure, múltiplos arquivos e retomada (itens 20–26).                |
+| Ferramenta de monorepo (item 81)                   | `pnpm workspaces` + `Turborepo` orquestrando `apps/*` e `packages/*`.                                                                                                                                                                                                                     |
+| Bibliotecas específicas (item 80)                  | Decididas na fase de plano de implementação (writing-plans), não nesta spec.                                                                                                                                                                                                              |
+| Banco de dados (item 85)                           | Confirmado: nenhum banco na V1. Escolha de banco adiada para quando a V3 for formalizada.                                                                                                                                                                                                 |
+| Método de autenticação (item 39)                   | Adiado para V3, conforme a v1.0 já previa.                                                                                                                                                                                                                                                |
 
 Essas decisões não alteram nenhum requisito funcional ou de segurança da v1.0 —
 apenas viabilizam a V1 dentro da hospedagem que o autor já possui.
@@ -300,10 +300,10 @@ desktop nativo pode ser estudado no futuro).
 **Classificação obrigatória de segurança, declarada pelo remetente** (nunca
 "detectada" pelo TransferGo, a menos que exista mecanismo real futuro):
 
-| Nível | Comportamento |
-|---|---|
-| Normal | Confirmação padrão |
-| Sensível | Alerta reforçado + confirmação explícita |
+| Nível        | Comportamento                                                                                                                                                                                                                                |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Normal       | Confirmação padrão                                                                                                                                                                                                                           |
+| Sensível     | Alerta reforçado + confirmação explícita                                                                                                                                                                                                     |
 | Confidencial | Normal + Sensível + metadados minimizados + chave externa (fora do link, por outro canal) + criptografia adicional vinculada à chave + proteção contra força bruta (atraso progressivo, bloqueio temporário, alerta) + desbloqueio explícito |
 
 Regra de confiança fundamental: contato conhecido aumenta a confiança sobre
@@ -355,16 +355,16 @@ Tela confidencial deve comunicar risco e ação necessária sem provocar pânico
 
 ### 7.1 Stack
 
-| Camada | Tecnologia |
-|---|---|
-| Frontend | Next.js + TypeScript |
-| Backend (signaling) | Node.js + WebSocket |
-| Transferência | WebRTC + RTCDataChannel (APIs nativas) |
-| Rede | ICE, STUN, TURN (gerenciado, free tier) |
-| Arquivos | Streams / Chunks |
-| Segurança | Web Crypto API, Node Crypto, SHA-256 |
-| UI | Design System próprio |
-| Monorepo | pnpm workspaces + Turborepo |
+| Camada              | Tecnologia                              |
+| ------------------- | --------------------------------------- |
+| Frontend            | Next.js + TypeScript                    |
+| Backend (signaling) | Node.js + WebSocket                     |
+| Transferência       | WebRTC + RTCDataChannel (APIs nativas)  |
+| Rede                | ICE, STUN, TURN (gerenciado, free tier) |
+| Arquivos            | Streams / Chunks                        |
+| Segurança           | Web Crypto API, Node Crypto, SHA-256    |
+| UI                  | Design System próprio                   |
+| Monorepo            | pnpm workspaces + Turborepo             |
 
 Bibliotecas específicas (ex.: framework de UI/estilo, testes) são decididas
 na fase de plano de implementação, não nesta spec.
@@ -466,6 +466,7 @@ registrar conteúdo dos arquivos.
 ## 9. Critérios de conclusão
 
 ### V1
+
 ✓ sessão por link · ✓ dois dispositivos conectam · ✓ P2P funciona · ✓ TURN
 fallback validado · ✓ transferência bidirecional · ✓ múltiplos arquivos ·
 ✓ chunks · ✓ arquivos grandes testados · ✓ progresso real · ✓ cancelamento ·
@@ -474,12 +475,14 @@ concluída · ✓ mobile validado · ✓ desktop validado · ✓ demo pública f
 · ✓ documentação concluída
 
 ### V2
+
 ✓ URL enviada remotamente · ✓ dispositivo remoto recebe comando · ✓ download
 acontece no destino · ✓ progresso remoto · ✓ cancelamento · ✓ validação de
 URL · ✓ SSRF mitigado · ✓ redirects controlados · ✓ limites implementados ·
 ✓ erros tratados
 
 ### V3
+
 ✓ contas · ✓ autenticação · ✓ dispositivos autorizados · ✓ contatos
 confiáveis · ✓ identidade/fingerprint · ✓ solicitações offline · ✓
 aceitar/recusar · ✓ status para remetente · ✓ notificações · ✓ novo
