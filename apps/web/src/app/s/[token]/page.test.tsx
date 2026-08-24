@@ -64,5 +64,6 @@ describe("SessionInvitePage", () => {
     await user.click(await screen.findByRole("button", { name: "Recusar" }));
 
     expect(await screen.findByRole("heading", { name: "Convite recusado" })).toBeInTheDocument();
+    expect(mockedRejectSession).toHaveBeenCalledWith("abc123");
   });
 });
