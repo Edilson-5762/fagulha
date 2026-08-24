@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@transfergo/shared"],
+  transpilePackages: ["@transfergo/shared", "@transfergo/ui"],
   experimental: {
     extensionAlias: {
       ".js": [".ts", ".tsx", ".js"]
