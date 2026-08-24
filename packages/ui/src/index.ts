@@ -7,3 +7,4 @@ export * from "./components/ProgressBar.js";
 export * from "./components/Spinner.js";
 export * from "./components/Dialog.js";
 export * from "./components/Tooltip.js";
+export * from "./components/Toast.js";
