@@ -83,6 +83,13 @@ export function createSessionStore(options: SessionStoreOptions = {}): SessionSt
     return resolve(token, "rejected");
   }
 
+  // Purges any session past its TTL regardless of status — including
+  // "accepted"/"rejected" sessions, not just still-"waiting" ones. This is
+  // intentional: it bounds memory usage, and the creator's tab stops polling
+  // once a session resolves, so nothing needs the entry after that point.
+  // If a future plan (e.g. WebSocket signaling) needs a resolved session to
+  // survive for a handshake, that requirement must be handled deliberately
+  // here rather than by assuming this only sweeps "waiting" sessions.
   function sweep(): number {
     let removed = 0;
     const currentTime = now();

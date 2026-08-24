@@ -33,6 +33,8 @@ export default function TransferPage() {
         .then((updated) => {
           if (updated) {
             setSession(updated);
+          } else {
+            setSession((current) => (current ? { ...current, status: "expired" } : current));
           }
         })
         .catch(() => {
@@ -106,7 +108,9 @@ function renderContent(session: Session | null, createError: boolean, onCreateSe
           actions={[{ label: "Nova transferência", onClick: onCreateSession }]}
         />
       );
-    default:
-      return null;
+    default: {
+      const exhaustiveCheck: never = session.status;
+      return exhaustiveCheck;
+    }
   }
 }

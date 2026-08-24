@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import TransferPage from "./page.js";
@@ -49,4 +49,27 @@ describe("TransferPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Não foi possível criar a sessão" })).toBeInTheDocument();
   });
+
+  it(
+    "treats a 404 during polling as expiry and stops polling",
+    async () => {
+      mockFetchSequence(
+        {
+          status: 201,
+          body: { token: "abc123", status: "waiting", createdAt: "t0", expiresAt: "t1" }
+        },
+        { status: 404, body: { error: "not_found" } }
+      );
+      render(<TransferPage />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Nova transferência" }));
+
+      expect(await screen.findByRole("heading", { name: "Aguardando resposta" })).toBeInTheDocument();
+
+      expect(
+        await screen.findByRole("heading", { name: "Link expirado" }, { timeout: 4000 })
+      ).toBeInTheDocument();
+    },
+    8000
+  );
 });

@@ -107,7 +107,9 @@ function renderContent(session: Session | null | undefined, onAccept: () => void
           description="Peça um novo link a quem te convidou."
         />
       );
-    default:
-      return null;
+    default: {
+      const exhaustiveCheck: never = session.status;
+      return exhaustiveCheck;
+    }
   }
 }
