@@ -1,1 +1,1 @@
-export const PACKAGE_NAME = "@transfergo/ui";
+export * from "./components/Button.js";

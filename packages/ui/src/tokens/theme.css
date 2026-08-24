@@ -1,0 +1,25 @@
+@theme {
+  --color-bg: #0a0e17;
+  --color-bg-elevated: #10141f;
+  --color-text: #f4f6fb;
+  --color-text-muted: #8b93a7;
+  --color-border: rgba(255, 255, 255, 0.08);
+
+  --color-accent: #4f8cff;
+  --color-accent-foreground: #ffffff;
+
+  --color-success: #5fd68a;
+  --color-warning: #f5a623;
+  --color-danger: #e85a5a;
+
+  --color-security-normal: #5fd68a;
+  --color-security-sensitive: #f5a623;
+  --color-security-confidential: #a78bfa;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+}
