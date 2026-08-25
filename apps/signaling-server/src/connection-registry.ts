@@ -7,7 +7,7 @@ export interface SignalingSocket {
 
 export interface ConnectionRegistry {
   attach(token: string, role: ConnectionRole, socket: SignalingSocket): void;
-  detach(token: string, role: ConnectionRole, socket: SignalingSocket): void;
+  detach(token: string, role: ConnectionRole, socket: SignalingSocket): boolean;
   peerOf(token: string, role: ConnectionRole): SignalingSocket | undefined;
   broadcast(token: string, message: ServerMessage): void;
 }
@@ -31,15 +31,16 @@ export function createConnectionRegistry(): ConnectionRegistry {
     connections.set(token, entry);
   }
 
-  function detach(token: string, role: ConnectionRole, socket: SignalingSocket): void {
+  function detach(token: string, role: ConnectionRole, socket: SignalingSocket): boolean {
     const entry = connections.get(token);
     if (!entry || entry[role] !== socket) {
-      return;
+      return false;
     }
     delete entry[role];
     if (!entry.host && !entry.guest) {
       connections.delete(token);
     }
+    return true;
   }
 
   function peerOf(token: string, role: ConnectionRole): SignalingSocket | undefined {

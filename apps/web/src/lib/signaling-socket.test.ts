@@ -4,6 +4,10 @@ import { useSignalingSocket } from "./signaling-socket.js";
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSING = 2;
+  static readonly CLOSED = 3;
 
   url: string;
   readyState = 0;
@@ -147,5 +151,48 @@ describe("useSignalingSocket", () => {
 
     act(() => result.current.reject());
     expect(JSON.parse(latestSocket().sent.at(-1)!)).toEqual({ type: "reject" });
+  });
+
+  it("does not reconnect after a terminal not_found/expired error", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.joinSession("missing"));
+    act(() => latestSocket().open());
+
+    act(() => latestSocket().emitMessage({ type: "error", code: "not_found" }));
+    act(() => latestSocket().emitClose());
+
+    act(() => vi.advanceTimersByTime(15000));
+
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it("closes the previous socket when connect is called again", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.joinSession("abc123"));
+    act(() => latestSocket().open());
+
+    act(() => result.current.joinSession("def456"));
+
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(MockWebSocket.instances[0]!.readyState).toBe(3);
+  });
+
+  it("shows reconnecting immediately when the very first connection attempt fails", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.createSession());
+
+    act(() => latestSocket().emitClose());
+
+    expect(result.current.connectionState).toBe("reconnecting");
+  });
+
+  it("does not throw when accept is called while the socket is not open", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+
+    expect(() => act(() => result.current.accept())).not.toThrow();
+
+    act(() => result.current.joinSession("abc123"));
+    expect(() => act(() => result.current.accept())).not.toThrow();
+    expect(latestSocket().sent).toEqual([]);
   });
 });

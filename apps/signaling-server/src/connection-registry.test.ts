@@ -53,7 +53,7 @@ describe("createConnectionRegistry", () => {
     registry.attach("token1", "host", host.socket);
     registry.attach("token1", "guest", guest.socket);
 
-    registry.detach("token1", "guest", guest.socket);
+    expect(registry.detach("token1", "guest", guest.socket)).toBe(true);
 
     expect(registry.peerOf("token1", "host")).toBeUndefined();
   });
@@ -65,7 +65,7 @@ describe("createConnectionRegistry", () => {
     registry.attach("token1", "host", first.socket);
     registry.attach("token1", "host", second.socket);
 
-    registry.detach("token1", "host", first.socket);
+    expect(registry.detach("token1", "host", first.socket)).toBe(false);
 
     expect(registry.peerOf("token1", "host")).toBeUndefined();
     const guest = fakeSocket();

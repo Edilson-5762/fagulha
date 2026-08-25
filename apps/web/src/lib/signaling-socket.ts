@@ -35,9 +35,12 @@ export function useSignalingSocket(): UseSignalingSocketResult {
   const backoffRef = useRef(INITIAL_BACKOFF_MS);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const closingRef = useRef(false);
+  const terminalRef = useRef(false);
 
   const sendRaw = useCallback((message: ClientMessage) => {
-    socketRef.current?.send(JSON.stringify(message));
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(message));
+    }
   }, []);
 
   const connect = useCallback(
@@ -45,7 +48,17 @@ export function useSignalingSocket(): UseSignalingSocketResult {
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
+      closingRef.current = false;
+      terminalRef.current = false;
       rejoinRef.current = initial;
+
+      const previous = socketRef.current;
+      if (previous) {
+        previous.onopen = null;
+        previous.onmessage = null;
+        previous.onclose = null;
+        previous.close();
+      }
 
       const socket = new WebSocket(getSignalingWsUrl());
       socketRef.current = socket;
@@ -71,16 +84,17 @@ export function useSignalingSocket(): UseSignalingSocketResult {
         } else if (message.type === "peer_presence") {
           setPeerOnline(message.connected);
         } else if (message.type === "error" && (message.code === "not_found" || message.code === "expired")) {
+          terminalRef.current = true;
           setSession(null);
         }
       };
 
       socket.onclose = () => {
         socketRef.current = null;
-        if (closingRef.current) {
+        if (closingRef.current || terminalRef.current) {
           return;
         }
-        setConnectionState((current) => (current === "open" ? "reconnecting" : "connecting"));
+        setConnectionState("reconnecting");
         reconnectTimerRef.current = setTimeout(() => {
           backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
           if (rejoinRef.current) {

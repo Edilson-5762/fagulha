@@ -136,6 +136,24 @@ describe("createWsHandler", () => {
     expect(host.received.at(-1)).toEqual({ type: "peer_presence", connected: false });
   });
 
+  it("does not notify the peer when a stale (superseded) socket closes", () => {
+    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+    const firstHost = fakeSocket();
+    send(handler, firstHost.socket, { type: "create" });
+    const token = (firstHost.received[0] as { session: { token: string } }).session.token;
+
+    const secondHostTab = fakeSocket();
+    send(handler, secondHostTab.socket, { type: "join", token, role: "host" });
+
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+
+    const receivedBefore = guest.received.length;
+    handler.handleClose(firstHost.socket);
+
+    expect(guest.received.length).toBe(receivedBefore);
+  });
+
   it("ignores messages from a socket that never joined or created a session", () => {
     const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
     const stray = fakeSocket();

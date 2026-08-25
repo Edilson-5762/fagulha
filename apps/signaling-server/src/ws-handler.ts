@@ -84,7 +84,10 @@ export function createWsHandler(store: SessionStore, registry: ConnectionRegistr
       return;
     }
     bindings.delete(socket);
-    registry.detach(binding.token, binding.role, socket);
+    const detached = registry.detach(binding.token, binding.role, socket);
+    if (!detached) {
+      return;
+    }
     const peer = registry.peerOf(binding.token, binding.role);
     if (peer) {
       send(peer, { type: "peer_presence", connected: false });
