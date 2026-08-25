@@ -95,12 +95,14 @@ describe("usePeerConnection", () => {
   });
 
   it("creates the peer connection only once across re-renders", () => {
+    const sendSignal = vi.fn();
     const { rerender } = renderHook(() =>
-      usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
     rerender();
     rerender();
     expect(FakePeerConnection.instances).toHaveLength(1);
+    expect(FakePeerConnection.instances[0]!.closed).toBe(false);
   });
 
   it("as host: creates a data channel and sends an offer once accepted", async () => {
@@ -170,13 +172,55 @@ describe("usePeerConnection", () => {
   });
 
   it("reflects the data channel opening in channelState", () => {
+    const sendSignal = vi.fn();
     const { result } = renderHook(() =>
-      usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
 
     expect(result.current.channelState).toBe("connecting");
     act(() => (result.current.dataChannel as unknown as FakeDataChannel).open());
 
     expect(result.current.channelState).toBe("open");
+  });
+
+  it("as host: applies a remote answer", async () => {
+    const sendSignal = vi.fn();
+    const { rerender } = renderHook(
+      (props: { lastSignal: SignalPayload | null }) =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+      { initialProps: { lastSignal: null as SignalPayload | null } }
+    );
+
+    rerender({ lastSignal: { kind: "answer", sdp: "remote-answer-sdp" } });
+    await flushAsync();
+
+    expect(latestPeerConnection().remoteDescriptions).toEqual([{ type: "answer", sdp: "remote-answer-sdp" }]);
+  });
+
+  it("as guest: binds the data channel delivered via ondatachannel", () => {
+    const sendSignal = vi.fn();
+    const { result } = renderHook(() =>
+      usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: null })
+    );
+
+    const channel = new FakeDataChannel();
+    act(() => latestPeerConnection().ondatachannel?.({ channel }));
+
+    expect(result.current.dataChannel).toBe(channel as unknown as RTCDataChannel);
+    expect(result.current.channelState).toBe("connecting");
+  });
+
+  it("transitions channelState to failed when the data channel closes", () => {
+    const sendSignal = vi.fn();
+    const { result } = renderHook(() =>
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+    );
+
+    const channel = result.current.dataChannel as unknown as FakeDataChannel;
+    act(() => channel.open());
+    expect(result.current.channelState).toBe("open");
+
+    act(() => channel.onclose?.());
+    expect(result.current.channelState).toBe("failed");
   });
 });

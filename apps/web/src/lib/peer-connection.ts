@@ -26,15 +26,13 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
   const [channelState, setChannelState] = useState<PeerChannelState>("idle");
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  const startedRef = useRef(false);
   const remoteDescriptionSetRef = useRef(false);
   const pendingCandidatesRef = useRef<IceCandidateData[]>([]);
 
   useEffect(() => {
-    if (!accepted || !role || startedRef.current) {
+    if (!accepted || !role) {
       return;
     }
-    startedRef.current = true;
 
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
@@ -73,6 +71,10 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
     return () => {
       pc.close();
       pcRef.current = null;
+      remoteDescriptionSetRef.current = false;
+      pendingCandidatesRef.current = [];
+      setDataChannel(null);
+      setChannelState("idle");
     };
   }, [accepted, role, sendSignal]);
 
@@ -91,6 +93,9 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
     }
 
     if (lastSignal.kind === "offer") {
+      if (remoteDescriptionSetRef.current) {
+        return;
+      }
       pc.setRemoteDescription({ type: "offer", sdp: lastSignal.sdp })
         .then(() => {
           remoteDescriptionSetRef.current = true;
@@ -115,7 +120,7 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
         pendingCandidatesRef.current.push(candidate);
       }
     }
-  }, [lastSignal, sendSignal]);
+  }, [lastSignal, sendSignal, accepted]);
 
   return { dataChannel, channelState };
 }
