@@ -1826,3 +1826,155 @@ pnpm --filter @transfergo/web run dev
 Open a fresh link in a second tab, wait past the 15-minute TTL (or temporarily lower `SESSION_TTL_MS` locally to verify quickly, then revert — do not commit a lowered TTL), and confirm both tabs eventually show "Link expirado".
 
 No commit for this task — it is verification of work already committed in Tasks 1–8.
+
+---
+
+## Task 10: Push session expiry over WebSocket (apps/signaling-server)
+
+Added after the final whole-branch review found a real gap against this plan's own design spec (§2: `session_state` must be sent "a cada transição de status (accept/reject/**expiração detectada**)"). Without this, a client already connected and idly waiting on a `waiting` session never learns it expired — the "Link expirado" branch on both pages is unreachable dead code for anyone who doesn't force a fresh `join`. `session-store.ts`'s TTL/expiry computation itself is unchanged and correct (Plano 3/9); what was missing is *pushing* that transition to already-connected sockets instead of only computing it on demand.
+
+**Files:**
+- Modify: `apps/signaling-server/src/ws-handler.ts`
+- Modify: `apps/signaling-server/src/ws-handler.test.ts`
+
+**Interfaces:**
+- Consumes: `SessionStore.get`, `ConnectionRegistry.broadcast` (both existing, unchanged signatures).
+- No new public interface — `WsHandler`'s shape (`handleMessage`, `handleClose`) is unchanged; this is internal scheduling logic.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `apps/signaling-server/src/ws-handler.test.ts` (needs `vi.useFakeTimers()`/`vi.useRealTimers()` — vitest's fake timers also mock `Date.now()`/`new Date()`, which both `session-store.ts`'s default clock and the new scheduling code rely on):
+
+```ts
+it("pushes an expired session_state to both sides once the TTL elapses", () => {
+  vi.useFakeTimers();
+  try {
+    const store = createSessionStore({ ttlMs: 1000 });
+    const handler = createWsHandler(store, createConnectionRegistry());
+    const host = fakeSocket();
+    send(handler, host.socket, { type: "create" });
+    const token = (host.received[0] as { session: { token: string } }).session.token;
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+
+    vi.advanceTimersByTime(1000);
+
+    expect(host.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
+    expect(guest.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("does not push an expiry broadcast for a session that was already resolved", () => {
+  vi.useFakeTimers();
+  try {
+    const store = createSessionStore({ ttlMs: 1000 });
+    const handler = createWsHandler(store, createConnectionRegistry());
+    const host = fakeSocket();
+    send(handler, host.socket, { type: "create" });
+    const token = (host.received[0] as { session: { token: string } }).session.token;
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+    send(handler, guest.socket, { type: "accept" });
+
+    const guestCountBefore = guest.received.length;
+    vi.advanceTimersByTime(1000);
+
+    expect(guest.received.length).toBe(guestCountBefore);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+```
+
+(`fakeSocket` and `send` are the existing helpers already defined earlier in this file — do not redefine them.)
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `pnpm --filter @transfergo/signaling-server run test -- ws-handler`
+Expected: FAIL — no expiry is ever pushed today; `host.received.at(-1)`/`guest.received.at(-1)` are still the `waiting` `session_state` from `join`, not an `expired` one.
+
+- [ ] **Step 3: Implement expiry scheduling**
+
+Modify `apps/signaling-server/src/ws-handler.ts` — add a per-token timer map, schedule on `create`, clear on a successful `accept`/`reject`:
+
+```ts
+const expiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function scheduleExpiryCheck(token: string, expiresAt: string): void {
+  const delayMs = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+  const timer = setTimeout(() => {
+    expiryTimers.delete(token);
+    const session = store.get(token);
+    if (session && session.status === "expired") {
+      registry.broadcast(token, { type: "session_state", session });
+    }
+  }, delayMs);
+  timer.unref();
+  expiryTimers.set(token, timer);
+}
+
+function clearExpiryCheck(token: string): void {
+  const timer = expiryTimers.get(token);
+  if (timer) {
+    clearTimeout(timer);
+    expiryTimers.delete(token);
+  }
+}
+```
+
+In the `create` branch of `handleMessage`, after `registry.attach(...)` and before `send(socket, ...)` (order relative to `send` doesn't matter, but keep it grouped with the other post-creation bookkeeping):
+
+```ts
+if (message.type === "create") {
+  const session = store.create();
+  bindings.set(socket, { token: session.token, role: "host" });
+  registry.attach(session.token, "host", socket);
+  scheduleExpiryCheck(session.token, session.expiresAt);
+  send(socket, { type: "session_state", session });
+  return;
+}
+```
+
+In the `accept`/`reject` branch, right after the `result.ok` check succeeds and before `registry.broadcast(...)`:
+
+```ts
+const result = message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
+if (!result.ok) {
+  send(socket, { type: "error", code: result.reason });
+  return;
+}
+clearExpiryCheck(binding.token);
+registry.broadcast(binding.token, { type: "session_state", session: result.session });
+```
+
+`timer.unref()` matches the existing convention in `session-store.ts`'s own cleanup `setInterval` — an expiry timer must never keep the Node process (or a test run) alive on its own.
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `pnpm --filter @transfergo/signaling-server run test -- ws-handler`
+Expected: PASS
+
+- [ ] **Step 5: Run the full signaling-server suite and typecheck**
+
+Run: `pnpm --filter @transfergo/signaling-server run test && pnpm --filter @transfergo/signaling-server run typecheck`
+Expected: PASS, no errors — confirms the existing expired-token `join` tests (Task 3) and the integration test (Task 4) still pass unchanged.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/signaling-server/src/ws-handler.ts apps/signaling-server/src/ws-handler.test.ts
+git commit -m "feat(signaling-server): push session_state when a waiting session's TTL expires"
+```
+
+- [ ] **Step 7: Manual verification against a real dev server (optional but recommended)**
+
+Following the same pattern as Task 4's real-socket smoke check: start the signaling-server with a short TTL override (temporarily set `ttlMs` via an env var or a local edit to `createSessionStore()`'s call in `server.ts`, revert after — do not commit a lowered TTL), connect two real `ws` clients (host creates, guest joins), wait past the shortened TTL without either side sending `accept`/`reject`, and confirm both receive an unprompted `session_state` with `status: "expired"`.
+
+## Full workspace re-verification
+
+- [ ] **Step 8: Run the full workspace check**
+
+Run: `pnpm turbo run lint typecheck test build`
+Expected: PASS with zero errors, same as Task 9's Step 1 — this task only touched `apps/signaling-server`, so `apps/web`/`packages/shared` are unaffected.
