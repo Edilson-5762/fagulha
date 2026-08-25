@@ -91,4 +91,38 @@ describe("parseClientMessage", () => {
     });
     expect(parseClientMessage(raw)).toBeNull();
   });
+
+  it("returns null for an empty-string sdp", () => {
+    const raw = JSON.stringify({ type: "signal", payload: { kind: "offer", sdp: "" } });
+    expect(parseClientMessage(raw)).toBeNull();
+  });
+
+  it("returns null for an oversized sdp", () => {
+    const payload = { kind: "offer", sdp: "a".repeat(64 * 1024 + 1) };
+    const raw = JSON.stringify({ type: "signal", payload });
+    expect(parseClientMessage(raw)).toBeNull();
+  });
+
+  it("accepts an sdp at exactly the 64 KB cap", () => {
+    const payload = { kind: "offer", sdp: "a".repeat(64 * 1024) };
+    const raw = JSON.stringify({ type: "signal", payload });
+    expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
+  });
+
+  it("returns null for an empty-string candidate", () => {
+    const raw = JSON.stringify({
+      type: "signal",
+      payload: { kind: "candidate", candidate: { candidate: "", sdpMid: "0", sdpMLineIndex: 0 } }
+    });
+    expect(parseClientMessage(raw)).toBeNull();
+  });
+
+  it("returns null for an oversized candidate.candidate", () => {
+    const payload = {
+      kind: "candidate",
+      candidate: { candidate: "a".repeat(4 * 1024 + 1), sdpMid: "0", sdpMLineIndex: 0 }
+    };
+    const raw = JSON.stringify({ type: "signal", payload });
+    expect(parseClientMessage(raw)).toBeNull();
+  });
 });

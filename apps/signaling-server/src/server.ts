@@ -34,7 +34,9 @@ export function createServer(store: SessionStore = createSessionStore()) {
 
   const registry = createConnectionRegistry();
   const handler = createWsHandler(store, registry);
-  const wss = new WebSocketServer({ noServer: true });
+  // 128 KiB: comfortably above the 64 KB SDP cap plus JSON envelope overhead,
+  // well below anything resembling file content.
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 128 * 1024 });
 
   wss.on("connection", (socket) => {
     socket.on("message", (data) => handler.handleMessage(socket, data.toString()));

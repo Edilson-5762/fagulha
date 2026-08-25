@@ -28,6 +28,8 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const remoteDescriptionSetRef = useRef(false);
   const pendingCandidatesRef = useRef<IceCandidateData[]>([]);
+  const sendSignalRef = useRef(sendSignal);
+  sendSignalRef.current = sendSignal;
 
   useEffect(() => {
     if (!accepted || !role) {
@@ -48,7 +50,7 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
       if (!event.candidate) {
         return;
       }
-      sendSignal({
+      sendSignalRef.current({
         kind: "candidate",
         candidate: {
           candidate: event.candidate.candidate,
@@ -64,7 +66,7 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
       bindDataChannel(pc.createDataChannel("transfergo"));
       pc.createOffer()
         .then((offer) => pc.setLocalDescription(offer).then(() => offer))
-        .then((offer) => sendSignal({ kind: "offer", sdp: offer.sdp ?? "" }))
+        .then((offer) => sendSignalRef.current({ kind: "offer", sdp: offer.sdp ?? "" }))
         .catch(() => setChannelState("failed"));
     }
 
@@ -76,7 +78,7 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
       setDataChannel(null);
       setChannelState("idle");
     };
-  }, [accepted, role, sendSignal]);
+  }, [accepted, role]);
 
   useEffect(() => {
     const pc = pcRef.current;
@@ -103,7 +105,7 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
         })
         .then(() => pc.createAnswer())
         .then((answer) => pc.setLocalDescription(answer).then(() => answer))
-        .then((answer) => sendSignal({ kind: "answer", sdp: answer.sdp ?? "" }))
+        .then((answer) => sendSignalRef.current({ kind: "answer", sdp: answer.sdp ?? "" }))
         .catch(() => setChannelState("failed"));
     } else if (lastSignal.kind === "answer") {
       pc.setRemoteDescription({ type: "answer", sdp: lastSignal.sdp })
@@ -120,7 +122,9 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
         pendingCandidatesRef.current.push(candidate);
       }
     }
-  }, [lastSignal, sendSignal, accepted]);
+    // `accepted` is a dependency so a signal buffered before effect 1 has created the
+    // peer connection (pcRef.current still null) gets reprocessed once it exists.
+  }, [lastSignal, accepted]);
 
   return { dataChannel, channelState };
 }

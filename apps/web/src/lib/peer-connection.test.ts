@@ -18,6 +18,7 @@ type FakeCandidate = { candidate: string; sdpMid: string | null; sdpMLineIndex: 
 
 class FakePeerConnection {
   static instances: FakePeerConnection[] = [];
+  static shouldFailSetRemoteDescription = false;
 
   onicecandidate: ((event: { candidate: FakeCandidate | null }) => void) | null = null;
   ondatachannel: ((event: { channel: FakeDataChannel }) => void) | null = null;
@@ -46,6 +47,9 @@ class FakePeerConnection {
   }
 
   setRemoteDescription(description: unknown) {
+    if (FakePeerConnection.shouldFailSetRemoteDescription) {
+      return Promise.reject(new Error("boom"));
+    }
     this.remoteDescriptions.push(description);
     return Promise.resolve();
   }
@@ -81,6 +85,7 @@ async function flushAsync(): Promise<void> {
 
 beforeEach(() => {
   FakePeerConnection.instances = [];
+  FakePeerConnection.shouldFailSetRemoteDescription = false;
   vi.stubGlobal("RTCPeerConnection", FakePeerConnection);
 });
 
@@ -221,6 +226,55 @@ describe("usePeerConnection", () => {
     expect(result.current.channelState).toBe("open");
 
     act(() => channel.onclose?.());
+    expect(result.current.channelState).toBe("failed");
+  });
+
+  it("does not recreate the peer connection when sendSignal has a new identity every render", () => {
+    // Regression test: sendSignal is now latched behind sendSignalRef, so an unstable
+    // (freshly-created-per-render) sendSignal must no longer cause the effect to
+    // tear down and recreate the RTCPeerConnection on every render.
+    const { rerender } = renderHook(() =>
+      usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+    );
+
+    rerender();
+    rerender();
+    rerender();
+
+    expect(FakePeerConnection.instances).toHaveLength(1);
+  });
+
+  it("ignores a second offer once the remote description has already been set", async () => {
+    const sendSignal = vi.fn();
+    const { rerender } = renderHook(
+      (props: { lastSignal: SignalPayload | null }) =>
+        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+      { initialProps: { lastSignal: null as SignalPayload | null } }
+    );
+
+    rerender({ lastSignal: { kind: "offer", sdp: "offer-sdp-1" } });
+    await flushAsync();
+
+    rerender({ lastSignal: { kind: "offer", sdp: "offer-sdp-2" } });
+    await flushAsync();
+
+    expect(latestPeerConnection().remoteDescriptions).toHaveLength(1);
+    expect(sendSignal).toHaveBeenCalledWith({ kind: "answer", sdp: "answer-sdp" });
+    expect(sendSignal).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks channelState as failed when setRemoteDescription rejects", async () => {
+    FakePeerConnection.shouldFailSetRemoteDescription = true;
+    const sendSignal = vi.fn();
+    const { result, rerender } = renderHook(
+      (props: { lastSignal: SignalPayload | null }) =>
+        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+      { initialProps: { lastSignal: null as SignalPayload | null } }
+    );
+
+    rerender({ lastSignal: { kind: "offer", sdp: "remote-offer-sdp" } });
+    await flushAsync();
+
     expect(result.current.channelState).toBe("failed");
   });
 });

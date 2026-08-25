@@ -28,6 +28,11 @@ export type ServerMessage =
   | { type: "error"; code: ServerErrorCode }
   | { type: "signal"; payload: SignalPayload };
 
+// Real SDP blobs are a few KB; 64 KB is generous headroom for a "dumb relay" cap.
+const MAX_SDP_LENGTH = 64 * 1024;
+// Real ICE candidate strings are under 200 bytes; 4 KB is generous headroom.
+const MAX_CANDIDATE_LENGTH = 4 * 1024;
+
 function isIceCandidateData(value: unknown): value is IceCandidateData {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -35,6 +40,8 @@ function isIceCandidateData(value: unknown): value is IceCandidateData {
   const data = value as Record<string, unknown>;
   return (
     typeof data.candidate === "string" &&
+    data.candidate.length > 0 &&
+    data.candidate.length <= MAX_CANDIDATE_LENGTH &&
     (data.sdpMid === null || typeof data.sdpMid === "string") &&
     (data.sdpMLineIndex === null || typeof data.sdpMLineIndex === "number")
   );
@@ -46,7 +53,7 @@ function isSignalPayload(value: unknown): value is SignalPayload {
   }
   const payload = value as Record<string, unknown>;
   if (payload.kind === "offer" || payload.kind === "answer") {
-    return typeof payload.sdp === "string";
+    return typeof payload.sdp === "string" && payload.sdp.length > 0 && payload.sdp.length <= MAX_SDP_LENGTH;
   }
   if (payload.kind === "candidate") {
     return isIceCandidateData(payload.candidate);
