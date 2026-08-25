@@ -1,70 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Share2, StateScreen, XCircle } from "@transfergo/ui";
+import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
-import { createSession, fetchSession } from "../../lib/sessions-api.js";
-
-const POLL_INTERVAL_MS = 2000;
+import { useSignalingSocket } from "../../lib/signaling-socket.js";
 
 export default function TransferPage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [createError, setCreateError] = useState(false);
-
-  const handleCreateSession = useCallback(async () => {
-    setCreateError(false);
-    try {
-      const created = await createSession();
-      setSession(created);
-    } catch {
-      setCreateError(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!session || session.status !== "waiting") {
-      return;
-    }
-
-    const token = session.token;
-    const interval = setInterval(() => {
-      fetchSession(token)
-        .then((updated) => {
-          if (updated) {
-            setSession(updated);
-          } else {
-            setSession((current) => (current ? { ...current, status: "expired" } : current));
-          }
-        })
-        .catch(() => {
-          // transient failure; the next tick retries
-        });
-    }, POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [session]);
+  const { session, peerOnline, connectionState, createSession } = useSignalingSocket();
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      {renderContent(session, createError, handleCreateSession)}
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
+      {connectionState === "reconnecting" && (
+        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+      )}
+      {renderContent(session, peerOnline, createSession)}
     </main>
   );
 }
 
-function renderContent(session: Session | null, createError: boolean, onCreateSession: () => void) {
-  if (createError) {
-    return (
-      <StateScreen
-        icon={AlertTriangle}
-        tone="danger"
-        title="Não foi possível criar a sessão"
-        description="Verifique sua conexão e tente novamente."
-        actions={[{ label: "Tentar novamente", onClick: onCreateSession }]}
-      />
-    );
-  }
-
+function renderContent(session: Session | null | undefined, peerOnline: boolean, onCreateSession: () => void) {
   if (!session) {
     return (
       <StateScreen
@@ -78,7 +32,7 @@ function renderContent(session: Session | null, createError: boolean, onCreateSe
 
   switch (session.status) {
     case "waiting":
-      return <SessionLinkPanel token={session.token} />;
+      return <SessionLinkPanel token={session.token} peerOnline={peerOnline} />;
     case "accepted":
       return (
         <StateScreen
