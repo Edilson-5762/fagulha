@@ -1,25 +1,30 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { acceptSession, fetchSession, rejectSession } from "../../../lib/sessions-api.js";
+import { useSignalingSocket, type UseSignalingSocketResult } from "../../../lib/signaling-socket.js";
 import SessionInvitePage from "./page.js";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ token: "abc123" })
 }));
 
-vi.mock("../../../lib/sessions-api.js", () => ({
-  fetchSession: vi.fn(),
-  acceptSession: vi.fn(),
-  rejectSession: vi.fn()
+vi.mock("../../../lib/signaling-socket.js", () => ({
+  useSignalingSocket: vi.fn()
 }));
 
-const mockedFetchSession = vi.mocked(fetchSession);
-const mockedAcceptSession = vi.mocked(acceptSession);
-const mockedRejectSession = vi.mocked(rejectSession);
+const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
 
-function makeSession(status: "waiting" | "accepted" | "rejected" | "expired") {
-  return { token: "abc123", status, createdAt: "t0", expiresAt: "t1" };
+function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSignalingSocketResult {
+  return {
+    session: undefined,
+    peerOnline: false,
+    connectionState: "connecting",
+    createSession: vi.fn(),
+    joinSession: vi.fn(),
+    accept: vi.fn(),
+    reject: vi.fn(),
+    ...overrides
+  };
 }
 
 describe("SessionInvitePage", () => {
@@ -27,43 +32,63 @@ describe("SessionInvitePage", () => {
     vi.clearAllMocks();
   });
 
-  it("shows the invite with accept/reject actions while waiting", async () => {
-    mockedFetchSession.mockResolvedValue(makeSession("waiting"));
+  it("joins the session for the token from the URL on mount", () => {
+    const joinSession = vi.fn();
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ joinSession }));
+    render(<SessionInvitePage />);
+    expect(joinSession).toHaveBeenCalledWith("abc123");
+  });
+
+  it("shows a loading screen while the session is unknown", () => {
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session: undefined }));
+    render(<SessionInvitePage />);
+    expect(screen.getByRole("heading", { name: "Carregando" })).toBeInTheDocument();
+  });
+
+  it("shows the invite with accept/reject actions while waiting", () => {
+    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<SessionInvitePage />);
 
-    expect(await screen.findByRole("heading", { name: "Convite de transferência" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Convite de transferência" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Aceitar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
   });
 
-  it("shows the expired screen when the token does not exist", async () => {
-    mockedFetchSession.mockResolvedValue(null);
+  it("shows the expired screen when the session is null", () => {
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session: null }));
     render(<SessionInvitePage />);
-
-    expect(await screen.findByRole("heading", { name: "Link expirado" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Link expirado" })).toBeInTheDocument();
   });
 
-  it("accepts the invite and shows the accepted screen", async () => {
+  it("calls accept when the accept button is clicked", async () => {
+    const accept = vi.fn();
+    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, accept }));
     const user = userEvent.setup();
-    mockedFetchSession.mockResolvedValue(makeSession("waiting"));
-    mockedAcceptSession.mockResolvedValue(makeSession("accepted"));
     render(<SessionInvitePage />);
 
-    await user.click(await screen.findByRole("button", { name: "Aceitar" }));
-
-    expect(await screen.findByRole("heading", { name: "Convite aceito" })).toBeInTheDocument();
-    expect(mockedAcceptSession).toHaveBeenCalledWith("abc123");
+    await user.click(screen.getByRole("button", { name: "Aceitar" }));
+    expect(accept).toHaveBeenCalled();
   });
 
-  it("rejects the invite and shows the rejected screen", async () => {
+  it("calls reject when the reject button is clicked", async () => {
+    const reject = vi.fn();
+    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, reject }));
     const user = userEvent.setup();
-    mockedFetchSession.mockResolvedValue(makeSession("waiting"));
-    mockedRejectSession.mockResolvedValue(makeSession("rejected"));
     render(<SessionInvitePage />);
 
-    await user.click(await screen.findByRole("button", { name: "Recusar" }));
+    await user.click(screen.getByRole("button", { name: "Recusar" }));
+    expect(reject).toHaveBeenCalled();
+  });
 
-    expect(await screen.findByRole("heading", { name: "Convite recusado" })).toBeInTheDocument();
-    expect(mockedRejectSession).toHaveBeenCalledWith("abc123");
+  it("shows a reconnecting banner on top of the invite when the connection drops", () => {
+    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, connectionState: "reconnecting" }));
+    render(<SessionInvitePage />);
+
+    expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Convite de transferência" })).toBeInTheDocument();
   });
 });

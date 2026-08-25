@@ -1,52 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, XCircle } from "@transfergo/ui";
-import { acceptSession, fetchSession, rejectSession } from "../../../lib/sessions-api.js";
+import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
   const { token } = useParams<{ token: string }>();
-  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const { session, connectionState, joinSession, accept, reject } = useSignalingSocket();
 
   useEffect(() => {
-    let cancelled = false;
-    fetchSession(token)
-      .then((result) => {
-        if (!cancelled) {
-          setSession(result);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSession(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  async function handleAccept() {
-    try {
-      setSession(await acceptSession(token));
-    } catch {
-      setSession(await fetchSession(token));
-    }
-  }
-
-  async function handleReject() {
-    try {
-      setSession(await rejectSession(token));
-    } catch {
-      setSession(await fetchSession(token));
-    }
-  }
+    joinSession(token);
+  }, [token, joinSession]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
-      {renderContent(session, handleAccept, handleReject)}
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
+      {connectionState === "reconnecting" && (
+        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+      )}
+      {renderContent(session, accept, reject)}
     </main>
   );
 }
