@@ -43,11 +43,7 @@ export function createConnectionRegistry(): ConnectionRegistry {
   }
 
   function peerOf(token: string, role: ConnectionRole): SignalingSocket | undefined {
-    const entry = connections.get(token);
-    if (entry && entry.host && entry.guest) {
-      return entry[otherRole(role)];
-    }
-    return undefined;
+    return connections.get(token)?.[otherRole(role)];
   }
 
   function broadcast(token: string, message: ServerMessage): void {

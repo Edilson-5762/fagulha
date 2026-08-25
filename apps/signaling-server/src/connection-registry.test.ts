@@ -31,7 +31,7 @@ describe("createConnectionRegistry", () => {
     const host = fakeSocket();
     registry.attach("token1", "host", host.socket);
 
-    expect(registry.peerOf("token1", "guest")).toBeUndefined();
+    expect(registry.peerOf("token1", "host")).toBeUndefined();
   });
 
   it("closes the previous socket when a new one attaches to the same role", () => {
@@ -43,7 +43,7 @@ describe("createConnectionRegistry", () => {
     registry.attach("token1", "host", second.socket);
 
     expect(first.state.closedCode).toBe(4000);
-    expect(registry.peerOf("token1", "guest")).toBeUndefined();
+    expect(registry.peerOf("token1", "host")).toBeUndefined();
   });
 
   it("detach removes the association so peerOf no longer finds it", () => {
@@ -67,7 +67,7 @@ describe("createConnectionRegistry", () => {
 
     registry.detach("token1", "host", first.socket);
 
-    expect(registry.peerOf("token1", "guest")).toBeUndefined();
+    expect(registry.peerOf("token1", "host")).toBeUndefined();
     const guest = fakeSocket();
     registry.attach("token1", "guest", guest.socket);
     expect(registry.peerOf("token1", "guest")).toBe(second.socket);
