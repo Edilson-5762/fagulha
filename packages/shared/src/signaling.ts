@@ -2,18 +2,57 @@ import type { Session } from "./session.js";
 
 export type ConnectionRole = "host" | "guest";
 
+export interface IceCandidateData {
+  candidate: string;
+  sdpMid: string | null;
+  sdpMLineIndex: number | null;
+}
+
+export type SignalPayload =
+  | { kind: "offer"; sdp: string }
+  | { kind: "answer"; sdp: string }
+  | { kind: "candidate"; candidate: IceCandidateData };
+
 export type ClientMessage =
   | { type: "create" }
   | { type: "join"; token: string; role: ConnectionRole }
   | { type: "accept" }
-  | { type: "reject" };
+  | { type: "reject" }
+  | { type: "signal"; payload: SignalPayload };
 
 export type ServerErrorCode = "not_found" | "expired" | "already_resolved" | "invalid_role";
 
 export type ServerMessage =
   | { type: "session_state"; session: Session }
   | { type: "peer_presence"; connected: boolean }
-  | { type: "error"; code: ServerErrorCode };
+  | { type: "error"; code: ServerErrorCode }
+  | { type: "signal"; payload: SignalPayload };
+
+function isIceCandidateData(value: unknown): value is IceCandidateData {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const data = value as Record<string, unknown>;
+  return (
+    typeof data.candidate === "string" &&
+    (data.sdpMid === null || typeof data.sdpMid === "string") &&
+    (data.sdpMLineIndex === null || typeof data.sdpMLineIndex === "number")
+  );
+}
+
+function isSignalPayload(value: unknown): value is SignalPayload {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const payload = value as Record<string, unknown>;
+  if (payload.kind === "offer" || payload.kind === "answer") {
+    return typeof payload.sdp === "string";
+  }
+  if (payload.kind === "candidate") {
+    return isIceCandidateData(payload.candidate);
+  }
+  return false;
+}
 
 export function parseClientMessage(raw: string): ClientMessage | null {
   let value: unknown;
@@ -42,6 +81,12 @@ export function parseClientMessage(raw: string): ClientMessage | null {
         return null;
       }
       return { type: "join", token: candidate.token, role: candidate.role };
+    }
+    case "signal": {
+      if (!isSignalPayload(candidate.payload)) {
+        return null;
+      }
+      return { type: "signal", payload: candidate.payload };
     }
     default:
       return null;
