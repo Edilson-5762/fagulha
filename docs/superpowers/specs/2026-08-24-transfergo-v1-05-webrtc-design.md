@@ -54,11 +54,24 @@ valida apenas o envelope, nunca o conteúdo SDP/ICE:
 `SignalPayload` (novo tipo em `packages/shared/src/signaling.ts`):
 
 ```ts
+export interface IceCandidateData {
+  candidate: string;
+  sdpMid: string | null;
+  sdpMLineIndex: number | null;
+}
+
 export type SignalPayload =
   | { kind: "offer"; sdp: string }
   | { kind: "answer"; sdp: string }
-  | { kind: "candidate"; candidate: RTCIceCandidateInit };
+  | { kind: "candidate"; candidate: IceCandidateData };
 ```
+
+`IceCandidateData` é um tipo estrutural próprio, não o `RTCIceCandidateInit`
+do DOM — `packages/shared` tem `"lib": ["ES2022"]` (sem `"DOM"`), já que
+também é consumido pelo `apps/signaling-server` (Node puro). Os três campos
+espelham as propriedades (não opcionais, só anuláveis) da instância real
+`RTCIceCandidate` do navegador, então `apps/web` monta o payload sem
+nenhum cast.
 
 `parseClientMessage` ganha o case `"signal"`, validando só a forma do
 envelope (`kind` é um dos três valores, `sdp`/`candidate` presentes e do
@@ -108,9 +121,9 @@ chamado direto pelo `ws-handler` para o `signal`).
 ### 4.2 `lib/peer-connection.ts` (novo) — hook `usePeerConnection`
 
 Hook isolado, testável sem depender de `useSignalingSocket` internamente —
-recebe `sendSignal`/`role`/`accepted: boolean` como parâmetros e é
-conectado ao `onSignal` do outro hook pela página. Motivo de manter
-separado: `signaling-socket.ts` já tem ~125 linhas cuidando só de
+recebe `sendSignal`/`role`/`accepted: boolean`/`lastSignal` do
+`useSignalingSocket` (§4.1) como parâmetros, sem importar nada dele. Motivo
+de manter separado: `signaling-socket.ts` já tem ~125 linhas cuidando só de
 WS+reconexão; misturar o ciclo de vida do `RTCPeerConnection` ali dobraria o
 arquivo e acoplaria dois problemas independentes.
 
@@ -125,9 +138,15 @@ function usePeerConnection(params: {
   accepted: boolean;
   sendSignal: (payload: SignalPayload) => void;
   lastSignal: SignalPayload | null; // do useSignalingSocket, §4.1
-  createPeerConnection?: () => RTCPeerConnection; // injetável — ver §9
 }): UsePeerConnectionResult;
 ```
+
+Sem parâmetro de injeção de dependência para o `RTCPeerConnection` — a
+implementação chama o construtor global (`new RTCPeerConnection(...)`)
+direto, e os testes substituem esse global (`vi.stubGlobal("RTCPeerConnection",
+FakePeerConnection)`), o mesmo padrão que `signaling-socket.test.ts` já usa
+para `WebSocket`. Isso mantém a API pública do hook livre de parâmetros que
+só existem para viabilizar teste (ver §9).
 
 Responsabilidades internas:
 
@@ -142,7 +161,7 @@ Responsabilidades internas:
 - **Regra determinística de quem oferta:** `role === "host"` sempre cria a
   oferta (`createOffer` → `setLocalDescription` → `sendSignal({kind:
   "offer", sdp})`); `role === "guest"` sempre responde (recebe `offer` via
-  `onSignal` → `setRemoteDescription` → `createAnswer` →
+  `lastSignal` → `setRemoteDescription` → `createAnswer` →
   `setLocalDescription` → `sendSignal({kind:"answer", sdp})`). Evita
   qualquer corrida de "quem manda primeiro" sem precisar do padrão
   polite/impolite peer — o papel já existe no protocolo desde o Plano 4/9.
@@ -204,6 +223,15 @@ Planos 3/9 e 4/9.
   deploy dedicado, decisão repetida do Plano 4/9); `RTCPeerConnection` usa
   DTLS nativamente para o canal de dados, independente do WSS do
   sinalizador.
+- `isSignalPayload` limita o tamanho de `sdp` (64 KB) e de
+  `candidate.candidate` (4 KB), e rejeita strings vazias; o
+  `WebSocketServer` tem `maxPayload: 128 KiB`. Adicionado na revisão final
+  deste plano — sem os limites, um cliente malicioso ou com bug podia
+  empurrar payloads de `signal` arbitrariamente grandes (o padrão do `ws` é
+  100 MiB por mensagem) pelo relay, sem tocar em conteúdo de arquivo (ainda
+  gated por token de sessão + `peerOf()`), mas abusando de memória/banda do
+  servidor sem qualquer rate limit nesta camada. Os limites são só de
+  tamanho/forma — nenhum parsing semântico de SDP foi introduzido.
 
 ## 7. Stack e decisões de tooling
 
@@ -237,22 +265,27 @@ configuração, não uma lib).
   `parseClientMessage` com `signal` (válido para os 3 `kind`, e casos de
   forma inválida retornando `null`, mesmo padrão dos testes existentes de
   `join`).
-- **`apps/signaling-server`** — `ws-handler.test.ts` ganha o caso `signal`:
-  dois clientes `ws` reais (mesmo padrão de `signaling.integration.test.ts`
-  do Plano 4/9), sessão levada a `accepted`, um lado manda `signal` com um
+- **`apps/signaling-server`** — `ws-handler.test.ts` ganha o caso `signal`,
+  no mesmo padrão já usado por todo o resto do arquivo (`ws-handler.ts` do
+  Plano 4/9): sockets fake em memória via o helper `fakeSocket()` já
+  existente, sessão levada a `accepted`, um lado manda `signal` com um
   payload de exemplo e o teste verifica que o outro lado recebe o mesmo
   payload via `{type:"signal"}` — sem qualquer `RTCPeerConnection` real
   envolvido, só a plumbing de repasse. Mais um caso confirmando que `signal`
-  antes de `accepted` não é repassado.
-- **`apps/web`** — `usePeerConnection` é testado com `RTCPeerConnection`
-  **injetado** (parâmetro `createPeerConnection` do §4.2) apontando para uma
-  implementação fake mínima controlada pelo teste (métodos
+  antes de `accepted` não é repassado. (`signaling.integration.test.ts`, que
+  usa sockets `ws` reais, cobre um nível diferente — origem/handshake e o
+  fluxo completo create→join→accept — e não precisou de caso novo aqui.)
+- **`apps/web`** — `usePeerConnection` é testado substituindo o construtor
+  global `RTCPeerConnection` (`vi.stubGlobal("RTCPeerConnection",
+  FakePeerConnection)`, ver §4.2) por uma implementação fake mínima
+  controlada pelo teste (métodos
   `createOffer`/`createAnswer`/`setLocalDescription`/`setRemoteDescription`/
   `addIceCandidate` como stubs previsíveis, disparando os eventos certos) —
   cobre a lógica determinística de quem oferta, o buffer de candidatos ICE
-  antes da descrição remota, e o mapeamento de `channelState`. Isso evita
-  depender de `jsdom` ter `RTCPeerConnection` (não tem) sem introduzir uma
-  stack WebRTC real em Node só para o teste.
+  antes da descrição remota, o mapeamento de `channelState` (incluindo os
+  caminhos `catch → "failed"`) e a idempotência contra uma `offer` duplicada.
+  Isso evita depender de `jsdom` ter `RTCPeerConnection` (não tem) sem
+  introduzir uma stack WebRTC real em Node só para o teste.
 - **Verificação manual (não automatizada, mesmo padrão do Step 7 opcional
   do Plano 4/9):** dois navegadores reais (ou duas abas), fluxo completo
   criar → convidar → aceitar, confirmando via DevTools que
