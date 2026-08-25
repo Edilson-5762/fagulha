@@ -5,7 +5,8 @@
   "type": "module",
   "dependencies": {
     "@transfergo/security": "workspace:*",
-    "@transfergo/shared": "workspace:*"
+    "@transfergo/shared": "workspace:*",
+    "ws": "^8.18.0"
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
