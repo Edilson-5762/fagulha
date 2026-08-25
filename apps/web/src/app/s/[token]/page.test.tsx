@@ -19,10 +19,13 @@ function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSigna
     session: undefined,
     peerOnline: false,
     connectionState: "connecting",
+    role: undefined,
+    lastSignal: null,
     createSession: vi.fn(),
     joinSession: vi.fn(),
     accept: vi.fn(),
     reject: vi.fn(),
+    sendSignal: vi.fn(),
     ...overrides
   };
 }

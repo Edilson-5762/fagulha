@@ -195,4 +195,38 @@ describe("useSignalingSocket", () => {
     expect(() => act(() => result.current.accept())).not.toThrow();
     expect(latestSocket().sent).toEqual([]);
   });
+
+  it("exposes the host role after creating a session", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.createSession());
+    expect(result.current.role).toBe("host");
+  });
+
+  it("exposes the guest role after joining a session", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.joinSession("abc123"));
+    expect(result.current.role).toBe("guest");
+  });
+
+  it("stores the payload received via a signal message", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.joinSession("abc123"));
+    act(() => latestSocket().open());
+
+    const payload = { kind: "offer" as const, sdp: "v=0 offer-sdp" };
+    act(() => latestSocket().emitMessage({ type: "signal", payload }));
+
+    expect(result.current.lastSignal).toEqual(payload);
+  });
+
+  it("sends a signal payload wrapped in a signal message", () => {
+    const { result } = renderHook(() => useSignalingSocket());
+    act(() => result.current.joinSession("abc123"));
+    act(() => latestSocket().open());
+
+    const payload = { kind: "answer" as const, sdp: "v=0 answer-sdp" };
+    act(() => result.current.sendSignal(payload));
+
+    expect(JSON.parse(latestSocket().sent.at(-1)!)).toEqual({ type: "signal", payload });
+  });
 });

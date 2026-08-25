@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ClientMessage, Session, ServerMessage } from "@transfergo/shared";
+import type { ClientMessage, ConnectionRole, Session, ServerMessage, SignalPayload } from "@transfergo/shared";
 
 export type SignalingConnectionState = "connecting" | "open" | "reconnecting";
 
@@ -9,10 +9,13 @@ export interface UseSignalingSocketResult {
   session: Session | null | undefined;
   peerOnline: boolean;
   connectionState: SignalingConnectionState;
+  role: ConnectionRole | undefined;
+  lastSignal: SignalPayload | null;
   createSession: () => void;
   joinSession: (token: string) => void;
   accept: () => void;
   reject: () => void;
+  sendSignal: (payload: SignalPayload) => void;
 }
 
 const INITIAL_BACKOFF_MS = 1000;
@@ -29,6 +32,8 @@ export function useSignalingSocket(): UseSignalingSocketResult {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [peerOnline, setPeerOnline] = useState(false);
   const [connectionState, setConnectionState] = useState<SignalingConnectionState>("connecting");
+  const [role, setRole] = useState<ConnectionRole | undefined>(undefined);
+  const [lastSignal, setLastSignal] = useState<SignalPayload | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const rejoinRef = useRef<PendingRequest | null>(null);
@@ -45,6 +50,7 @@ export function useSignalingSocket(): UseSignalingSocketResult {
 
   const connect = useCallback(
     (initial: PendingRequest) => {
+      setRole(initial.type === "create" ? "host" : initial.role);
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
@@ -86,6 +92,8 @@ export function useSignalingSocket(): UseSignalingSocketResult {
         } else if (message.type === "error" && (message.code === "not_found" || message.code === "expired")) {
           terminalRef.current = true;
           setSession(null);
+        } else if (message.type === "signal") {
+          setLastSignal(message.payload);
         }
       };
 
@@ -120,6 +128,7 @@ export function useSignalingSocket(): UseSignalingSocketResult {
   const joinSession = useCallback((token: string) => connect({ type: "join", token, role: "guest" }), [connect]);
   const accept = useCallback(() => sendRaw({ type: "accept" }), [sendRaw]);
   const reject = useCallback(() => sendRaw({ type: "reject" }), [sendRaw]);
+  const sendSignal = useCallback((payload: SignalPayload) => sendRaw({ type: "signal", payload }), [sendRaw]);
 
-  return { session, peerOnline, connectionState, createSession, joinSession, accept, reject };
+  return { session, peerOnline, connectionState, role, lastSignal, createSession, joinSession, accept, reject, sendSignal };
 }
