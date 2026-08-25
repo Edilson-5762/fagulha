@@ -913,25 +913,17 @@ git commit -m "feat(signaling-server): replace REST session routes with a WebSoc
 
 ## Task 5: `useSignalingSocket` hook (`apps/web`)
 
-Replaces `lib/sessions-api.ts` with a hook that owns the browser `WebSocket`, exposes the current session/presence/connection state, and reconnects automatically with backoff, rejoining the same session it was last attached to.
+Adds a hook that owns the browser `WebSocket`, exposes the current session/presence/connection state, and reconnects automatically with backoff, rejoining the same session it was last attached to. `lib/sessions-api.ts` (the Plano 3/9 REST client) is left in place for now — Tasks 7 and 8 still import it until they're rewritten — and is only deleted at the end of Task 8, once nothing references it anymore. Deleting it here would leave `apps/web` typechecking red between this task and Task 8.
 
 **Files:**
 - Create: `apps/web/src/lib/signaling-socket.ts`
 - Create: `apps/web/src/lib/signaling-socket.test.ts`
-- Delete: `apps/web/src/lib/sessions-api.ts`
-- Delete: `apps/web/src/lib/sessions-api.test.ts`
 
 **Interfaces:**
 - Consumes: `ClientMessage`, `ServerMessage`, `Session` from `@transfergo/shared` (Task 1).
 - Produces: `SignalingConnectionState` (`"connecting" | "open" | "reconnecting"`), `UseSignalingSocketResult` (`{ session: Session | null | undefined; peerOnline: boolean; connectionState: SignalingConnectionState; createSession(): void; joinSession(token: string): void; accept(): void; reject(): void }`), `useSignalingSocket(): UseSignalingSocketResult`.
 
-- [ ] **Step 1: Remove the old REST client**
-
-```bash
-git rm apps/web/src/lib/sessions-api.ts apps/web/src/lib/sessions-api.test.ts
-```
-
-- [ ] **Step 2: Write the failing test**
+- [ ] **Step 1: Write the failing test**
 
 `apps/web/src/lib/signaling-socket.test.ts`:
 
@@ -1089,12 +1081,12 @@ describe("useSignalingSocket", () => {
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @transfergo/web run test -- signaling-socket`
 Expected: FAIL — `Cannot find module './signaling-socket.js'`
 
-- [ ] **Step 4: Write the implementation**
+- [ ] **Step 3: Write the implementation**
 
 `apps/web/src/lib/signaling-socket.ts`:
 
@@ -1212,21 +1204,21 @@ export function useSignalingSocket(): UseSignalingSocketResult {
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @transfergo/web run test -- signaling-socket`
 Expected: PASS
 
-- [ ] **Step 6: Typecheck**
+- [ ] **Step 5: Typecheck**
 
 Run: `pnpm --filter @transfergo/web run typecheck`
-Expected: no errors (confirms no other file still imports the deleted `sessions-api.js`; Tasks 6–7 fix those imports next)
+Expected: no errors (the old `lib/sessions-api.ts` is untouched and still typechecks; it is deleted in Task 8 once the pages stop importing it)
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/web/src/lib/signaling-socket.ts apps/web/src/lib/signaling-socket.test.ts apps/web/src/lib/sessions-api.ts apps/web/src/lib/sessions-api.test.ts
-git commit -m "feat(web): replace the REST session client with useSignalingSocket"
+git add apps/web/src/lib/signaling-socket.ts apps/web/src/lib/signaling-socket.test.ts
+git commit -m "feat(web): add useSignalingSocket alongside the existing REST client"
 ```
 
 ---
@@ -1424,7 +1416,7 @@ describe("TransferPage", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @transfergo/web run test -- transferir/page`
-Expected: FAIL — current page still imports the deleted `sessions-api.js` and has no `connectionState`/`peerOnline` handling.
+Expected: FAIL — the current page still uses the REST `sessions-api.js` client and polling, not `useSignalingSocket`, so it never calls the mocked `createSession`/reads `connectionState`/`peerOnline` these assertions check.
 
 - [ ] **Step 3: Rewrite the page**
 
@@ -1524,9 +1516,13 @@ git commit -m "feat(web): wire /transferir to useSignalingSocket"
 
 ## Task 8: `/s/[token]` page uses the WebSocket hook
 
+This is also the task that retires the Plano 3/9 REST client: once this page stops importing it, nothing in `apps/web` does.
+
 **Files:**
 - Modify: `apps/web/src/app/s/[token]/page.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.test.tsx`
+- Delete: `apps/web/src/lib/sessions-api.ts` (Step 6, after the rewrite)
+- Delete: `apps/web/src/lib/sessions-api.test.ts` (Step 6, after the rewrite)
 
 **Interfaces:**
 - Consumes: `useSignalingSocket` (Task 5).
@@ -1635,7 +1631,7 @@ describe("SessionInvitePage", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @transfergo/web run test -- "s/\[token\]/page"`
-Expected: FAIL — current page still imports the deleted `sessions-api.js`.
+Expected: FAIL — the current page still uses the REST `sessions-api.js` client (`fetchSession`/`acceptSession`/`rejectSession`), not `useSignalingSocket`, so it never calls the mocked `joinSession`/`accept`/`reject` these assertions check.
 
 - [ ] **Step 3: Rewrite the page**
 
@@ -1742,11 +1738,22 @@ Expected: PASS
 Run: `pnpm --filter @transfergo/web run typecheck`
 Expected: no errors
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Remove the now-unused REST session client**
+
+Both pages that imported `lib/sessions-api.ts` (`/transferir` since Task 7, `/s/[token]` as of Step 3 above) have been rewritten to use `useSignalingSocket` — nothing in `apps/web` imports it anymore.
 
 ```bash
-git add "apps/web/src/app/s/[token]/page.tsx" "apps/web/src/app/s/[token]/page.test.tsx"
-git commit -m "feat(web): wire /s/[token] to useSignalingSocket"
+git rm apps/web/src/lib/sessions-api.ts apps/web/src/lib/sessions-api.test.ts
+```
+
+Run: `pnpm --filter @transfergo/web run typecheck && pnpm --filter @transfergo/web run test`
+Expected: both PASS — confirms no remaining file imports the deleted module.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add "apps/web/src/app/s/[token]/page.tsx" "apps/web/src/app/s/[token]/page.test.tsx" apps/web/src/lib/sessions-api.ts apps/web/src/lib/sessions-api.test.ts
+git commit -m "feat(web): wire /s/[token] to useSignalingSocket and remove the REST session client"
 ```
 
 ---
