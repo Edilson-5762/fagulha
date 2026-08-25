@@ -1857,7 +1857,7 @@ it("pushes an expired session_state to both sides once the TTL elapses", () => {
     const guest = fakeSocket();
     send(handler, guest.socket, { type: "join", token, role: "guest" });
 
-    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1050); // ttlMs (1000) + the scheduling buffer (50)
 
     expect(host.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
     expect(guest.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
@@ -1879,7 +1879,7 @@ it("does not push an expiry broadcast for a session that was already resolved", 
     send(handler, guest.socket, { type: "accept" });
 
     const guestCountBefore = guest.received.length;
-    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(1050); // ttlMs (1000) + the scheduling buffer (50)
 
     expect(guest.received.length).toBe(guestCountBefore);
   } finally {
@@ -1903,7 +1903,10 @@ Modify `apps/signaling-server/src/ws-handler.ts` — add a per-token timer map, 
 const expiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function scheduleExpiryCheck(token: string, expiresAt: string): void {
-  const delayMs = Math.max(0, new Date(expiresAt).getTime() - Date.now());
+  // +50ms buffer: session-store.ts's expiry check is strict `>` (not `>=`), so a timer
+  // firing at exactly `expiresAt` would still observe "waiting". Firing slightly after
+  // guarantees `now() > expiresAt` holds when this callback re-reads the session.
+  const delayMs = Math.max(0, new Date(expiresAt).getTime() - Date.now()) + 50;
   const timer = setTimeout(() => {
     expiryTimers.delete(token);
     const session = store.get(token);
