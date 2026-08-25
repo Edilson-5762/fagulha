@@ -225,7 +225,7 @@ describe("createConnectionRegistry", () => {
     const host = fakeSocket();
     registry.attach("token1", "host", host.socket);
 
-    expect(registry.peerOf("token1", "guest")).toBeUndefined();
+    expect(registry.peerOf("token1", "host")).toBeUndefined();
   });
 
   it("closes the previous socket when a new one attaches to the same role", () => {
