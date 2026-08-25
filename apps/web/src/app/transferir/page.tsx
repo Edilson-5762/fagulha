@@ -3,10 +3,13 @@
 import type { Session } from "@transfergo/shared";
 import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
+import { usePeerConnection } from "../../lib/peer-connection.js";
 import { useSignalingSocket } from "../../lib/signaling-socket.js";
 
 export default function TransferPage() {
-  const { session, peerOnline, connectionState, createSession } = useSignalingSocket();
+  const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } = useSignalingSocket();
+
+  usePeerConnection({ role, accepted: session?.status === "accepted", sendSignal, lastSignal });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
@@ -39,7 +42,7 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
           icon={CheckCircle2}
           tone="success"
           title="Convite aceito"
-          description="A conexão real entre os dispositivos chega em um próximo passo do projeto."
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":

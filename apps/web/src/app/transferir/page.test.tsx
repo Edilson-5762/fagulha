@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { usePeerConnection } from "../../lib/peer-connection.js";
 import { useSignalingSocket, type UseSignalingSocketResult } from "../../lib/signaling-socket.js";
 import TransferPage from "./page.js";
 
@@ -8,7 +9,12 @@ vi.mock("../../lib/signaling-socket.js", () => ({
   useSignalingSocket: vi.fn()
 }));
 
+vi.mock("../../lib/peer-connection.js", () => ({
+  usePeerConnection: vi.fn()
+}));
+
 const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
+const mockedUsePeerConnection = vi.mocked(usePeerConnection);
 
 function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSignalingSocketResult {
   return {
@@ -63,6 +69,22 @@ describe("TransferPage", () => {
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<TransferPage />);
     expect(screen.getByRole("heading", { name: "Convite aceito" })).toBeInTheDocument();
+  });
+
+  it("starts the peer connection once the session is accepted", () => {
+    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
+    render(<TransferPage />);
+
+    expect(mockedUsePeerConnection).toHaveBeenCalledWith(expect.objectContaining({ role: "host", accepted: true }));
+  });
+
+  it("does not mark the peer connection as accepted while still waiting", () => {
+    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
+    render(<TransferPage />);
+
+    expect(mockedUsePeerConnection).toHaveBeenCalledWith(expect.objectContaining({ accepted: false }));
   });
 
   it("shows the rejected screen with a retry action", async () => {

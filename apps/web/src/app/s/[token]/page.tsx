@@ -4,15 +4,18 @@ import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
 import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
   const { token } = useParams<{ token: string }>();
-  const { session, connectionState, joinSession, accept, reject } = useSignalingSocket();
+  const { session, connectionState, role, sendSignal, lastSignal, joinSession, accept, reject } = useSignalingSocket();
 
   useEffect(() => {
     joinSession(token);
   }, [token, joinSession]);
+
+  usePeerConnection({ role, accepted: session?.status === "accepted", sendSignal, lastSignal });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
@@ -59,7 +62,7 @@ function renderContent(session: Session | null | undefined, onAccept: () => void
           icon={CheckCircle2}
           tone="success"
           title="Convite aceito"
-          description="A conexão real entre os dispositivos chega em um próximo passo do projeto."
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":
