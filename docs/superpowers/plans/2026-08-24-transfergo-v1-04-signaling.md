@@ -721,9 +721,41 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { createServer } from "./server.js";
 
+// A fresh `socket.once("message", ...)` per call races: `ws` can decode several buffered
+// frames in one synchronous pass and emit "message" for each before the next listener is
+// registered, silently dropping any message that arrives while nothing is listening. Queue
+// messages behind a listener attached once per socket instead, so nextMessage() never misses one.
+const messageQueues = new WeakMap<WebSocket, ServerMessage[]>();
+const messageWaiters = new WeakMap<WebSocket, Array<(message: ServerMessage) => void>>();
+
+function ensureQueued(socket: WebSocket): void {
+  if (messageQueues.has(socket)) {
+    return;
+  }
+  messageQueues.set(socket, []);
+  messageWaiters.set(socket, []);
+  socket.on("message", (data) => {
+    const message = JSON.parse(data.toString()) as ServerMessage;
+    const waiters = messageWaiters.get(socket) ?? [];
+    const waiter = waiters.shift();
+    if (waiter) {
+      waiter(message);
+    } else {
+      messageQueues.get(socket)?.push(message);
+    }
+  });
+}
+
 function nextMessage(socket: WebSocket): Promise<ServerMessage> {
+  ensureQueued(socket);
   return new Promise((resolve) => {
-    socket.once("message", (data) => resolve(JSON.parse(data.toString()) as ServerMessage));
+    const queue = messageQueues.get(socket);
+    const queued = queue?.shift();
+    if (queued) {
+      resolve(queued);
+    } else {
+      messageWaiters.get(socket)?.push(resolve);
+    }
   });
 }
 
