@@ -5,9 +5,10 @@ import { Button, Clock, StateScreen } from "@transfergo/ui";
 
 export interface SessionLinkPanelProps {
   token: string;
+  peerOnline: boolean;
 }
 
-export function SessionLinkPanel({ token }: SessionLinkPanelProps) {
+export function SessionLinkPanel({ token, peerOnline }: SessionLinkPanelProps) {
   const [copied, setCopied] = useState(false);
   const link = typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
 
@@ -22,7 +23,11 @@ export function SessionLinkPanel({ token }: SessionLinkPanelProps) {
       <StateScreen
         icon={Clock}
         title="Aguardando resposta"
-        description="Compartilhe o link abaixo com o outro dispositivo."
+        description={
+          peerOnline
+            ? "Destinatário conectado, aguardando resposta."
+            : "Compartilhe o link abaixo com o outro dispositivo."
+        }
       />
       <code className="max-w-full break-all rounded-md border border-border bg-bg-elevated px-4 py-3 text-sm text-text">
         {link}
