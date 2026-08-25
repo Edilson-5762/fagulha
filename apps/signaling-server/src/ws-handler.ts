@@ -14,9 +14,34 @@ interface Binding {
 
 export function createWsHandler(store: SessionStore, registry: ConnectionRegistry): WsHandler {
   const bindings = new Map<SignalingSocket, Binding>();
+  const expiryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   function send(socket: SignalingSocket, message: ServerMessage): void {
     socket.send(JSON.stringify(message));
+  }
+
+  function scheduleExpiryCheck(token: string, expiresAt: string): void {
+    // +50ms buffer: session-store.ts's expiry check is strict `>` (not `>=`), so a timer
+    // firing at exactly `expiresAt` would still observe "waiting". Firing slightly after
+    // guarantees `now() > expiresAt` holds when this callback re-reads the session.
+    const delayMs = Math.max(0, new Date(expiresAt).getTime() - Date.now()) + 50;
+    const timer = setTimeout(() => {
+      expiryTimers.delete(token);
+      const session = store.get(token);
+      if (session && session.status === "expired") {
+        registry.broadcast(token, { type: "session_state", session });
+      }
+    }, delayMs);
+    timer.unref();
+    expiryTimers.set(token, timer);
+  }
+
+  function clearExpiryCheck(token: string): void {
+    const timer = expiryTimers.get(token);
+    if (timer) {
+      clearTimeout(timer);
+      expiryTimers.delete(token);
+    }
   }
 
   function handleMessage(socket: SignalingSocket, raw: string): void {
@@ -29,6 +54,7 @@ export function createWsHandler(store: SessionStore, registry: ConnectionRegistr
       const session = store.create();
       bindings.set(socket, { token: session.token, role: "host" });
       registry.attach(session.token, "host", socket);
+      scheduleExpiryCheck(session.token, session.expiresAt);
       send(socket, { type: "session_state", session });
       return;
     }
@@ -75,6 +101,7 @@ export function createWsHandler(store: SessionStore, registry: ConnectionRegistr
       return;
     }
 
+    clearExpiryCheck(binding.token);
     registry.broadcast(binding.token, { type: "session_state", session: result.session });
   }
 

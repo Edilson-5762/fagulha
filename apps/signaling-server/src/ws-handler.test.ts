@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ServerMessage } from "@transfergo/shared";
 import { createConnectionRegistry, type SignalingSocket } from "./connection-registry.js";
 import { createSessionStore } from "./session-store.js";
@@ -121,6 +121,47 @@ describe("createWsHandler", () => {
     send(handler, guest.socket, { type: "reject" });
 
     expect(guest.received.at(-1)).toEqual({ type: "error", code: "already_resolved" });
+  });
+
+  it("pushes an expired session_state to both sides once the TTL elapses", () => {
+    vi.useFakeTimers();
+    try {
+      const store = createSessionStore({ ttlMs: 1000 });
+      const handler = createWsHandler(store, createConnectionRegistry());
+      const host = fakeSocket();
+      send(handler, host.socket, { type: "create" });
+      const token = (host.received[0] as { session: { token: string } }).session.token;
+      const guest = fakeSocket();
+      send(handler, guest.socket, { type: "join", token, role: "guest" });
+
+      vi.advanceTimersByTime(1050); // ttlMs (1000) + the scheduling buffer (50)
+
+      expect(host.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
+      expect(guest.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not push an expiry broadcast for a session that was already resolved", () => {
+    vi.useFakeTimers();
+    try {
+      const store = createSessionStore({ ttlMs: 1000 });
+      const handler = createWsHandler(store, createConnectionRegistry());
+      const host = fakeSocket();
+      send(handler, host.socket, { type: "create" });
+      const token = (host.received[0] as { session: { token: string } }).session.token;
+      const guest = fakeSocket();
+      send(handler, guest.socket, { type: "join", token, role: "guest" });
+      send(handler, guest.socket, { type: "accept" });
+
+      const guestCountBefore = guest.received.length;
+      vi.advanceTimersByTime(1050); // ttlMs (1000) + the scheduling buffer (50)
+
+      expect(guest.received.length).toBe(guestCountBefore);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("notifies the remaining peer with peer_presence(false) when the other side closes", () => {
