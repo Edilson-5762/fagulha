@@ -123,6 +123,75 @@ describe("createWsHandler", () => {
     expect(guest.received.at(-1)).toEqual({ type: "error", code: "already_resolved" });
   });
 
+  it("relays a signal payload to the peer once the session is accepted", () => {
+    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+    const host = fakeSocket();
+    send(handler, host.socket, { type: "create" });
+    const token = (host.received[0] as { session: { token: string } }).session.token;
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+    send(handler, guest.socket, { type: "accept" });
+
+    const payload = { kind: "offer", sdp: "v=0 offer-sdp" };
+    send(handler, host.socket, { type: "signal", payload });
+
+    expect(guest.received.at(-1)).toEqual({ type: "signal", payload });
+  });
+
+  it("relays a signal in both directions", () => {
+    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+    const host = fakeSocket();
+    send(handler, host.socket, { type: "create" });
+    const token = (host.received[0] as { session: { token: string } }).session.token;
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+    send(handler, guest.socket, { type: "accept" });
+
+    const answer = { kind: "answer", sdp: "v=0 answer-sdp" };
+    send(handler, guest.socket, { type: "signal", payload: answer });
+
+    expect(host.received.at(-1)).toEqual({ type: "signal", payload: answer });
+  });
+
+  it("does not relay a signal before the session is accepted", () => {
+    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+    const host = fakeSocket();
+    send(handler, host.socket, { type: "create" });
+    const token = (host.received[0] as { session: { token: string } }).session.token;
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+
+    const receivedBefore = guest.received.length;
+    send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } });
+
+    expect(guest.received.length).toBe(receivedBefore);
+  });
+
+  it("ignores a signal from a socket that never joined or created a session", () => {
+    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+    const stray = fakeSocket();
+
+    expect(() =>
+      send(handler, stray.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
+    ).not.toThrow();
+    expect(stray.received).toEqual([]);
+  });
+
+  it("drops a signal silently when the peer is not currently connected", () => {
+    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+    const host = fakeSocket();
+    send(handler, host.socket, { type: "create" });
+    const token = (host.received[0] as { session: { token: string } }).session.token;
+    const guest = fakeSocket();
+    send(handler, guest.socket, { type: "join", token, role: "guest" });
+    send(handler, guest.socket, { type: "accept" });
+    handler.handleClose(guest.socket);
+
+    expect(() =>
+      send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
+    ).not.toThrow();
+  });
+
   it("pushes an expired session_state to both sides once the TTL elapses", () => {
     vi.useFakeTimers();
     try {

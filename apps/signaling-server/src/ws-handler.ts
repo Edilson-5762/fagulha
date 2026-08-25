@@ -84,6 +84,22 @@ export function createWsHandler(store: SessionStore, registry: ConnectionRegistr
       return;
     }
 
+    if (message.type === "signal") {
+      const binding = bindings.get(socket);
+      if (!binding) {
+        return;
+      }
+      const session = store.get(binding.token);
+      if (!session || session.status !== "accepted") {
+        return;
+      }
+      const peer = registry.peerOf(binding.token, binding.role);
+      if (peer) {
+        send(peer, { type: "signal", payload: message.payload });
+      }
+      return;
+    }
+
     // message.type is now "accept" | "reject" — both require a prior create/join.
     const binding = bindings.get(socket);
     if (!binding) {
