@@ -137,14 +137,17 @@ describe("SendPanel", () => {
       <SendPanel
         transfer={withOverrides({
           phase: "sending",
-          overall: { bytesDone: 512, bytesTotal: 1024, filesDone: 0, filesTotal: 1 },
+          overall: { bytesDone: 300, bytesTotal: 1000, filesDone: 0, filesTotal: 1 },
           stats: { speedBytesPerSec: 1024, etaSeconds: null },
-          selectedFiles: [{ id: "f1", name: "solo.bin", size: 1024, type: "", sizeClass: "small" }],
-          perFile: { f1: { bytes: 512, size: 1024, pct: 50, state: "sending" } }
+          selectedFiles: [{ id: "f1", name: "solo.bin", size: 1000, type: "", sizeClass: "small" }],
+          perFile: { f1: { bytes: 500, size: 1000, pct: 50, state: "sending" } }
         })}
       />
     );
     expect(screen.getByText("Enviando solo.bin")).toBeInTheDocument();
+    // overall bar always carries its percentage
+    expect(screen.getByText("30%")).toBeInTheDocument();
+    // no per-file mini bar for a single file, so the per-file 50% never renders
     expect(screen.queryByText("50%")).not.toBeInTheDocument();
   });
 

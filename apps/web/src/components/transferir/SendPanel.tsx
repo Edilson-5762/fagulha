@@ -84,7 +84,7 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
 
         {phase === "sending" && (
           <>
-            <ProgressBar className="mb-1" value={bytesPct} label={multi ? "Progresso" : undefined} />
+            <ProgressBar className="mb-1" value={bytesPct} label="Progresso" />
             <p className="mb-4 text-center text-xs text-text-muted">{statusParts.join(" · ")}</p>
           </>
         )}
