@@ -62,6 +62,7 @@ describe("formatDuration", () => {
     expect(formatDuration(5)).toBe("menos de 10 s");
     expect(formatDuration(10)).toBe("cerca de 10 s");
     expect(formatDuration(44)).toBe("cerca de 40 s");
+    expect(formatDuration(57)).toBe("cerca de 1 min");
     expect(formatDuration(95)).toBe("cerca de 2 min");
     expect(formatDuration(3600)).toBe("mais de 1 h");
     expect(formatDuration(4000)).toBe("mais de 1 h");

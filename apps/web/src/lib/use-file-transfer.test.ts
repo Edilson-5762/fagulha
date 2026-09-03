@@ -19,6 +19,9 @@ import { useFileTransfer } from "./use-file-transfer.js";
 
 class FakeChannel {
   sent: (string | ArrayBuffer)[] = [];
+  // Sit above the sender's default high-water mark so, once a batch is accepted,
+  // `TransferSender.runBatch` parks on back-pressure instead of spinning against
+  // the stub chunk source (which reports a non-zero size but reads 0 bytes).
   bufferedAmount = 64 * 1024 * 1024;
   bufferedAmountLowThreshold = 0;
   private listeners: Record<string, ((e: { data?: unknown }) => void)[]> = {};
@@ -154,6 +157,36 @@ describe("useFileTransfer — guest progress by bytes", () => {
     expect(result.current.filesSaved).toBe(1);
   });
 
+  it("resets the batch view-state when a second offer arrives on the same channel", async () => {
+    const { result } = renderTransfer("guest");
+
+    // First batch → terminal (cancelled) state.
+    await acceptAsGuest(result, files);
+    act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
+    await flush();
+    act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3 })));
+    await flush();
+    await act(async () => {
+      channel.feed(enc({ t: "cancel", scope: "batch" }));
+      await flush();
+    });
+    expect(result.current.phase).toBe("cancelled");
+    expect(result.current.filesSaved).toBe(1);
+
+    // Second offer on the same channel (rearm path) → fresh accept prompt.
+    const filesB2 = [{ id: "g1", name: "c.bin", size: 4, type: "" }];
+    await act(async () => {
+      channel.feed(offer(filesB2, "b2"));
+      await flush();
+    });
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.filesSaved).toBe(0);
+    expect(result.current.overall).toEqual({ bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 });
+    expect(result.current.stats).toEqual({ speedBytesPerSec: null, etaSeconds: null });
+    expect(result.current.incomingBatch?.files[0]?.name).toBe("c.bin");
+  });
+
   it("treats a 0-byte file as 100% once it ends", async () => {
     const { result } = renderTransfer("guest");
     await acceptAsGuest(result, [{ id: "f1", name: "empty", size: 0, type: "" }]);
@@ -167,8 +200,8 @@ describe("useFileTransfer — guest progress by bytes", () => {
   });
 });
 
-describe("useFileTransfer — stats placeholder (Task 3)", () => {
-  it("exposes a null stats object until Task 4 wires the math", () => {
+describe("useFileTransfer — stats start null", () => {
+  it("stats are null before any sample", () => {
     const { result } = renderTransfer("guest");
     expect(result.current.stats).toEqual({ speedBytesPerSec: null, etaSeconds: null });
   });

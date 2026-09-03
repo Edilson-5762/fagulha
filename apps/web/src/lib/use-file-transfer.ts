@@ -157,7 +157,9 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const recomputeStats = useCallback(() => {
     const buf = samplesRef.current;
     const nowT = monotonicNow();
-    // Descarta amostras fora da janela, sempre deixando pelo menos 2.
+    // Descarta amostras fora da janela, sempre deixando pelo menos 2. Corta pela
+    // 2ª amostra, não a 1ª: mantém uma amostra logo fora da janela de propósito,
+    // para o par sempre cobrir os 5 s cheios.
     while (buf.length > 2 && nowT - buf[1]!.t > SPEED_WINDOW_MS) {
       buf.shift();
     }
@@ -168,7 +170,8 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     const oldest = buf[0]!;
     const newest = buf[buf.length - 1]!;
     // Span medido contra AGORA (não contra a última amostra): numa travada,
-    // "agora" cresce, o span cresce e a velocidade decai sozinha.
+    // "agora" cresce, o span cresce e a velocidade decai sozinha. O custo é
+    // subestimar a velocidade em ~(STATS_TICK_MS/janela) ≈ 5% em fluxo estável.
     const span = nowT - oldest.t;
     let speed: number | null;
     if (span < SPEED_MIN_SPAN_MS) {
@@ -192,6 +195,17 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     startedAtRef.current = null;
     setStats(EMPTY_STATS);
   }, []);
+
+  // Zera tudo que descreve o lote na tela. Chamado sempre que um novo lote começa
+  // ou a seleção é limpa, para nenhum resquício de um lote anterior vazar.
+  const resetBatchProgress = useCallback(() => {
+    setPerFile({});
+    setOverall(EMPTY_OVERALL);
+    setFilesSaved(0);
+    filesCompletedRef.current = 0;
+    setErrorMessage(null);
+    resetStats();
+  }, [resetStats]);
 
   const applyProgress = useCallback(
     (p: TransferProgress) => {
@@ -288,12 +302,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
         onBatchOffered: (offer) => {
           // A fresh offer after a completed/failed transfer must pull the guest
           // out of the terminal screen and back to the accept prompt.
-          setErrorMessage(null);
-          setFilesSaved(0);
-          filesCompletedRef.current = 0;
-          setPerFile({});
-          setOverall(EMPTY_OVERALL);
-          resetStats();
+          resetBatchProgress();
           setPhase("idle");
           setIncomingBatch({
             files: offer.files,
@@ -310,7 +319,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       receiver.dispose();
       receiverRef.current = null;
     };
-  }, [ready, role, dataChannel, wireCommon, receiverEpoch, resetStats]);
+  }, [ready, role, dataChannel, wireCommon, receiverEpoch, resetBatchProgress]);
 
   // Tear down any in-flight transfer machinery when the hook unmounts so a
   // running send/receive loop can't outlive the component.
@@ -370,14 +379,9 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const clearSelection = useCallback(() => {
     fileMapRef.current.clear();
     setSelectedFiles([]);
-    setPerFile({});
-    setOverall(EMPTY_OVERALL);
-    setFilesSaved(0);
-    filesCompletedRef.current = 0;
-    resetStats();
-    setErrorMessage(null);
+    resetBatchProgress();
     setPhase("idle");
-  }, [resetStats]);
+  }, [resetBatchProgress]);
 
   const startSend = useCallback(() => {
     if (!ready || !dataChannel || role !== "host" || limitError || selectedFiles.length === 0) {
@@ -390,16 +394,13 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
         source: createFileChunkSource(file)
       };
     });
+    resetBatchProgress();
     setPerFile(
       Object.fromEntries(selectedFiles.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }]))
     );
+    setOverall({ bytesDone: 0, bytesTotal: totalBytes, filesDone: 0, filesTotal: selectedFiles.length });
     batchFilesRef.current = selectedFiles.map((f) => ({ id: f.id, size: f.size }));
     batchBytesTotalRef.current = totalBytes;
-    filesCompletedRef.current = 0;
-    setFilesSaved(0);
-    resetStats();
-    setOverall({ bytesDone: 0, bytesTotal: totalBytes, filesDone: 0, filesTotal: selectedFiles.length });
-    setErrorMessage(null);
     const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
       ...wireCommon,
       onAccepted: () => setPhase("preparing")
@@ -407,7 +408,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     senderRef.current = sender;
     setPhase("offering");
     sender.start();
-  }, [ready, dataChannel, role, limitError, selectedFiles, totalBytes, wireCommon, resetStats]);
+  }, [ready, dataChannel, role, limitError, selectedFiles, totalBytes, wireCommon, resetBatchProgress]);
 
   const acceptBatch = useCallback(async () => {
     if (!receiverRef.current || !incomingBatch) {
@@ -422,18 +423,16 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       return;
     }
     openSinkRef.current = target.openSink;
+    resetBatchProgress();
     setPerFile(
       Object.fromEntries(incomingBatch.files.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }]))
     );
+    setOverall({ bytesDone: 0, bytesTotal: incomingBatch.totalBytes, filesDone: 0, filesTotal: incomingBatch.files.length });
     batchFilesRef.current = incomingBatch.files.map((f) => ({ id: f.id, size: f.size }));
     batchBytesTotalRef.current = incomingBatch.totalBytes;
-    filesCompletedRef.current = 0;
-    setFilesSaved(0);
-    resetStats();
-    setOverall({ bytesDone: 0, bytesTotal: incomingBatch.totalBytes, filesDone: 0, filesTotal: incomingBatch.files.length });
     setPhase("preparing");
     receiverRef.current.accept();
-  }, [incomingBatch, resetStats]);
+  }, [incomingBatch, resetBatchProgress]);
 
   const rejectBatch = useCallback(() => {
     receiverRef.current?.reject();

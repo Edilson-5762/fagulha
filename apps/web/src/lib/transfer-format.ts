@@ -31,7 +31,12 @@ export function formatDuration(seconds: number): string {
     return "menos de 10 s";
   }
   if (seconds < 60) {
-    return `cerca de ${Math.round(seconds / 10) * 10} s`;
+    const bucket = Math.round(seconds / 10) * 10;
+    if (bucket < 60) {
+      return `cerca de ${bucket} s`;
+    }
+    // 55–59,99 s arredonda para a faixa de 60 s — cai para a faixa de minutos
+    // e vira "cerca de 1 min" em vez de "cerca de 60 s".
   }
   if (seconds < 3600) {
     return `cerca de ${Math.max(1, Math.round(seconds / 60))} min`;
