@@ -34,6 +34,7 @@ vi.mock("../../lib/use-file-transfer.js", () => ({
       stats: { speedBytesPerSec: null, etaSeconds: null },
       filesSaved: 0,
       errorMessage: null,
+      integrityVerified: false,
       cancel: vi.fn()
     })
   )
