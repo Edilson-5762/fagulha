@@ -508,7 +508,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Consumes: `DataChannelLike`, `ChunkSource`, `FileMeta`, `TransferProgress`, `TransferError` (`./types.js`); `ControlFrame`, `encodeControl`, `decodeControl` (`./protocol.js`).
 - Produces:
   - `interface SenderInput { meta: FileMeta; source: ChunkSource }`
-  - `interface SenderCallbacks { onProgress?: (p: TransferProgress) => void; onFileComplete?: (fileId: string) => void; onBatchComplete?: () => void; onError?: (e: TransferError) => void; onCancelled?: () => void }`
+  - `interface SenderCallbacks { onAccepted?: () => void; onProgress?: (p: TransferProgress) => void; onFileComplete?: (fileId: string) => void; onBatchComplete?: () => void; onError?: (e: TransferError) => void; onCancelled?: () => void }` — `onAccepted` fires once, when the peer's `batch-accept` arrives (before the first chunk).
   - `interface SenderOptions { chunkSize?: number; highWaterMark?: number; lowWaterMark?: number; progressIntervalMs?: number }`
   - `class TransferSender { constructor(channel: DataChannelLike, batchId: string, inputs: SenderInput[], callbacks?: SenderCallbacks, options?: SenderOptions); start(): void; cancel(): void; dispose(): void }`
   - Defaults: `chunkSize` 16384, `highWaterMark` 8388608, `lowWaterMark` 1048576, `progressIntervalMs` 250.
@@ -613,20 +613,20 @@ describe("TransferSender", () => {
       {},
       { chunkSize: 16, highWaterMark: 20, lowWaterMark: 5 }
     );
+    // FakeChannel.send does not grow bufferedAmount, so the test drives it directly.
+    // Set it over the mark BEFORE accept so runBatch pauses at the first waitForDrain.
+    ch.bufferedAmount = 100;
     sender.start();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     await flush();
-
-    // First chunk goes out, then bufferedAmount (simulated) is over the mark → paused.
-    ch.bufferedAmount = 100;
-    const framesWhilePaused = ch.binaryFrames.length;
-    await flush();
-    expect(ch.binaryFrames.length).toBe(framesWhilePaused);
+    // file-begin (a string frame) is out, but no binary chunk yet — paused.
+    expect(ch.binaryFrames.length).toBe(0);
 
     ch.bufferedAmount = 0;
     ch.emitDrain();
     await flush();
-    expect(ch.binaryFrames.length).toBeGreaterThan(framesWhilePaused);
+    expect(ch.binaryFrames.length).toBeGreaterThan(0);
+    expect(ch.controlFrames).toContainEqual({ t: "file-begin", id: "f1", offset: 0 });
   });
 
   it("maps a peer batch-reject to onError('rejected')", async () => {
@@ -636,6 +636,15 @@ describe("TransferSender", () => {
     ch.emitMessage(JSON.stringify({ t: "batch-reject", reason: "declined" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "rejected" }));
+  });
+
+  it("fires onAccepted once when the peer accepts, before any chunk", () => {
+    const ch = new FakeChannel();
+    const onAccepted = vi.fn();
+    new TransferSender(ch, "b1", [{ meta: meta({ size: 4 }), source: bytesSource(new Uint8Array(4)) }], { onAccepted }).start();
+    expect(onAccepted).not.toHaveBeenCalled();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    expect(onAccepted).toHaveBeenCalledOnce();
   });
 
   it("cancel() sends a cancel frame and fires onCancelled", () => {
@@ -680,6 +689,8 @@ export interface SenderInput {
 }
 
 export interface SenderCallbacks {
+  /** Fires once, when the peer's batch-accept arrives (before the first chunk). */
+  onAccepted?: () => void;
   onProgress?: (p: TransferProgress) => void;
   onFileComplete?: (fileId: string) => void;
   onBatchComplete?: () => void;
@@ -784,6 +795,7 @@ export class TransferSender {
 
   private handleControl(frame: ControlFrame): void {
     if (frame.t === "batch-accept") {
+      this.cb.onAccepted?.();
       void this.runBatch();
     } else if (frame.t === "batch-reject") {
       this.cb.onError?.(
@@ -2116,12 +2128,14 @@ describe("useFileTransfer — host", () => {
     expect(result.current.limitError).toMatch(/limite.*50/i);
   });
 
-  it("startSend sends a batch-offer and moves to 'offering'", () => {
+  it("startSend sends a batch-offer, sits in 'offering', then moves to 'transferring' on accept", () => {
     const { result } = renderTransfer("host");
     act(() => result.current.addFiles([bigFile("a.bin", 10)]));
     act(() => result.current.startSend());
     expect(result.current.phase).toBe("offering");
     expect(channel.sent.some((d) => typeof d === "string" && d.includes("batch-offer"))).toBe(true);
+    act(() => channel.feed(JSON.stringify({ t: "batch-accept" })));
+    expect(result.current.phase).toBe("transferring");
   });
 
   it("maps a peer batch-reject to phase 'failed' with a pt-BR message", () => {
@@ -2395,11 +2409,13 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     );
     setOverall({ done: 0, total: selectedFiles.length });
     setErrorMessage(null);
-    const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, wireCommon);
+    const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
+      ...wireCommon,
+      onAccepted: () => setPhase("transferring")
+    });
     senderRef.current = sender;
     setPhase("offering");
     sender.start();
-    setPhase("transferring");
   }, [ready, dataChannel, role, limitError, selectedFiles, wireCommon]);
 
   const acceptBatch = useCallback(async () => {
@@ -2453,7 +2469,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
 Run: `pnpm --filter @transfergo/web test use-file-transfer`
 Expected: PASS (7 cases).
 
-> If the `offering`→`transferring` synchronous double-`setPhase` in `startSend` makes the "moves to 'offering'" assertion flaky, change that test to assert `channel.sent` contains the offer and `result.current.phase` is `"transferring"` — the `offering` state is only observable while awaiting the peer, which the fake accepts instantly. Prefer adjusting the test over weakening the hook.
+> The `offering` phase is real and observable: `startSend` sets it and leaves it; the hook only moves to `"transferring"` when `TransferSender`'s `onAccepted` fires (peer `batch-accept`). The test drives that by feeding a `batch-accept` frame. Do not collapse the two `setPhase` calls back into `startSend`.
 
 - [ ] **Step 5: Typecheck + lint**
 
@@ -2555,7 +2571,8 @@ describe("SendPanel", () => {
     );
     expect(screen.getByText("a.jpg")).toBeInTheDocument();
     expect(screen.getByText("Pequeno")).toBeInTheDocument();
-    expect(screen.getByText(/5 MB/)).toBeInTheDocument();
+    // "5 MB" appears twice — once per row, once in the footer total.
+    expect(screen.getAllByText(/5 MB/).length).toBeGreaterThan(0);
   });
 
   it("shows the limit error and disables the send button", () => {
