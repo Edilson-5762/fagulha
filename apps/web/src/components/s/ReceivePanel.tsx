@@ -10,12 +10,20 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
   if (phase === "completed") {
     const n = transfer.overall.filesTotal;
     return (
-      <StateScreen
-        icon={CheckCircle2}
-        tone="success"
-        title={n === 1 ? "Arquivo recebido com sucesso" : `${n} arquivos recebidos com sucesso`}
-        description="Os arquivos foram salvos neste dispositivo."
-      />
+      <div className="w-full">
+        <StateScreen
+          icon={CheckCircle2}
+          tone="success"
+          title={n === 1 ? "Arquivo recebido com sucesso" : `${n} arquivos recebidos com sucesso`}
+          description="Os arquivos foram salvos neste dispositivo."
+        />
+        {transfer.integrityVerified && (
+          <p className="-mt-6 flex items-center justify-center gap-1 text-xs text-success">
+            <CheckCircle2 className="size-3.5" aria-hidden="true" />
+            Integridade verificada (SHA-256)
+          </p>
+        )}
+      </div>
     );
   }
 
@@ -90,7 +98,7 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
             const state = pf?.state ?? "queued";
             const label =
               state === "completed"
-                ? "Concluído"
+                ? "Verificado"
                 : state === "receiving"
                   ? "Recebendo"
                   : state === "failed"
@@ -103,7 +111,10 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
                     <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
                     <span className="truncate">{file.name}</span>
                   </span>
-                  <span className="ml-3 shrink-0 text-text-muted">{label}</span>
+                  <span className="ml-3 flex shrink-0 items-center gap-1 text-text-muted">
+                    {state === "completed" && <CheckCircle2 className="size-3 text-success" aria-hidden="true" />}
+                    {label}
+                  </span>
                 </div>
                 {multi && state === "receiving" && pf && (
                   <ProgressBar className="mt-2" value={pf.pct} label={file.name} />

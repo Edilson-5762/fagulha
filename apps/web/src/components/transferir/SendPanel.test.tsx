@@ -194,4 +194,32 @@ describe("SendPanel", () => {
     );
     expect(screen.getByText("O outro lado recusou a transferência.")).toBeInTheDocument();
   });
+
+  it("keeps the sender per-file label as 'Concluído' (the sender verified nothing)", () => {
+    render(
+      <SendPanel
+        transfer={withOverrides({
+          phase: "sending",
+          overall: { bytesDone: 10, bytesTotal: 10, filesDone: 1, filesTotal: 1 },
+          selectedFiles: [{ id: "f1", name: "a.bin", size: 10, type: "", sizeClass: "small" }],
+          perFile: { f1: { bytes: 10, size: 10, pct: 100, state: "completed" } }
+        })}
+      />
+    );
+    expect(screen.getByText("Concluído")).toBeInTheDocument();
+    expect(screen.queryByText("Verificado")).not.toBeInTheDocument();
+  });
+
+  it("shows the SHA-256 integrity line on the success screen", () => {
+    render(
+      <SendPanel
+        transfer={withOverrides({
+          phase: "completed",
+          integrityVerified: true,
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 2 }
+        })}
+      />
+    );
+    expect(screen.getByText("Integridade verificada (SHA-256)")).toBeInTheDocument();
+  });
 });

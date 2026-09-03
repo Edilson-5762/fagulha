@@ -239,4 +239,37 @@ describe("ReceivePanel", () => {
     );
     expect(screen.getByText(/chegou incompleto/)).toBeInTheDocument();
   });
+
+  it("labels a finished file 'Verificado' during an active transfer", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "receiving",
+          overall: { bytesDone: 10, bytesTotal: 10, filesDone: 1, filesTotal: 1 },
+          incomingBatch: {
+            files: [{ id: "f1", name: "a.bin", size: 10, type: "" }],
+            totalBytes: 10,
+            summary: "",
+            requiresMemoryWarning: false
+          },
+          perFile: { f1: { bytes: 10, size: 10, pct: 100, state: "completed" } }
+        })}
+      />
+    );
+    expect(screen.getByText("Verificado")).toBeInTheDocument();
+    expect(screen.queryByText("Concluído")).not.toBeInTheDocument();
+  });
+
+  it("shows the SHA-256 integrity line on the success screen", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "completed",
+          integrityVerified: true,
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 2 }
+        })}
+      />
+    );
+    expect(screen.getByText("Integridade verificada (SHA-256)")).toBeInTheDocument();
+  });
 });
