@@ -66,6 +66,9 @@ export async function pickSaveTarget(): Promise<SaveTarget> {
 async function createDirectorySink(dir: FsDirectoryHandle, meta: FileMeta): Promise<FileSink> {
   // meta.name is already sanitized by TransferReceiver.
   const handle = await dir.getFileHandle(meta.name, { create: true });
+  // TODO(resume): a resumable transfer must pass { keepExistingData: true } here
+  // and writable.seek(offset) before the first write, so a re-opened sink appends
+  // instead of truncating. This plan only ever opens at offset 0.
   const writable = await handle.createWritable();
   return {
     write: (chunk) => writable.write(chunk),
@@ -108,6 +111,11 @@ export function createDownloadSink(meta: FileMeta): FileSink {
 }
 
 export function adaptRtcDataChannel(channel: RTCDataChannel): DataChannelLike {
+  // Without this, Firefox delivers incoming binary frames as Blob (not
+  // ArrayBuffer); the receiver's toArrayBuffer would reject them as bad frames
+  // and every received file would come out empty. Chrome/Edge already default
+  // to "arraybuffer" but setting it is harmless there.
+  channel.binaryType = "arraybuffer";
   return {
     send: (data) => channel.send(data as ArrayBuffer),
     get bufferedAmount() {

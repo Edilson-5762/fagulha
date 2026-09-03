@@ -6,9 +6,13 @@ describe("formatBytes", () => {
     expect(formatBytes(0)).toBe("0 B");
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(1024)).toBe("1 KB");
-    expect(formatBytes(1536)).toBe("1.5 KB");
     expect(formatBytes(320 * 1024 * 1024)).toBe("320 MB");
     expect(formatBytes(5 * 1024 * 1024 * 1024)).toBe("5 GB");
+  });
+
+  it("uses a pt-BR decimal comma for fractional values", () => {
+    expect(formatBytes(1536)).toBe("1,5 KB");
+    expect(formatBytes(6.2 * 1024 * 1024 * 1024)).toBe("6,2 GB");
   });
 });
 

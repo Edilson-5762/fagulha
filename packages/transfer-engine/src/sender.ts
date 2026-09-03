@@ -158,6 +158,11 @@ export class TransferSender {
           if (this.cancelled || this.disposed) {
             return;
           }
+          if (chunk.byteLength === 0) {
+            // A 0-byte read while bytes are still owed can never make progress —
+            // treat it as a broken source and route through the catch below.
+            throw new TransferError("channel-error", `source.read returned 0 bytes with ${source.size - sent} still to send`);
+          }
           this.channel.send(chunk);
           sent += chunk.byteLength;
           this.maybeEmitProgress({ meta, fileBytes: sent, filesDone: index }, false);

@@ -94,6 +94,11 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const [perFile, setPerFile] = useState<Record<string, PerFileStatus>>({});
   const [overall, setOverall] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Bumped after a terminal state so the guest effect below rebuilds a fresh
+  // TransferReceiver on the same channel — a receiver disposes itself once a
+  // batch ends, so without this a second "Enviar mais arquivos" batch would
+  // reach nobody.
+  const [receiverEpoch, setReceiverEpoch] = useState(0);
 
   const fileMapRef = useRef<Map<string, File>>(new Map());
   const senderRef = useRef<TransferSender | null>(null);
@@ -125,12 +130,19 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     [applyProgress]
   );
 
-  // Guest: stand up a receiver as soon as the channel is open so it can catch the offer.
+  // Guest: stand up a receiver as soon as the channel is open so it can catch the
+  // offer. Rebuilds after every terminal state (receiverEpoch) so a follow-up
+  // batch on the same channel is caught by a fresh receiver.
   useEffect(() => {
     if (!ready || role !== "guest" || !dataChannel) {
       return;
     }
     const channel = adaptRtcDataChannel(dataChannel);
+    const rearm = () => {
+      setIncomingBatch(null);
+      openSinkRef.current = null;
+      setReceiverEpoch((n) => n + 1);
+    };
     const receiver = new TransferReceiver(
       channel,
       (meta, offset) => {
@@ -142,7 +154,23 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       },
       {
         ...wireCommon,
+        onBatchComplete: () => {
+          wireCommon.onBatchComplete();
+          rearm();
+        },
+        onCancelled: () => {
+          wireCommon.onCancelled();
+          rearm();
+        },
+        onError: (e) => {
+          wireCommon.onError(e);
+          rearm();
+        },
         onBatchOffered: (offer) => {
+          // A fresh offer after a completed/failed transfer must pull the guest
+          // out of the terminal screen and back to the accept prompt.
+          setErrorMessage(null);
+          setPhase("idle");
           setIncomingBatch({
             files: offer.files,
             totalBytes: offer.totalBytes,
@@ -158,7 +186,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       receiver.dispose();
       receiverRef.current = null;
     };
-  }, [ready, role, dataChannel, wireCommon]);
+  }, [ready, role, dataChannel, wireCommon, receiverEpoch]);
 
   // Tear down any in-flight transfer machinery when the hook unmounts so a
   // running send/receive loop can't outlive the component.
@@ -243,7 +271,14 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     if (!receiverRef.current || !incomingBatch) {
       return;
     }
-    const target = await pickSaveTarget();
+    let target: Awaited<ReturnType<typeof pickSaveTarget>>;
+    try {
+      target = await pickSaveTarget();
+    } catch {
+      // The user dismissed the folder picker (AbortError on Escape/Cancel).
+      // Stay on the offer screen so they can accept again or refuse.
+      return;
+    }
     openSinkRef.current = target.openSink;
     setPerFile(
       Object.fromEntries(incomingBatch.files.map((f) => [f.id, { bytes: 0, size: f.size, state: "queued" as const }]))

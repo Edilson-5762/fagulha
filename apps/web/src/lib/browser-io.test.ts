@@ -80,6 +80,7 @@ describe("adaptRtcDataChannel", () => {
     const listeners: Record<string, ((e: unknown) => void)[]> = {};
     const fake = {
       send: vi.fn(),
+      binaryType: "blob",
       bufferedAmount: 42,
       bufferedAmountLowThreshold: 0,
       addEventListener: (t: string, l: (e: unknown) => void) => ((listeners[t] ??= []).push(l)),
@@ -87,6 +88,8 @@ describe("adaptRtcDataChannel", () => {
     } as unknown as RTCDataChannel;
 
     const adapted = adaptRtcDataChannel(fake);
+    // Forces incoming binary frames to arrive as ArrayBuffer (Firefox defaults to Blob).
+    expect(fake.binaryType).toBe("arraybuffer");
     adapted.send("hi");
     expect(fake.send).toHaveBeenCalledWith("hi");
     expect(adapted.bufferedAmount).toBe(42);

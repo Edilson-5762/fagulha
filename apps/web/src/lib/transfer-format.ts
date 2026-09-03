@@ -12,7 +12,8 @@ export function formatBytes(bytes: number): string {
     unit += 1;
   }
   const rounded = Number.isInteger(value) ? value : Math.round(value * 10) / 10;
-  return `${rounded} ${units[unit]}`;
+  // pt-BR uses a decimal comma: "6,2 GB", not "6.2 GB".
+  return `${rounded.toLocaleString("pt-BR")} ${units[unit]}`;
 }
 
 type Category = "foto" | "vídeo" | "PDF" | "arquivo";

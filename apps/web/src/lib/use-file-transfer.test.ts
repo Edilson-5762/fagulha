@@ -106,6 +106,35 @@ describe("useFileTransfer — guest", () => {
     expect(result.current.incomingBatch?.summary).toBe("1 arquivo — 1 foto — 10 KB");
   });
 
+  it("re-arms a fresh receiver after a terminal state so a second batch on the same channel is caught", async () => {
+    const { result } = renderTransfer("guest");
+    const flush = () => new Promise((r) => setTimeout(r, 0));
+    const offer = (id: string, name: string) =>
+      channel.feed(
+        JSON.stringify({
+          t: "batch-offer",
+          batch: { id, files: [{ id: "f1", name, size: 10 * 1024, type: "image/jpeg" }] }
+        })
+      );
+
+    act(() => offer("b1", "first.jpg"));
+    expect(result.current.incomingBatch?.files[0]?.name).toBe("first.jpg");
+
+    // The first transfer ends (peer cancels); the old receiver disposes itself.
+    // The cancel frame runs through the receiver's async queue.
+    await act(async () => {
+      channel.feed(JSON.stringify({ t: "cancel", scope: "batch" }));
+      await flush();
+    });
+    expect(result.current.phase).toBe("cancelled");
+
+    // A second offer on the same channel must still surface, and pull the guest
+    // back out of the terminal screen.
+    act(() => offer("b2", "second.jpg"));
+    expect(result.current.phase).toBe("idle");
+    expect(result.current.incomingBatch?.files[0]?.name).toBe("second.jpg");
+  });
+
   it("flags requiresMemoryWarning for a large file when File System Access is unavailable", () => {
     const { result } = renderTransfer("guest");
     act(() =>

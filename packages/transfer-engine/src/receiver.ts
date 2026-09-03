@@ -69,7 +69,7 @@ export class TransferReceiver {
     if (typeof data === "string" && !this.batch) {
       const frame = decodeControl(data);
       if (frame?.t === "batch-offer") {
-        void this.handleFrame(data);
+        void this.handleFrame(data).catch(() => undefined);
         return;
       }
     }
@@ -105,7 +105,7 @@ export class TransferReceiver {
       return;
     }
     this.send({ t: "cancel", scope: "batch" });
-    void this.currentSink?.abort();
+    void this.currentSink?.abort().catch(() => undefined);
     this.cb.onCancelled?.();
     this.dispose();
   }
@@ -129,7 +129,11 @@ export class TransferReceiver {
       }
       return this.handleControl(frame);
     }
-    return this.handleBinary(this.toArrayBuffer(data));
+    const chunk = this.toArrayBuffer(data);
+    if (chunk === null) {
+      return this.fail("bad-frame", "binary frame of unexpected type");
+    }
+    return this.handleBinary(chunk);
   }
 
   private async handleControl(frame: ControlFrame): Promise<void> {
@@ -158,8 +162,15 @@ export class TransferReceiver {
         if (!meta) {
           return this.fail("bad-frame", `file-begin for unknown id ${frame.id}`);
         }
+        if (this.currentSink) {
+          // Malformed peer: a new file-begin before the previous file-end. Drop
+          // the still-open sink rather than leaking it.
+          await this.currentSink.abort().catch(() => undefined);
+        }
         this.currentMeta = meta;
         this.currentBytes = 0;
+        // TODO(resume): frame.offset is always 0 in this plan. A resumable
+        // transfer would seek the sink to frame.offset and set currentBytes to it.
         this.currentSink = await this.openSink(meta, frame.offset);
         return;
       }
@@ -167,10 +178,12 @@ export class TransferReceiver {
         if (!this.currentSink || !this.currentMeta || this.currentMeta.id !== frame.id) {
           return this.fail("bad-frame", "file-end without a matching open file");
         }
-        await this.currentSink.close();
         if (this.currentBytes !== this.currentMeta.size) {
+          // Check the size BEFORE committing: fail() aborts the sink so the
+          // partial write is discarded, never close()d.
           return this.fail("size-mismatch", `expected ${this.currentMeta.size} bytes, got ${this.currentBytes}`);
         }
+        await this.currentSink.close();
         this.filesDone += 1;
         this.cb.onFileComplete?.(this.currentMeta.id);
         this.emitProgress(true);
@@ -179,13 +192,16 @@ export class TransferReceiver {
         return;
       }
       case "batch-complete": {
+        if (!this.batch || this.filesDone !== this.batch.files.length) {
+          return this.fail("bad-frame", "batch-complete before all files arrived");
+        }
         this.done = true;
         this.cb.onBatchComplete?.();
         this.dispose();
         return;
       }
       case "cancel": {
-        void this.currentSink?.abort();
+        void this.currentSink?.abort().catch(() => undefined);
         this.cb.onCancelled?.();
         this.dispose();
         return;
@@ -202,13 +218,16 @@ export class TransferReceiver {
     if (chunk.byteLength > this.opts.maxBinaryFrameBytes) {
       return this.fail("bad-frame", `binary frame ${chunk.byteLength} over cap`);
     }
+    if (this.currentBytes + chunk.byteLength > this.currentMeta.size) {
+      return this.fail("size-mismatch", "received more bytes than declared");
+    }
     await this.currentSink.write(chunk);
     this.currentBytes += chunk.byteLength;
     this.emitProgress(false);
   }
 
   private fail(code: TransferError["code"], message: string): void {
-    void this.currentSink?.abort();
+    void this.currentSink?.abort().catch(() => undefined);
     this.send({ t: "cancel", scope: "batch" });
     this.cb.onError?.(new TransferError(code, message));
     this.dispose();
@@ -233,7 +252,7 @@ export class TransferReceiver {
     });
   }
 
-  private toArrayBuffer(data: unknown): ArrayBuffer {
+  private toArrayBuffer(data: unknown): ArrayBuffer | null {
     if (data instanceof ArrayBuffer) {
       return data;
     }
@@ -242,7 +261,10 @@ export class TransferReceiver {
       // never SharedArrayBuffer-backed in the browser or in Node tests.
       return (data.buffer as ArrayBuffer).slice(data.byteOffset, data.byteOffset + data.byteLength);
     }
-    return new ArrayBuffer(0);
+    // Unknown binary payload (e.g. a Blob — Firefox delivers these unless the
+    // channel's binaryType is "arraybuffer"). Signal a bad frame rather than
+    // silently substituting an empty buffer.
+    return null;
   }
 
   private send(frame: ControlFrame): void {

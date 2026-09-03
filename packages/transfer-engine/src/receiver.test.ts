@@ -182,4 +182,83 @@ describe("TransferReceiver", () => {
     receiver.reject();
     expect(ch.sentStrings).toContain(encodeControl({ t: "batch-reject", reason: "declined" }));
   });
+
+  it("fails size-mismatch mid-stream when a tampered sender overruns the declared size", async () => {
+    const ch = new FakeChannel();
+    const sink = new MemorySink();
+    const onError = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
+    ch.feed(offer([meta({ id: "f1", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([1, 2, 3]).buffer);
+    ch.feed(new Uint8Array([4, 5, 6]).buffer); // 3 + 3 = 6 > 4
+    await flush();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "size-mismatch" }));
+    expect(sink.aborted).toBe(true);
+  });
+
+  it("never close()s a truncated file — aborts it so no partial file lands on disk", async () => {
+    const ch = new FakeChannel();
+    const sink = new MemorySink();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError: vi.fn() });
+    ch.feed(offer([meta({ id: "f1", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([1, 2]).buffer);
+    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 2 }));
+    await flush();
+    expect(sink.closed).toBe(false);
+    expect(sink.aborted).toBe(true);
+  });
+
+  it("rejects batch-complete that arrives before every file finished", async () => {
+    const ch = new FakeChannel();
+    const onError = vi.fn();
+    const onBatchComplete = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onError, onBatchComplete });
+    ch.feed(offer([meta({ id: "f1", size: 4 }), meta({ id: "f2", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "batch-complete" }));
+    await flush();
+    expect(onBatchComplete).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "bad-frame" }));
+  });
+
+  it("aborts a still-open sink when a new file-begin arrives before file-end", async () => {
+    const ch = new FakeChannel();
+    const sinks: MemorySink[] = [];
+    const receiver = new TransferReceiver(
+      ch,
+      () => {
+        const s = new MemorySink();
+        sinks.push(s);
+        return Promise.resolve(s);
+      },
+      { onError: vi.fn() }
+    );
+    ch.feed(offer([meta({ id: "f1", size: 4 }), meta({ id: "f2", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([1]).buffer);
+    ch.feed(encodeControl({ t: "file-begin", id: "f2", offset: 0 })); // no file-end for f1
+    await flush();
+    expect(sinks[0]?.aborted).toBe(true);
+  });
+
+  it("treats an unrecognised binary payload as a bad frame", async () => {
+    const ch = new FakeChannel();
+    const onError = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onError });
+    ch.feed(offer([meta({ id: "f1", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed({ not: "a buffer" }); // Firefox Blob delivery lands here
+    await flush();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "bad-frame" }));
+  });
 });

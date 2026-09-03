@@ -188,6 +188,18 @@ describe("TransferSender", () => {
     expect(ch.controlFrames.filter((f) => f?.t === "batch-complete")).toHaveLength(1);
   });
 
+  it("aborts with channel-error instead of looping forever when a source reads 0 bytes short", async () => {
+    const ch = new FakeChannel();
+    const onError = vi.fn();
+    // Reports 10 bytes but every read yields nothing — a truncated / broken source.
+    const emptySource = { size: 10, read: () => Promise.resolve(new ArrayBuffer(0)) };
+    new TransferSender(ch, "b1", [{ meta: meta({ size: 10 }), source: emptySource }], { onError }, { chunkSize: 4 }).start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush();
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "channel-error" }));
+    expect(ch.controlFrames).toContainEqual({ t: "cancel", scope: "batch" });
+  });
+
   it("maps a read failure to onError('channel-error') and sends a cancel frame", async () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
