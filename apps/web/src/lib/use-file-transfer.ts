@@ -447,11 +447,12 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     setPhase((current) => (current === "completed" ? current : "cancelled"));
   }, []);
 
-  // Verdadeiro só no estado terminal de sucesso. No receptor é literal — batch-complete
-  // só chega depois de todo file-end ter passado pela comparação de hash. No emissor é
-  // verdade por inferência — um hash divergente no receptor dispara fail("integrity") →
-  // cancel, e o emissor nunca vê batch-complete.
-  const integrityVerified = phase === "completed";
+  // Verdadeiro só quando ESTE lado verificou a integridade de todos os arquivos —
+  // ou seja, apenas no receptor. O `batch-complete` do receptor só chega depois de
+  // cada `file-end` ter passado pela comparação de hash. O emissor NÃO ganha esse
+  // sinal: ele mesmo envia `batch-complete` e se descarta, sem nenhum ack do
+  // receptor, então "verificado" seria uma afirmação que ele não pode sustentar.
+  const integrityVerified = role === "guest" && phase === "completed";
 
   return {
     ready,

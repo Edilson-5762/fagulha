@@ -265,6 +265,19 @@ referência a bytes.
 usa: `abort()` do sink, `send({t:"cancel",scope:"batch"})`, `onError`,
 `dispose()`.
 
+### 5.4 Alcance da garantia
+
+- O SHA-256 aqui é **integridade, não autenticidade**: não há segredo
+  compartilhado. Protege contra corrupção de canal, bugs de sink e bit-rot —
+  não contra um adversário que reescreva os chunks *e* o hash do `file-end`. O
+  DTLS do WebRTC já cobre o fio contra adulteração ativa; esta camada cobre
+  bugs.
+- O `integrityVerified` só é verdadeiro no **receptor** (`role === "guest"`). O
+  emissor não recebe nenhum ack de verificação — ele mesmo envia o
+  `batch-complete` e se descarta —, então a tela de sucesso do `SendPanel`
+  deliberadamente **não** afirma "Integridade verificada": mantém só
+  "…transferidos com sucesso" e o rótulo "Concluído" por arquivo (§7.1).
+
 ---
 
 ## 6. Hook (`use-file-transfer.ts`)
@@ -272,14 +285,17 @@ usa: `abort()` do sink, `send({t:"cancel",scope:"batch"})`, `onError`,
 - `ERROR_MESSAGES` ganha:
   `integrity: "Um arquivo chegou corrompido. A transferência foi interrompida."`
 - `UseFileTransferResult` ganha `integrityVerified: boolean`.
-  - Implementação: um valor derivado, `const integrityVerified = phase === "completed";`
+  - Implementação: um valor derivado,
+    `const integrityVerified = role === "guest" && phase === "completed";`
     retornado junto dos outros campos. Não precisa de estado próprio.
-  - No **receptor** é literal: o `batch-complete` só chega depois de todo
-    `file-end` ter passado pela comparação de hash.
-  - No **emissor** é verdade por inferência: um hash divergente no receptor
-    dispara `fail("integrity")` → `cancel` → o emissor cai em `onCancelled`/
-    `onError` e **nunca** vê `batch-complete`. Logo `phase === "completed"` no
-    emissor implica que o receptor verificou tudo.
+  - No **receptor** (`role === "guest"`) é literal: o `batch-complete` só chega
+    depois de todo `file-end` ter passado pela comparação de hash.
+  - No **emissor** é sempre `false`: o emissor **não recebe** nenhum sinal de
+    verificação. É ele mesmo quem envia o `batch-complete` (e em seguida se
+    descarta), sem nenhum ack do receptor; numa falha de integridade no último
+    arquivo, o `cancel` do receptor chega a um emissor já descartado e
+    `phase === "completed"` é grudento. Logo "verificado" é uma afirmação que o
+    emissor não pode sustentar — a linha é exclusiva do receptor.
 - Nada muda no fluxo de fases, no `applyProgress`, no `filesSaved`, nos resets.
 
 ---

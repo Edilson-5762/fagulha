@@ -234,7 +234,10 @@ export class TransferReceiver {
       return this.fail("size-mismatch", "received more bytes than declared");
     }
     await this.currentSink.write(chunk);
-    this.currentHash!.update(new Uint8Array(chunk));
+    // ?. em vez de !: o cancel() público (fora da fila) pode zerar currentHash
+    // enquanto um write() está pendente. O desync que importa — "nenhum arquivo
+    // aberto" — já é barrado no topo de handleBinary.
+    this.currentHash?.update(new Uint8Array(chunk));
     this.currentBytes += chunk.byteLength;
     this.emitProgress(false);
   }

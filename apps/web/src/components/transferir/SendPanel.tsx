@@ -14,21 +14,13 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
   if (phase === "completed") {
     const n = transfer.overall.filesTotal;
     return (
-      <div className="w-full">
-        <StateScreen
-          icon={CheckCircle2}
-          tone="success"
-          title={n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`}
-          description="Os arquivos chegaram ao outro dispositivo."
-          actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
-        />
-        {transfer.integrityVerified && (
-          <p className="-mt-2 flex items-center justify-center gap-1 text-xs text-success">
-            <CheckCircle2 className="size-3.5" aria-hidden="true" />
-            Integridade verificada (SHA-256)
-          </p>
-        )}
-      </div>
+      <StateScreen
+        icon={CheckCircle2}
+        tone="success"
+        title={n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`}
+        description="Os arquivos chegaram ao outro dispositivo."
+        actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
+      />
     );
   }
 

@@ -210,7 +210,7 @@ describe("SendPanel", () => {
     expect(screen.queryByText("Verificado")).not.toBeInTheDocument();
   });
 
-  it("shows the SHA-256 integrity line on the success screen", () => {
+  it("does not show an integrity line on the sender success screen", () => {
     render(
       <SendPanel
         transfer={withOverrides({
@@ -220,6 +220,6 @@ describe("SendPanel", () => {
         })}
       />
     );
-    expect(screen.getByText("Integridade verificada (SHA-256)")).toBeInTheDocument();
+    expect(screen.queryByText("Integridade verificada (SHA-256)")).not.toBeInTheDocument();
   });
 });
