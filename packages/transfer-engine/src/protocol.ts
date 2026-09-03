@@ -6,7 +6,7 @@ export type ControlFrame =
   | { t: "batch-accept" }
   | { t: "batch-reject"; reason: "declined" | "over-limit" | "busy" }
   | { t: "file-begin"; id: string; offset: number }
-  | { t: "file-end"; id: string; bytesSent: number }
+  | { t: "file-end"; id: string; bytesSent: number; sha256: string }
   | { t: "batch-complete" }
   | { t: "cancel"; scope: "batch" };
 
@@ -77,8 +77,13 @@ export function decodeControl(raw: string): ControlFrame | null {
         ? { t: "file-begin", id: f.id, offset: f.offset }
         : null;
     case "file-end":
-      return typeof f.id === "string" && f.id.length > 0 && typeof f.bytesSent === "number" && f.bytesSent >= 0
-        ? { t: "file-end", id: f.id, bytesSent: f.bytesSent }
+      return typeof f.id === "string" &&
+        f.id.length > 0 &&
+        typeof f.bytesSent === "number" &&
+        f.bytesSent >= 0 &&
+        typeof f.sha256 === "string" &&
+        /^[0-9a-f]{64}$/.test(f.sha256)
+        ? { t: "file-end", id: f.id, bytesSent: f.bytesSent, sha256: f.sha256 }
         : null;
     case "batch-offer":
       return parseBatchOffer(f.batch);

@@ -52,6 +52,7 @@ export type TransferErrorCode =
   | "over-limit"
   | "busy"
   | "size-mismatch"
+  | "integrity"
   | "bad-frame"
   | "channel-error"
   | "cancelled";
