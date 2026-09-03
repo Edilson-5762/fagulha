@@ -220,15 +220,17 @@ acima; o importante é não reaproveitar um hasher entre arquivos.
 
 ```ts
 await this.currentSink.write(chunk);
-this.currentHash!.update(new Uint8Array(chunk));
+this.currentHash?.update(new Uint8Array(chunk));
 this.currentBytes += chunk.byteLength;
 this.emitProgress(false);
 ```
 
-`this.currentHash` é garantidamente não-nulo aqui: `handleBinary` já checa
-`!this.currentSink` no topo, e `currentSink`/`currentHash` são setados juntos no
-`file-begin`. Ainda assim, usar `!` (não `?.`) para que um bug futuro que os
-dessincronize estoure em vez de calar.
+Usa `?.`, não `!`: o `cancel()` público roda fora da fila e pode zerar
+`this.currentHash` enquanto um `write()` está pendente — com `!` a linha
+retomada estouraria um `TypeError` (engolido pelo `.catch` da fila, receptor
+já descartado, inofensivo, mas é uma quebra de invariante escondida). O desync
+que importa — "nenhum arquivo aberto" — já é barrado no topo de `handleBinary`
+pelo check de `!this.currentSink`.
 
 **`file-end`** — ordem exata:
 
