@@ -26,7 +26,7 @@ export interface ReceiverCallbacks {
   onFileComplete?: (fileId: string) => void;
   onBatchComplete?: () => void;
   onError?: (e: TransferError) => void;
-  onCancelled?: () => void;
+  onCancelled?: (filesDone: number) => void;
 }
 
 export interface ReceiverOptions {
@@ -106,7 +106,7 @@ export class TransferReceiver {
     }
     this.send({ t: "cancel", scope: "batch" });
     void this.currentSink?.abort().catch(() => undefined);
-    this.cb.onCancelled?.();
+    this.cb.onCancelled?.(this.filesDone);
     this.dispose();
   }
 
@@ -202,7 +202,7 @@ export class TransferReceiver {
       }
       case "cancel": {
         void this.currentSink?.abort().catch(() => undefined);
-        this.cb.onCancelled?.();
+        this.cb.onCancelled?.(this.filesDone);
         this.dispose();
         return;
       }

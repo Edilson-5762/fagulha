@@ -210,4 +210,46 @@ describe("TransferSender", () => {
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "channel-error" }));
     expect(ch.controlFrames).toContainEqual({ t: "cancel", scope: "batch" });
   });
+
+  it("reports the count of finished files when cancelled mid-batch", async () => {
+    const ch = new FakeChannel();
+    const onCancelled = vi.fn();
+    let resolveRead: (buf: ArrayBuffer) => void = () => {};
+    const gated = {
+      size: 4,
+      read: () => new Promise<ArrayBuffer>((resolve) => { resolveRead = resolve; })
+    };
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [
+        { meta: meta({ id: "f1", size: 4 }), source: bytesSource(new Uint8Array([1, 2, 3, 4])) },
+        { meta: meta({ id: "f2", size: 4 }), source: gated }
+      ],
+      { onCancelled },
+      { chunkSize: 4 }
+    );
+    sender.start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush(); // f1 completes, f2 parks inside source.read()
+    sender.cancel();
+    expect(onCancelled).toHaveBeenCalledWith(1);
+    resolveRead(new Uint8Array(4).buffer); // let the parked read settle; no frame expected
+    await flush();
+  });
+
+  it("reports 0 finished files when cancelled before the first file-end", async () => {
+    const ch = new FakeChannel();
+    const onCancelled = vi.fn();
+    let resolveRead: (buf: ArrayBuffer) => void = () => {};
+    const gated = { size: 4, read: () => new Promise<ArrayBuffer>((resolve) => { resolveRead = resolve; }) };
+    const sender = new TransferSender(ch, "b1", [{ meta: meta({ id: "f1", size: 4 }), source: gated }], { onCancelled }, { chunkSize: 4 });
+    sender.start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush();
+    sender.cancel();
+    expect(onCancelled).toHaveBeenCalledWith(0);
+    resolveRead(new Uint8Array(4).buffer);
+    await flush();
+  });
 });

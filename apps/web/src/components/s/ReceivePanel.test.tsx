@@ -18,7 +18,9 @@ const base: UseFileTransferResult = {
   rejectBatch: vi.fn(),
   phase: "idle",
   perFile: {},
-  overall: { done: 0, total: 0 },
+  overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
+  stats: { speedBytesPerSec: null, etaSeconds: null },
+  filesSaved: 0,
   errorMessage: null,
   cancel: vi.fn()
 };
@@ -84,13 +86,147 @@ describe("ReceivePanel", () => {
     expect(acceptBatch).toHaveBeenCalledOnce();
   });
 
-  it("shows the progress header while transferring", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "transferring", overall: { done: 2, total: 4 } })} />);
-    expect(screen.getByText("Recebendo 2 de 4…")).toBeInTheDocument();
+  it("shows the progress header while receiving", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "receiving",
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 3, filesTotal: 5 },
+          incomingBatch: {
+            files: [{ id: "f1", name: "a.bin", size: 10, type: "" }],
+            totalBytes: 10,
+            summary: "",
+            requiresMemoryWarning: false
+          },
+          perFile: { f1: { bytes: 10, size: 10, pct: 100, state: "completed" } }
+        })}
+      />
+    );
+    expect(screen.getByText("Recebendo arquivo 4 de 5")).toBeInTheDocument();
+  });
+
+  it("shows byte progress, speed and ETA while receiving", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "receiving",
+          overall: { bytesDone: 512 * 1024, bytesTotal: 1024 * 1024, filesDone: 0, filesTotal: 3 },
+          stats: { speedBytesPerSec: 256 * 1024, etaSeconds: 20 },
+          incomingBatch: {
+            files: [
+              { id: "f1", name: "a.bin", size: 512 * 1024, type: "" },
+              { id: "f2", name: "b.bin", size: 512 * 1024, type: "" }
+            ],
+            totalBytes: 1024 * 1024,
+            summary: "",
+            requiresMemoryWarning: false
+          },
+          perFile: {
+            f1: { bytes: 512 * 1024, size: 512 * 1024, pct: 100, state: "completed" },
+            f2: { bytes: 0, size: 512 * 1024, pct: 0, state: "queued" }
+          }
+        })}
+      />
+    );
+    expect(screen.getByText("Recebendo arquivo 1 de 3")).toBeInTheDocument();
+    expect(screen.getByText(/512 KB de 1 MB/)).toBeInTheDocument();
+    expect(screen.getByText(/256 KB\/s/)).toBeInTheDocument();
+    expect(screen.getByText(/cerca de 20 s/)).toBeInTheDocument();
+  });
+
+  it("renders the per-file mini bar for a multi-file batch while receiving", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "receiving",
+          // overall bar → 30%, distinct from the active file's 60%
+          overall: { bytesDone: 300, bytesTotal: 1000, filesDone: 0, filesTotal: 3 },
+          stats: { speedBytesPerSec: 256 * 1024, etaSeconds: 20 },
+          incomingBatch: {
+            files: [
+              { id: "f1", name: "a.bin", size: 500, type: "" },
+              { id: "f2", name: "b.bin", size: 500, type: "" }
+            ],
+            totalBytes: 1000,
+            summary: "",
+            requiresMemoryWarning: false
+          },
+          perFile: {
+            f1: { bytes: 300, size: 500, pct: 60, state: "receiving" },
+            f2: { bytes: 0, size: 500, pct: 0, state: "queued" }
+          }
+        })}
+      />
+    );
+    expect(screen.getByText("60%")).toBeInTheDocument();
+  });
+
+  it("shows no per-file mini bar for a single-file batch", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "receiving",
+          // overall bar → 30%, the active file's 50% must never render
+          overall: { bytesDone: 30, bytesTotal: 100, filesDone: 0, filesTotal: 1 },
+          stats: { speedBytesPerSec: 1024, etaSeconds: null },
+          incomingBatch: {
+            files: [{ id: "f1", name: "solo.bin", size: 100, type: "" }],
+            totalBytes: 100,
+            summary: "",
+            requiresMemoryWarning: false
+          },
+          perFile: { f1: { bytes: 50, size: 100, pct: 50, state: "receiving" } }
+        })}
+      />
+    );
+    expect(screen.getByText("30%")).toBeInTheDocument();
+    expect(screen.queryByText("50%")).not.toBeInTheDocument();
+  });
+
+  it("shows 'calculando…' when stats are null", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "receiving",
+          overall: { bytesDone: 10, bytesTotal: 100, filesDone: 0, filesTotal: 1 },
+          stats: { speedBytesPerSec: null, etaSeconds: null },
+          incomingBatch: { files: [{ id: "f1", name: "a", size: 100, type: "" }], totalBytes: 100, summary: "", requiresMemoryWarning: false },
+          perFile: { f1: { bytes: 10, size: 100, pct: 10, state: "receiving" } }
+        })}
+      />
+    );
+    expect(screen.getByText(/calculando…/)).toBeInTheDocument();
+  });
+
+  it("shows the preparing message", () => {
+    render(<ReceivePanel transfer={withOverrides({ phase: "preparing", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 2 } })} />);
+    expect(screen.getByText("Preparando a transferência…")).toBeInTheDocument();
+  });
+
+  it("shows the partial count on the cancelled screen", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "cancelled", filesSaved: 2, overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 4 } })}
+      />
+    );
+    expect(screen.getByText("2 de 4 arquivos foram salvos neste dispositivo.")).toBeInTheDocument();
+  });
+
+  it("says nothing was saved when filesSaved is 0 on cancel", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "cancelled", filesSaved: 0, overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 4 } })}
+      />
+    );
+    expect(screen.getByText("Nenhum arquivo foi salvo.")).toBeInTheDocument();
   });
 
   it("shows the success screen when completed", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "completed", overall: { done: 3, total: 3 } })} />);
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "completed", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 3, filesTotal: 3 } })}
+      />
+    );
     expect(screen.getByText("3 arquivos recebidos com sucesso")).toBeInTheDocument();
   });
 
