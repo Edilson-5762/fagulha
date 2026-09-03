@@ -17,6 +17,9 @@ export interface UsePeerConnectionParams {
   lastSignal: SignalPayload | null;
 }
 
+// TODO(turn): a próxima peça da V1 adiciona um servidor TURN gerenciado
+// (credenciais temporárias via endpoint no signaling). Até lá, só STUN —
+// pares atrás de NAT simétrico / rede corporativa podem não conectar.
 const ICE_SERVERS: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
 
 export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConnectionResult {
