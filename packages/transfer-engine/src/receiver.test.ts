@@ -261,4 +261,35 @@ describe("TransferReceiver", () => {
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "bad-frame" }));
   });
+
+  it("reports the count of fully-received files when cancelled mid-batch", async () => {
+    const ch = new FakeChannel();
+    const onCancelled = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onCancelled });
+    ch.feed(offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 }), meta({ id: "f3", size: 2 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([1, 2]).buffer);
+    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 2 }));
+    await flush();
+    ch.feed(encodeControl({ t: "file-begin", id: "f2", offset: 0 }));
+    await flush();
+    ch.feed(encodeControl({ t: "cancel", scope: "batch" }));
+    await flush();
+    expect(onCancelled).toHaveBeenCalledWith(1);
+  });
+
+  it("reports 0 fully-received files when cancelled before any file-end", async () => {
+    const ch = new FakeChannel();
+    const onCancelled = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onCancelled });
+    ch.feed(offer([meta({ id: "f1", size: 2 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(encodeControl({ t: "cancel", scope: "batch" }));
+    await flush();
+    expect(onCancelled).toHaveBeenCalledWith(0);
+  });
 });

@@ -13,7 +13,7 @@ export interface SenderCallbacks {
   onFileComplete?: (fileId: string) => void;
   onBatchComplete?: () => void;
   onError?: (e: TransferError) => void;
-  onCancelled?: () => void;
+  onCancelled?: (filesDone: number) => void;
 }
 
 export interface SenderOptions {
@@ -42,6 +42,7 @@ export class TransferSender {
   private cancelled = false;
   private disposed = false;
   private lastProgressAt = 0;
+  private filesDone = 0;
   private drainWaiters: (() => void)[] = [];
 
   private readonly onMessage = (event: { data?: unknown }) => {
@@ -98,7 +99,7 @@ export class TransferSender {
     this.cancelled = true;
     this.send({ t: "cancel", scope: "batch" });
     this.releaseDrainWaiters();
-    this.cb.onCancelled?.();
+    this.cb.onCancelled?.(this.filesDone);
     this.dispose();
   }
 
@@ -131,7 +132,7 @@ export class TransferSender {
     } else if (frame.t === "cancel") {
       this.cancelled = true;
       this.releaseDrainWaiters();
-      this.cb.onCancelled?.();
+      this.cb.onCancelled?.(this.filesDone);
       this.dispose();
     }
   }
@@ -169,6 +170,7 @@ export class TransferSender {
         }
         this.send({ t: "file-end", id: meta.id, bytesSent: sent });
         this.cb.onFileComplete?.(meta.id);
+        this.filesDone += 1;
         this.maybeEmitProgress({ meta, fileBytes: sent, filesDone: index + 1 }, true);
       }
       this.send({ t: "batch-complete" });
