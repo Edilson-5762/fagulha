@@ -18,7 +18,9 @@ const base: UseFileTransferResult = {
   rejectBatch: vi.fn(),
   phase: "idle",
   perFile: {},
-  overall: { done: 0, total: 0 },
+  overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
+  stats: { speedBytesPerSec: null, etaSeconds: null },
+  filesSaved: 0,
   errorMessage: null,
   cancel: vi.fn()
 };
@@ -84,13 +86,21 @@ describe("ReceivePanel", () => {
     expect(acceptBatch).toHaveBeenCalledOnce();
   });
 
-  it("shows the progress header while transferring", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "transferring", overall: { done: 2, total: 4 } })} />);
+  it("shows the progress header while receiving", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "receiving", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 4 } })}
+      />
+    );
     expect(screen.getByText("Recebendo 2 de 4…")).toBeInTheDocument();
   });
 
   it("shows the success screen when completed", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "completed", overall: { done: 3, total: 3 } })} />);
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "completed", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 3, filesTotal: 3 } })}
+      />
+    );
     expect(screen.getByText("3 arquivos recebidos com sucesso")).toBeInTheDocument();
   });
 

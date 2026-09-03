@@ -12,7 +12,7 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
   const { phase } = transfer;
 
   if (phase === "completed") {
-    const n = transfer.overall.total;
+    const n = transfer.overall.filesTotal;
     return (
       <StateScreen
         icon={CheckCircle2}
@@ -48,16 +48,20 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
     );
   }
 
-  if (phase === "offering" || phase === "transferring") {
+  if (phase === "offering" || phase === "preparing" || phase === "sending") {
     return (
       <div className="w-full max-w-md">
         <p className="mb-4 text-center text-sm font-medium text-text">
-          {phase === "offering" ? "Aguardando o outro lado aceitar…" : `Enviando ${transfer.overall.done} de ${transfer.overall.total}…`}
+          {phase === "offering"
+            ? "Aguardando o outro lado aceitar…"
+            : phase === "preparing"
+              ? "Preparando a transferência…"
+              : `Enviando ${transfer.overall.filesDone} de ${transfer.overall.filesTotal}…`}
         </p>
-        {transfer.overall.total > 0 && (
+        {transfer.overall.filesTotal > 0 && (
           <ProgressBar
             className="mb-4"
-            value={(transfer.overall.done / transfer.overall.total) * 100}
+            value={transfer.overall.filesTotal > 0 ? (transfer.overall.filesDone / transfer.overall.filesTotal) * 100 : 0}
             label="Progresso"
           />
         )}
@@ -65,7 +69,7 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
           {transfer.selectedFiles.map((file) => {
             const status = transfer.perFile[file.id]?.state ?? "queued";
             const label =
-              status === "completed" ? "Concluído" : status === "active" ? "Enviando" : status === "failed" ? "Falhou" : "Aguardando";
+              status === "completed" ? "Concluído" : status === "sending" ? "Enviando" : status === "failed" ? "Falhou" : "Aguardando";
             return (
               <li key={file.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 truncate">

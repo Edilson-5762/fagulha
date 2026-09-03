@@ -18,7 +18,9 @@ const base: UseFileTransferResult = {
   rejectBatch: vi.fn(),
   phase: "idle",
   perFile: {},
-  overall: { done: 0, total: 0 },
+  overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
+  stats: { speedBytesPerSec: null, etaSeconds: null },
+  filesSaved: 0,
   errorMessage: null,
   cancel: vi.fn()
 };
@@ -71,14 +73,14 @@ describe("SendPanel", () => {
     expect(startSend).toHaveBeenCalledOnce();
   });
 
-  it("shows the progress header while transferring", () => {
+  it("shows the progress header while sending", () => {
     render(
       <SendPanel
         transfer={withOverrides({
-          phase: "transferring",
-          overall: { done: 3, total: 5 },
+          phase: "sending",
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 3, filesTotal: 5 },
           selectedFiles: [{ id: "f1", name: "a.bin", size: 10, type: "", sizeClass: "small" }],
-          perFile: { f1: { bytes: 10, size: 10, state: "completed" } }
+          perFile: { f1: { bytes: 10, size: 10, pct: 100, state: "completed" } }
         })}
       />
     );
@@ -86,7 +88,11 @@ describe("SendPanel", () => {
   });
 
   it("shows the success screen when completed", () => {
-    render(<SendPanel transfer={withOverrides({ phase: "completed", overall: { done: 2, total: 2 } })} />);
+    render(
+      <SendPanel
+        transfer={withOverrides({ phase: "completed", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 2 } })}
+      />
+    );
     expect(screen.getByText("2 arquivos transferidos com sucesso")).toBeInTheDocument();
   });
 

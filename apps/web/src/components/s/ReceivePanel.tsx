@@ -7,7 +7,7 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
   const { phase, incomingBatch } = transfer;
 
   if (phase === "completed") {
-    const n = transfer.overall.total;
+    const n = transfer.overall.filesTotal;
     return (
       <StateScreen
         icon={CheckCircle2}
@@ -40,16 +40,18 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
     );
   }
 
-  if (phase === "transferring") {
+  if (phase === "preparing" || phase === "receiving") {
     return (
       <div className="w-full max-w-md">
         <p className="mb-4 text-center text-sm font-medium text-text">
-          Recebendo {transfer.overall.done} de {transfer.overall.total}…
+          {phase === "preparing"
+            ? "Preparando a transferência…"
+            : `Recebendo ${transfer.overall.filesDone} de ${transfer.overall.filesTotal}…`}
         </p>
-        {transfer.overall.total > 0 && (
+        {transfer.overall.filesTotal > 0 && (
           <ProgressBar
             className="mb-4"
-            value={(transfer.overall.done / transfer.overall.total) * 100}
+            value={transfer.overall.filesTotal > 0 ? (transfer.overall.filesDone / transfer.overall.filesTotal) * 100 : 0}
             label="Progresso"
           />
         )}
@@ -57,7 +59,7 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
           {(incomingBatch?.files ?? []).map((file) => {
             const status = transfer.perFile[file.id]?.state ?? "queued";
             const label =
-              status === "completed" ? "Concluído" : status === "active" ? "Recebendo" : status === "failed" ? "Falhou" : "Aguardando";
+              status === "completed" ? "Concluído" : status === "receiving" ? "Recebendo" : status === "failed" ? "Falhou" : "Aguardando";
             return (
               <li key={file.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
                 <span className="flex min-w-0 items-center gap-2">

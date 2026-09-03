@@ -34,7 +34,9 @@ vi.mock("../../../lib/use-file-transfer.js", () => ({
       rejectBatch: vi.fn(),
       phase: "idle",
       perFile: {},
-      overall: { done: 0, total: 0 },
+      overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
+      stats: { speedBytesPerSec: null, etaSeconds: null },
+      filesSaved: 0,
       errorMessage: null,
       cancel: vi.fn()
     })
