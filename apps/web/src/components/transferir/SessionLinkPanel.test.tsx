@@ -26,7 +26,9 @@ describe("SessionLinkPanel", () => {
 
     await user.click(screen.getByRole("button", { name: "Copiar link" }));
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("/s/abc123"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining("/s/abc123")
+    );
     expect(await screen.findByRole("button", { name: "Copiado!" })).toBeInTheDocument();
   });
 

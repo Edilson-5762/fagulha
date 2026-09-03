@@ -35,20 +35,20 @@ não `socket.io`; ver seção 7). Envelope JSON: `{ type: string, ...payload }`.
 
 **Cliente → servidor:**
 
-| Mensagem | Payload | Efeito |
-| --- | --- | --- |
-| `create` | — | Cria sessão nova; esta conexão vira `role: "host"` da sessão criada |
-| `join` | `{ token, role }` | `role: "host"` = reconexão do criador (refresh); `role: "guest"` = entrada pelo link |
-| `accept` | — | `waiting → accepted`. Só válido em conexão com `role: "guest"` |
-| `reject` | — | `waiting → rejected`. Só válido em conexão com `role: "guest"` |
+| Mensagem | Payload           | Efeito                                                                               |
+| -------- | ----------------- | ------------------------------------------------------------------------------------ |
+| `create` | —                 | Cria sessão nova; esta conexão vira `role: "host"` da sessão criada                  |
+| `join`   | `{ token, role }` | `role: "host"` = reconexão do criador (refresh); `role: "guest"` = entrada pelo link |
+| `accept` | —                 | `waiting → accepted`. Só válido em conexão com `role: "guest"`                       |
+| `reject` | —                 | `waiting → rejected`. Só válido em conexão com `role: "guest"`                       |
 
 **Servidor → cliente:**
 
-| Mensagem | Payload | Quando |
-| --- | --- | --- |
-| `session_state` | `{ session }` | Resposta a `create`/`join` e a cada transição de status (`accept`/`reject`/expiração detectada) |
-| `peer_presence` | `{ connected: boolean }` | Sempre que o *outro* papel (host↔guest) conecta ou desconecta |
-| `error` | `{ code }` | `not_found \| expired \| already_resolved \| invalid_role` |
+| Mensagem        | Payload                  | Quando                                                                                          |
+| --------------- | ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `session_state` | `{ session }`            | Resposta a `create`/`join` e a cada transição de status (`accept`/`reject`/expiração detectada) |
+| `peer_presence` | `{ connected: boolean }` | Sempre que o _outro_ papel (host↔guest) conecta ou desconecta                                   |
+| `error`         | `{ code }`               | `not_found \| expired \| already_resolved \| invalid_role`                                      |
 
 `session` no payload é o mesmo tipo `Session` de `packages/shared` (sem
 mudança de forma — token, status, createdAt, expiresAt). Nenhum outro dado
@@ -75,7 +75,7 @@ interface ConnectionRegistry {
   de página sem tratar como erro (decisão já validada).
 - `detach` (chamado no evento `close` do socket): remove a referência e, se
   houver um peer conectado no outro papel, envia `peer_presence
-  {connected:false}` para ele. A sessão em si **não é removida nem alterada**
+{connected:false}` para ele. A sessão em si **não é removida nem alterada**
   aqui — só o `sweep()` por TTL do `session-store.ts` remove sessões,
   exatamente como hoje. Isso resolve o comentário deliberado já existente em
   `session-store.ts` sobre "sessão resolvida sobreviver para handshake": a
@@ -101,7 +101,7 @@ implementa a máquina de mensagens da seção 2:
 - `accept`/`reject`: exige que a conexão tenha sido `attach`ada com
   `role: "guest"` (senão `error{invalid_role}`, mensagem ignorada); chama
   `store.accept`/`store.reject`; em sucesso, `registry.broadcast(token,
-  session_state)` para host e guest; em falha, `error{code}` só para quem
+session_state)` para host e guest; em falha, `error{code}` só para quem
   mandou.
 - No evento `close` do socket: `registry.detach(token, role, socket)`.
 
@@ -130,7 +130,7 @@ Hook `useSignalingSocket()` que encapsula:
   (quando chamado com um token — usado por `/s/[token]`).
 - Reconexão automática com backoff (1s, 2s, 4s, capado em ~10s) guardando
   `token`/`role` localmente (estado do hook) para reenviar `join` assim que a
-  conexão reabrir — cobre queda da *própria* conexão do cliente, distinta de
+  conexão reabrir — cobre queda da _própria_ conexão do cliente, distinta de
   `peer_presence` (queda do peer).
 - Estado exposto: `session: Session | null`, `peerOnline: boolean`,
   `connectionState: "connecting" | "open" | "reconnecting"`.
@@ -195,10 +195,10 @@ perdida, reconectando...").
 
 ## 7. Stack e decisões de tooling
 
-| Camada | Escolha | Motivo |
-| --- | --- | --- |
-| Servidor WS | `ws` | Padrão de mercado para WebSocket em Node, leve, integra via `noServer: true` no `http.Server` existente sem porta separada — dispensado `socket.io` (protocolo próprio e reconexão automática que este plano já implementa manualmente no cliente) |
-| Cliente WS | `WebSocket` nativo do navegador | Sem biblioteca — a lógica de reconexão/backoff é simples o suficiente para não justificar uma dependência |
+| Camada      | Escolha                         | Motivo                                                                                                                                                                                                                                             |
+| ----------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Servidor WS | `ws`                            | Padrão de mercado para WebSocket em Node, leve, integra via `noServer: true` no `http.Server` existente sem porta separada — dispensado `socket.io` (protocolo próprio e reconexão automática que este plano já implementa manualmente no cliente) |
+| Cliente WS  | `WebSocket` nativo do navegador | Sem biblioteca — a lógica de reconexão/backoff é simples o suficiente para não justificar uma dependência                                                                                                                                          |
 
 `apps/signaling-server/package.json` ganha `ws` (+ `@types/ws` em dev).
 

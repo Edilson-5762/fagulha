@@ -26,11 +26,13 @@
 ## Task 1: Session types and TTL constant (`packages/shared`)
 
 **Files:**
+
 - Create: `packages/shared/src/session.ts`
 - Create: `packages/shared/src/session.test.ts`
 - Modify: `packages/shared/src/index.ts`
 
 **Interfaces:**
+
 - Produces: `SessionStatus` (type: `"waiting" | "accepted" | "rejected" | "expired"`), `Session` (interface: `{ token: string; status: SessionStatus; createdAt: string; expiresAt: string }`), `SESSION_TTL_MS` (const number, `15 * 60 * 1000`) — all re-exported from `@transfergo/shared`.
 
 - [ ] **Step 1: Write the failing test**
@@ -101,12 +103,14 @@ git commit -m "feat(shared): add Session type, SessionStatus and TTL constant"
 This replaces the Plan 1 stub (`PACKAGE_NAME`) with real functionality — the same kind of transition `packages/ui` went through in Plan 2.
 
 **Files:**
+
 - Create: `packages/security/src/session-token.ts`
 - Create: `packages/security/src/session-token.test.ts`
 - Modify: `packages/security/src/index.ts`
 - Delete: `packages/security/src/index.test.ts` (superseded by `session-token.test.ts`)
 
 **Interfaces:**
+
 - Produces: `generateSessionToken(): string` — re-exported from `@transfergo/security`. Returns a 43-character base64url string (32 random bytes, unpadded).
 
 - [ ] **Step 1: Write the failing test**
@@ -184,11 +188,13 @@ git commit -m "feat(security): add generateSessionToken, replacing the Plan 1 st
 ## Task 3: In-memory session store (`apps/signaling-server`)
 
 **Files:**
+
 - Modify: `apps/signaling-server/package.json`
 - Create: `apps/signaling-server/src/session-store.ts`
 - Create: `apps/signaling-server/src/session-store.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Session`, `SessionStatus`, `SESSION_TTL_MS` from `@transfergo/shared` (Task 1); `generateSessionToken()` from `@transfergo/security` (Task 2).
 - Produces: `ResolveFailureReason` (type: `"not_found" | "expired" | "already_resolved"`), `ResolveResult` (type: `{ ok: true; session: Session } | { ok: false; reason: ResolveFailureReason }`), `SessionStoreOptions` (interface: `{ ttlMs?: number; now?: () => Date; cleanupIntervalMs?: number }`), `SessionStore` (interface: `{ create(): Session; get(token: string): Session | undefined; accept(token: string): ResolveResult; reject(token: string): ResolveResult; sweep(): number; dispose(): void }`), `createSessionStore(options?: SessionStoreOptions): SessionStore` — all used by Task 4.
 
@@ -336,7 +342,8 @@ import { SESSION_TTL_MS, type Session, type SessionStatus } from "@transfergo/sh
 
 export type ResolveFailureReason = "not_found" | "expired" | "already_resolved";
 
-export type ResolveResult = { ok: true; session: Session } | { ok: false; reason: ResolveFailureReason };
+export type ResolveResult =
+  { ok: true; session: Session } | { ok: false; reason: ResolveFailureReason };
 
 export interface SessionStoreOptions {
   ttlMs?: number;
@@ -461,10 +468,12 @@ git commit -m "feat(signaling-server): add in-memory session store with TTL expi
 ## Task 4: Session REST routes and CORS (`apps/signaling-server`)
 
 **Files:**
+
 - Modify: `apps/signaling-server/src/server.ts`
 - Create: `apps/signaling-server/src/sessions.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SessionStore`, `createSessionStore` from `./session-store.js` (Task 3).
 - Produces: `createServer(store?: SessionStore)` now also handles `POST /sessions`, `GET /sessions/:token`, `POST /sessions/:token/accept`, `POST /sessions/:token/reject`, and sets `Access-Control-Allow-Origin` on every response. Used by Task 8's manual verification and any future plan that talks to this server.
 
@@ -530,7 +539,9 @@ describe("session routes", () => {
   it("lets a second peer accept a pending session, and the creator's next poll reflects it", async () => {
     const created = await (await fetch(`${baseUrl}/sessions`, { method: "POST" })).json();
 
-    const acceptResponse = await fetch(`${baseUrl}/sessions/${created.token}/accept`, { method: "POST" });
+    const acceptResponse = await fetch(`${baseUrl}/sessions/${created.token}/accept`, {
+      method: "POST"
+    });
     expect(acceptResponse.status).toBe(200);
     await expect(acceptResponse.json()).resolves.toMatchObject({ status: "accepted" });
 
@@ -742,12 +753,14 @@ git commit -m "feat(signaling-server): expose session lifecycle over REST with C
 The spec requires every interface state to share one visual vocabulary (icon + title + description + action) — the session invite needs two actions (Aceitar/Recusar) instead of one, so `StateScreen`'s single `action` prop becomes an `actions` array instead of a new parallel component.
 
 **Files:**
+
 - Modify: `packages/ui/src/components/StateScreen.tsx`
 - Modify: `packages/ui/src/components/StateScreen.test.tsx`
 - Modify: `packages/ui/src/components/StateScreen.stories.tsx`
 - Modify: `packages/ui/src/components/SecurityLevelCard.tsx` (its own consumer — keeps its public `action` prop singular, adapts internally)
 
 **Interfaces:**
+
 - Produces: `StateScreenAction` (interface: `{ label: string; onClick: () => void; variant?: "primary" | "secondary" }`), `StateScreenProps.actions?: StateScreenAction[]` (replaces the old `action?: StateScreenAction`). Consumed by Tasks 7 and 8.
 
 - [ ] **Step 1: Update the failing/changed tests**
@@ -868,7 +881,14 @@ export interface StateScreenProps extends VariantProps<typeof iconWrapperVariant
   className?: string;
 }
 
-export function StateScreen({ icon: Icon, tone, title, description, actions, className }: StateScreenProps) {
+export function StateScreen({
+  icon: Icon,
+  tone,
+  title,
+  description,
+  actions,
+  className
+}: StateScreenProps) {
   return (
     <div className={cn("flex flex-col items-center px-6 py-12 text-center", className)}>
       <div className={cn(iconWrapperVariants({ tone }))}>
@@ -879,7 +899,11 @@ export function StateScreen({ icon: Icon, tone, title, description, actions, cla
       {actions && actions.length > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {actions.map((action) => (
-            <Button key={action.label} variant={action.variant ?? "primary"} onClick={action.onClick}>
+            <Button
+              key={action.label}
+              variant={action.variant ?? "primary"}
+              onClick={action.onClick}
+            >
               {action.label}
             </Button>
           ))}
@@ -997,10 +1021,12 @@ git commit -m "feat(ui): StateScreen supports multiple actions, for two-button i
 ## Task 6: Sessions HTTP client (`apps/web`)
 
 **Files:**
+
 - Create: `apps/web/src/lib/sessions-api.ts`
 - Create: `apps/web/src/lib/sessions-api.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Session` type from `@transfergo/shared` (Task 1).
 - Produces: `createSession(): Promise<Session>`, `fetchSession(token: string): Promise<Session | null>` (`null` means "not found"), `acceptSession(token: string): Promise<Session>`, `rejectSession(token: string): Promise<Session>` — all consumed by Tasks 7 and 8.
 
@@ -1065,7 +1091,9 @@ describe("sessions-api", () => {
     const result = await acceptSession("abc");
 
     expect(result).toEqual(session);
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/sessions/abc/accept"), { method: "POST" });
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/sessions/abc/accept"), {
+      method: "POST"
+    });
   });
 
   it("rejects a session by POSTing to /sessions/:token/reject", async () => {
@@ -1075,7 +1103,9 @@ describe("sessions-api", () => {
     const result = await rejectSession("abc");
 
     expect(result).toEqual(session);
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/sessions/abc/reject"), { method: "POST" });
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/sessions/abc/reject"), {
+      method: "POST"
+    });
   });
 });
 ```
@@ -1126,7 +1156,9 @@ export async function rejectSession(token: string): Promise<Session> {
 }
 
 async function resolveSession(token: string, action: "accept" | "reject"): Promise<Session> {
-  const response = await fetch(`${getSignalingBaseUrl()}/sessions/${token}/${action}`, { method: "POST" });
+  const response = await fetch(`${getSignalingBaseUrl()}/sessions/${token}/${action}`, {
+    method: "POST"
+  });
   if (!response.ok) {
     throw new Error(`failed_to_${action}_session`);
   }
@@ -1156,6 +1188,7 @@ git commit -m "feat(web): add typed HTTP client for the signaling-server session
 ## Task 7: `/transferir` creation page and `SessionLinkPanel`
 
 **Files:**
+
 - Modify: `packages/ui/src/icons/index.ts` (add `Clock`, `XCircle`)
 - Create: `apps/web/src/components/transferir/SessionLinkPanel.tsx`
 - Create: `apps/web/src/components/transferir/SessionLinkPanel.test.tsx`
@@ -1163,6 +1196,7 @@ git commit -m "feat(web): add typed HTTP client for the signaling-server session
 - Modify: `apps/web/src/app/transferir/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `StateScreen`, `Button`, `Clock`, `XCircle`, `CheckCircle2`, `AlertTriangle`, `Share2` from `@transfergo/ui` (Task 5 + this task's icon addition); `Session` from `@transfergo/shared` (Task 1); `createSession`, `fetchSession` from `../../lib/sessions-api.js` (Task 6).
 - Produces: `SessionLinkPanel({ token: string })` — a component showing the shareable link and a copy button, consumed only by this page.
 
@@ -1215,7 +1249,9 @@ describe("SessionLinkPanel", () => {
 
     await user.click(screen.getByRole("button", { name: "Copiar link" }));
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("/s/abc123"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining("/s/abc123")
+    );
     expect(await screen.findByRole("button", { name: "Copiado!" })).toBeInTheDocument();
   });
 });
@@ -1242,7 +1278,8 @@ export interface SessionLinkPanelProps {
 
 export function SessionLinkPanel({ token }: SessionLinkPanelProps) {
   const [copied, setCopied] = useState(false);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
+  const link =
+    typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
 
   async function handleCopyLink() {
     await navigator.clipboard.writeText(link);
@@ -1327,7 +1364,9 @@ describe("TransferPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Nova transferência" }));
 
-    expect(await screen.findByRole("heading", { name: "Não foi possível criar a sessão" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Não foi possível criar a sessão" })
+    ).toBeInTheDocument();
   });
 });
 ```
@@ -1478,10 +1517,12 @@ git commit -m "feat(web): wire /transferir to real session creation, link and po
 ## Task 8: `/s/[token]` invite page
 
 **Files:**
+
 - Create: `apps/web/src/app/s/[token]/page.tsx`
 - Create: `apps/web/src/app/s/[token]/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `StateScreen`, `Clock`, `ShieldCheck`, `CheckCircle2`, `AlertTriangle`, `XCircle` from `@transfergo/ui`; `Session` from `@transfergo/shared`; `fetchSession`, `acceptSession`, `rejectSession` from `../../../lib/sessions-api.js` (Task 6); `useParams` from `next/navigation`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1522,7 +1563,9 @@ describe("SessionInvitePage", () => {
     mockedFetchSession.mockResolvedValue(makeSession("waiting"));
     render(<SessionInvitePage />);
 
-    expect(await screen.findByRole("heading", { name: "Convite de transferência" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Convite de transferência" })
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Aceitar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
   });
@@ -1574,7 +1617,14 @@ Expected: FAIL — `Cannot find module './page.js'`
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  StateScreen,
+  XCircle
+} from "@transfergo/ui";
 import { acceptSession, fetchSession, rejectSession } from "../../../lib/sessions-api.js";
 
 export default function SessionInvitePage() {
@@ -1622,9 +1672,15 @@ export default function SessionInvitePage() {
   );
 }
 
-function renderContent(session: Session | null | undefined, onAccept: () => void, onReject: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  onAccept: () => void,
+  onReject: () => void
+) {
   if (session === undefined) {
-    return <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />;
+    return (
+      <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />
+    );
   }
 
   if (session === null) {
@@ -1721,11 +1777,13 @@ In two terminals from the repo root:
 ```bash
 pnpm --filter @transfergo/signaling-server run dev
 ```
+
 ```bash
 pnpm --filter @transfergo/web run dev
 ```
 
 Then, in two browser tabs:
+
 1. Open `http://localhost:3000/transferir`, click "Nova transferência" — a link like `http://localhost:3000/s/<token>` appears with "Copiar link".
 2. Copy that link and open it in the second tab — it shows "Convite de transferência" with **Aceitar**/**Recusar**.
 3. Click **Aceitar** in the second tab — it shows "Convite aceito".

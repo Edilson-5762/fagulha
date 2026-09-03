@@ -10,7 +10,8 @@ export interface SessionLinkPanelProps {
 
 export function SessionLinkPanel({ token, peerOnline }: SessionLinkPanelProps) {
   const [copied, setCopied] = useState(false);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
+  const link =
+    typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
 
   async function handleCopyLink() {
     await navigator.clipboard.writeText(link);

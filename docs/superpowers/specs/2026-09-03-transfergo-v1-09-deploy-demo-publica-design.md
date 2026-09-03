@@ -18,7 +18,7 @@
   está em `c5f9db9` (100 commits atrás, snapshot de 24/ago).
 - **Não inclui:**
   - **TURN real** — provedor gerenciado, endpoint de credenciais temporárias,
-    fiação do `iceServers`. Esta peça só deixa o *caminho* pronto (comentário
+    fiação do `iceServers`. Esta peça só deixa o _caminho_ pronto (comentário
     `TODO(turn)` no `peer-connection.ts` e a limitação documentada no README).
   - **Domínio próprio** (Hostinger) e registros DNS — a demo sai nas URLs
     grátis `*.vercel.app` / `*.up.railway.app`. O domínio customizado é um
@@ -64,16 +64,16 @@ refazer o setup meses depois sem depender de lembrar cliques em painéis.
 
 ## 2. Divisão em unidades
 
-| Unidade | Onde | Responsabilidade | Muda |
-| --- | --- | --- | --- |
-| **Dependência do signaling** | `apps/signaling-server/package.json` + `pnpm-lock.yaml` | mover `tsx` de `devDependencies` → `dependencies` (o install de produção da Railway pula devDeps; sem `tsx` o `start` quebra). | -1 devDep / +1 dep |
-| **Config Railway** | `railway.json` (novo, raiz) | `build.builder`: `NIXPACKS`; `deploy.startCommand`: `pnpm --filter @transfergo/signaling-server start`; `deploy.healthcheckPath`: `/health`; `deploy.restartPolicyType`: `ON_FAILURE`; `deploy.restartPolicyMaxRetries`: `3`. | arquivo novo (~12 linhas) |
-| **Config Vercel** | `apps/web/vercel.json` (novo) | `$schema` + `framework: "nextjs"`. Fixa o preset; a raiz do projeto (`apps/web`) é definida no painel da Vercel (não há campo pra isso no `vercel.json`). | arquivo novo (~4 linhas) |
-| **Exemplo de env** | `.env.example` (novo, raiz) | documenta `NEXT_PUBLIC_SIGNALING_URL` e `WEB_ORIGIN` com valores de dev e de produção e as regras (sem barra final, `https://` exato). | arquivo novo (~10 linhas) |
-| **Marcador de TURN** | `apps/web/src/lib/peer-connection.ts` | comentário `// TODO(turn): a próxima peça adiciona um TURN gerenciado via env` sobre `ICE_SERVERS`. Sem mudança de comportamento. | 1 linha |
-| **Script de verificação** | `scripts/verify-signaling.mjs` (novo) | Node puro (`ws`), 2 args (`<signaling-url> <web-origin>`): `create` → `join` guest → afirma round-trip de um `signal`. Sai 0/1. | arquivo novo (~60 linhas) |
-| **README** | `README.md` | reescrita: o que é + link da demo, como funciona (diagrama P2P/signaling), stack, rodar localmente, **limitações conhecidas da V1**, roadmap, link da spec. Placeholders de screenshot. | reescrita (~80 linhas) |
-| **CI (se quebrar)** | `.github/workflows/ci.yml` | só se o workflow falhar nos runners do GitHub — ajuste mínimo pra ficar verde. Não mexer proativamente. | 0 linhas esperado |
+| Unidade                      | Onde                                                    | Responsabilidade                                                                                                                                                                                                              | Muda                      |
+| ---------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| **Dependência do signaling** | `apps/signaling-server/package.json` + `pnpm-lock.yaml` | mover `tsx` de `devDependencies` → `dependencies` (o install de produção da Railway pula devDeps; sem `tsx` o `start` quebra).                                                                                                | -1 devDep / +1 dep        |
+| **Config Railway**           | `railway.json` (novo, raiz)                             | `build.builder`: `NIXPACKS`; `deploy.startCommand`: `pnpm --filter @transfergo/signaling-server start`; `deploy.healthcheckPath`: `/health`; `deploy.restartPolicyType`: `ON_FAILURE`; `deploy.restartPolicyMaxRetries`: `3`. | arquivo novo (~12 linhas) |
+| **Config Vercel**            | `apps/web/vercel.json` (novo)                           | `$schema` + `framework: "nextjs"`. Fixa o preset; a raiz do projeto (`apps/web`) é definida no painel da Vercel (não há campo pra isso no `vercel.json`).                                                                     | arquivo novo (~4 linhas)  |
+| **Exemplo de env**           | `.env.example` (novo, raiz)                             | documenta `NEXT_PUBLIC_SIGNALING_URL` e `WEB_ORIGIN` com valores de dev e de produção e as regras (sem barra final, `https://` exato).                                                                                        | arquivo novo (~10 linhas) |
+| **Marcador de TURN**         | `apps/web/src/lib/peer-connection.ts`                   | comentário `// TODO(turn): a próxima peça adiciona um TURN gerenciado via env` sobre `ICE_SERVERS`. Sem mudança de comportamento.                                                                                             | 1 linha                   |
+| **Script de verificação**    | `scripts/verify-signaling.mjs` (novo)                   | Node puro (`ws`), 2 args (`<signaling-url> <web-origin>`): `create` → `join` guest → afirma round-trip de um `signal`. Sai 0/1.                                                                                               | arquivo novo (~60 linhas) |
+| **README**                   | `README.md`                                             | reescrita: o que é + link da demo, como funciona (diagrama P2P/signaling), stack, rodar localmente, **limitações conhecidas da V1**, roadmap, link da spec. Placeholders de screenshot.                                       | reescrita (~80 linhas)    |
+| **CI (se quebrar)**          | `.github/workflows/ci.yml`                              | só se o workflow falhar nos runners do GitHub — ajuste mínimo pra ficar verde. Não mexer proativamente.                                                                                                                       | 0 linhas esperado         |
 
 Nenhuma mudança no motor, no hook, nas páginas, no `signaling-socket.ts`
 (o `https→wss` via `base.replace(/^http/,"ws")` já está certo) nem no
@@ -243,24 +243,27 @@ com o signaling local no ar).
 Vai no plano de implementação como a lista final; resumo aqui para revisão.
 
 **A. GitHub.** O agente roda `git push origin main` (fast-forward). O autor
-confere a aba *Actions* do repo: CI verde.
+confere a aba _Actions_ do repo: CI verde.
 
 **B. Railway** (primeiro — o web depende da URL dela).
-1. railway.app → *New Project* → *Deploy from GitHub repo* → `Edilson-5762/transfergo`.
-2. A Railway lê o `railway.json`. *Settings → Root Directory*: vazio.
-3. *Variables* → `WEB_ORIGIN` = `http://localhost:3000` (placeholder).
-4. Aguardar o deploy. *Settings → Networking → Generate Domain* se não vier
+
+1. railway.app → _New Project_ → _Deploy from GitHub repo_ → `Edilson-5762/transfergo`.
+2. A Railway lê o `railway.json`. _Settings → Root Directory_: vazio.
+3. _Variables_ → `WEB_ORIGIN` = `http://localhost:3000` (placeholder).
+4. Aguardar o deploy. _Settings → Networking → Generate Domain_ se não vier
    sozinha. Anotar a URL `*.up.railway.app`.
 5. Abrir `<url>/health` → `{"status":"ok"}`.
 
 **C. Vercel.**
-1. vercel.com → *Add New → Project* → *Import* `Edilson-5762/transfergo`.
-2. *Root Directory* → `apps/web`. Framework: *Next.js* (auto).
-3. *Environment Variables* → `NEXT_PUBLIC_SIGNALING_URL` = URL da Railway (B4).
-4. *Deploy*. Anotar a URL `*.vercel.app`.
+
+1. vercel.com → _Add New → Project_ → _Import_ `Edilson-5762/transfergo`.
+2. _Root Directory_ → `apps/web`. Framework: _Next.js_ (auto).
+3. _Environment Variables_ → `NEXT_PUBLIC_SIGNALING_URL` = URL da Railway (B4).
+4. _Deploy_. Anotar a URL `*.vercel.app`.
 
 **D. Fechar o laço.**
-1. Railway → *Variables* → `WEB_ORIGIN` = URL da Vercel (C4). Redeploy automático.
+
+1. Railway → _Variables_ → `WEB_ORIGIN` = URL da Vercel (C4). Redeploy automático.
 2. Agente roda `scripts/verify-signaling.mjs` contra as URLs de produção e cola
    a saída. Agente faz `fetch` de `/health` e de `/`.
 3. Autor faz a checagem manual de dois navegadores (§1, item 4).
@@ -304,19 +307,19 @@ não trava nisso.
 
 ## 8. Casos de borda e riscos
 
-| Situação | Tratamento |
-| --- | --- |
-| `origin/main` obsoleto (100 commits atrás) | `git push origin main` é fast-forward (`ahead 100`, sem `behind`). Nenhum force. |
-| Ovo-e-galinha das URLs (web precisa da Railway, Railway precisa da Vercel) | Ordem B→C→D: Railway sobe com `WEB_ORIGIN` placeholder; ajusta no passo D1. |
-| Nixpacks não detecta o pnpm workspace / erra o Node na Railway | `railway.json` ganha `buildCommand` explícito + `engines`/`.nvmrc` Node 22. Plano valida o 1º deploy. |
-| Franquia grátis da Railway não cobre um processo sempre-ligado | Trocar a unidade "Config Railway" por `fly.toml` (Fly.io) ou `render.yaml` (Render) — mesmo Node+ws, mesmas envs, mesmo `/health`. Sem outra mudança. |
-| `tsx` some no install de produção | Movido para `dependencies` (§4.1). |
-| Deployments de *preview* da Vercel (PRs) não conectam no signaling | `Origin` diferente do `WEB_ORIGIN` ⇒ upgrade recusado. Aceitável — a demo é a URL de produção. Documentar no README de contribuição se um dia houver. |
+| Situação                                                                             | Tratamento                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `origin/main` obsoleto (100 commits atrás)                                           | `git push origin main` é fast-forward (`ahead 100`, sem `behind`). Nenhum force.                                                                                                                                                                          |
+| Ovo-e-galinha das URLs (web precisa da Railway, Railway precisa da Vercel)           | Ordem B→C→D: Railway sobe com `WEB_ORIGIN` placeholder; ajusta no passo D1.                                                                                                                                                                               |
+| Nixpacks não detecta o pnpm workspace / erra o Node na Railway                       | `railway.json` ganha `buildCommand` explícito + `engines`/`.nvmrc` Node 22. Plano valida o 1º deploy.                                                                                                                                                     |
+| Franquia grátis da Railway não cobre um processo sempre-ligado                       | Trocar a unidade "Config Railway" por `fly.toml` (Fly.io) ou `render.yaml` (Render) — mesmo Node+ws, mesmas envs, mesmo `/health`. Sem outra mudança.                                                                                                     |
+| `tsx` some no install de produção                                                    | Movido para `dependencies` (§4.1).                                                                                                                                                                                                                        |
+| Deployments de _preview_ da Vercel (PRs) não conectam no signaling                   | `Origin` diferente do `WEB_ORIGIN` ⇒ upgrade recusado. Aceitável — a demo é a URL de produção. Documentar no README de contribuição se um dia houver.                                                                                                     |
 | CI quebra nos runners do GitHub (Node 24, inclui `build-storybook` e `format:check`) | Consertar entra nesta peça (unidade "CI se quebrar"). O portão do Plano 8 (`lint typecheck test build`, sem `build-storybook`) passou 19/19 local; o plano roda o comando **completo** do CI (`+ build-storybook`, `+ format:check`) local antes do push. |
-| `NEXT_PUBLIC_SIGNALING_URL` mudou mas o bundle não | É `NEXT_PUBLIC_` ⇒ embutida em build. Trocar exige redeploy da Vercel (o painel força isso). |
-| Barra final / `www` em `WEB_ORIGIN` | Comparação exata em `server.ts:48`. `.env.example` e o runbook avisam. |
-| Segredos no repo ao torná-lo público | Não há arquivos `.env` versionados; `.env.example` só tem placeholders. Confirmar com `git log -p -- '*.env*'` vazio no plano. |
-| Cold start da Railway após ociosidade | Primeiro `create` pode demorar ~1–2 s. O `signaling-socket` já tem reconexão com backoff. Aceitável para demo. |
+| `NEXT_PUBLIC_SIGNALING_URL` mudou mas o bundle não                                   | É `NEXT_PUBLIC_` ⇒ embutida em build. Trocar exige redeploy da Vercel (o painel força isso).                                                                                                                                                              |
+| Barra final / `www` em `WEB_ORIGIN`                                                  | Comparação exata em `server.ts:48`. `.env.example` e o runbook avisam.                                                                                                                                                                                    |
+| Segredos no repo ao torná-lo público                                                 | Não há arquivos `.env` versionados; `.env.example` só tem placeholders. Confirmar com `git log -p -- '*.env*'` vazio no plano.                                                                                                                            |
+| Cold start da Railway após ociosidade                                                | Primeiro `create` pode demorar ~1–2 s. O `signaling-socket` já tem reconexão com backoff. Aceitável para demo.                                                                                                                                            |
 
 ---
 
@@ -344,8 +347,8 @@ não trava nisso.
 
 ## 10. Textos pt-BR (referência única)
 
-| Contexto | Texto |
-| --- | --- |
-| Badge do README | `▶ Demo ao vivo` |
-| Frase de privacidade no README | `Nenhum byte de arquivo passa pelo servidor — o backend só troca SDP/ICE.` |
-| Limitação TURN no README | `Sem TURN nesta versão: pares atrás de NAT simétrico ou rede corporativa podem não conectar.` |
+| Contexto                       | Texto                                                                                         |
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
+| Badge do README                | `▶ Demo ao vivo`                                                                              |
+| Frase de privacidade no README | `Nenhum byte de arquivo passa pelo servidor — o backend só troca SDP/ICE.`                    |
+| Limitação TURN no README       | `Sem TURN nesta versão: pares atrás de NAT simétrico ou rede corporativa podem não conectar.` |

@@ -29,13 +29,26 @@ export function DialogContent({
   );
 }
 
-export function DialogTitle({ className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("text-lg font-semibold text-text", className)} {...props} />;
+export function DialogTitle({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {
+  return (
+    <DialogPrimitive.Title
+      className={cn("text-lg font-semibold text-text", className)}
+      {...props}
+    />
+  );
 }
 
 export function DialogDescription({
   className,
   ...props
 }: ComponentPropsWithoutRef<typeof DialogPrimitive.Description>) {
-  return <DialogPrimitive.Description className={cn("mt-2 text-sm text-text-muted", className)} {...props} />;
+  return (
+    <DialogPrimitive.Description
+      className={cn("mt-2 text-sm text-text-muted", className)}
+      {...props}
+    />
+  );
 }

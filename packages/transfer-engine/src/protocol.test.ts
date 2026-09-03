@@ -40,25 +40,57 @@ describe("encodeControl / decodeControl", () => {
     expect(decodeControl(JSON.stringify({ t: "file-begin", id: "f1", offset: -1 }))).toBeNull();
     expect(decodeControl(JSON.stringify({ t: "cancel", scope: "file" }))).toBeNull();
     expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1 }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(63) }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(65) }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "A".repeat(64) }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: `${"a".repeat(63)}z` }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: 12345 }))).toBeNull();
+    expect(
+      decodeControl(
+        JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(63) })
+      )
+    ).toBeNull();
+    expect(
+      decodeControl(
+        JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(65) })
+      )
+    ).toBeNull();
+    expect(
+      decodeControl(
+        JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "A".repeat(64) })
+      )
+    ).toBeNull();
+    expect(
+      decodeControl(
+        JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: `${"a".repeat(63)}z` })
+      )
+    ).toBeNull();
+    expect(
+      decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: 12345 }))
+    ).toBeNull();
   });
 
   it("rejects a batch-offer whose file metas are the wrong shape", () => {
-    expect(decodeControl(JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: [{ id: "f1" }] } }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: "x" } }))).toBeNull();
+    expect(
+      decodeControl(
+        JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: [{ id: "f1" }] } })
+      )
+    ).toBeNull();
+    expect(
+      decodeControl(JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: "x" } }))
+    ).toBeNull();
   });
 
   it("round-trips a file-end carrying a sha256 digest", () => {
-    const frame = { t: "file-end", id: "f1", bytesSent: 2048, sha256: "0123456789abcdef".repeat(4) } as const;
+    const frame = {
+      t: "file-end",
+      id: "f1",
+      bytesSent: 2048,
+      sha256: "0123456789abcdef".repeat(4)
+    } as const;
     expect(decodeControl(encodeControl(frame))).toEqual(frame);
   });
 
   it("rejects a control frame larger than the cap", () => {
-    const huge = JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: [meta({ name: "x".repeat(MAX_CONTROL_FRAME_BYTES) })] } });
+    const huge = JSON.stringify({
+      t: "batch-offer",
+      batch: { id: "b1", files: [meta({ name: "x".repeat(MAX_CONTROL_FRAME_BYTES) })] }
+    });
     expect(huge.length).toBeGreaterThan(MAX_CONTROL_FRAME_BYTES);
     expect(decodeControl(huge)).toBeNull();
   });
@@ -71,7 +103,9 @@ describe("validateBatchOffer", () => {
 
   it("rejects an empty batch, > 50 files, or > 5 GiB total", () => {
     expect(validateBatchOffer([])).toBe("over-limit");
-    expect(validateBatchOffer(Array.from({ length: 51 }, (_, i) => meta({ id: `f${i}`, size: 1 })))).toBe("over-limit");
+    expect(
+      validateBatchOffer(Array.from({ length: 51 }, (_, i) => meta({ id: `f${i}`, size: 1 })))
+    ).toBe("over-limit");
     expect(validateBatchOffer([meta({ size: 5 * 1024 * 1024 * 1024 + 1 })])).toBe("over-limit");
   });
 });

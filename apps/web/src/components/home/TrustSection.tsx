@@ -4,7 +4,8 @@ const POINTS = [
   {
     icon: Wifi,
     title: "P2P direto",
-    description: "Os arquivos trafegam direto entre os dispositivos, sem passar pelo nosso servidor."
+    description:
+      "Os arquivos trafegam direto entre os dispositivos, sem passar pelo nosso servidor."
   },
   {
     icon: ShieldCheck,

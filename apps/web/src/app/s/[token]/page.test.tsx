@@ -2,7 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
-import { useSignalingSocket, type UseSignalingSocketResult } from "../../../lib/signaling-socket.js";
+import {
+  useSignalingSocket,
+  type UseSignalingSocketResult
+} from "../../../lib/signaling-socket.js";
 import type { UseFileTransferResult } from "../../../lib/use-file-transfer.js";
 import SessionInvitePage from "./page.js";
 
@@ -19,29 +22,27 @@ vi.mock("../../../lib/peer-connection.js", () => ({
 }));
 
 vi.mock("../../../lib/use-file-transfer.js", () => ({
-  useFileTransfer: vi.fn(
-    (): UseFileTransferResult => ({
-      ready: false,
-      selectedFiles: [],
-      totalBytes: 0,
-      limitError: null,
-      addFiles: vi.fn(),
-      removeFile: vi.fn(),
-      clearSelection: vi.fn(),
-      startSend: vi.fn(),
-      incomingBatch: null,
-      acceptBatch: vi.fn(),
-      rejectBatch: vi.fn(),
-      phase: "idle",
-      perFile: {},
-      overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
-      stats: { speedBytesPerSec: null, etaSeconds: null },
-      filesSaved: 0,
-      errorMessage: null,
-      integrityVerified: false,
-      cancel: vi.fn()
-    })
-  )
+  useFileTransfer: vi.fn((): UseFileTransferResult => ({
+    ready: false,
+    selectedFiles: [],
+    totalBytes: 0,
+    limitError: null,
+    addFiles: vi.fn(),
+    removeFile: vi.fn(),
+    clearSelection: vi.fn(),
+    startSend: vi.fn(),
+    incomingBatch: null,
+    acceptBatch: vi.fn(),
+    rejectBatch: vi.fn(),
+    phase: "idle",
+    perFile: {},
+    overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
+    stats: { speedBytesPerSec: null, etaSeconds: null },
+    filesSaved: 0,
+    errorMessage: null,
+    integrityVerified: false,
+    cancel: vi.fn()
+  }))
 }));
 
 const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
@@ -86,7 +87,12 @@ describe("SessionInvitePage", () => {
   });
 
   it("shows the invite with accept/reject actions while waiting", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<SessionInvitePage />);
 
@@ -102,17 +108,32 @@ describe("SessionInvitePage", () => {
   });
 
   it("starts the peer connection once the invite is accepted", () => {
-    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
     render(<SessionInvitePage />);
 
-    expect(mockedUsePeerConnection).toHaveBeenCalledWith(expect.objectContaining({ role: "guest", accepted: true }));
+    expect(mockedUsePeerConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "guest", accepted: true })
+    );
   });
 
   it("shows the receive panel once the data channel is open", () => {
-    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
-    mockedUsePeerConnection.mockReturnValue({ dataChannel: {} as RTCDataChannel, channelState: "open" });
+    mockedUsePeerConnection.mockReturnValue({
+      dataChannel: {} as RTCDataChannel,
+      channelState: "open"
+    });
     render(<SessionInvitePage />);
 
     expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
@@ -120,7 +141,12 @@ describe("SessionInvitePage", () => {
 
   it("calls accept when the accept button is clicked", async () => {
     const accept = vi.fn();
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, accept }));
     const user = userEvent.setup();
     render(<SessionInvitePage />);
@@ -131,7 +157,12 @@ describe("SessionInvitePage", () => {
 
   it("calls reject when the reject button is clicked", async () => {
     const reject = vi.fn();
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, reject }));
     const user = userEvent.setup();
     render(<SessionInvitePage />);
@@ -141,8 +172,15 @@ describe("SessionInvitePage", () => {
   });
 
   it("shows a reconnecting banner on top of the invite when the connection drops", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
-    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, connectionState: "reconnecting" }));
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(
+      makeResult({ session, connectionState: "reconnecting" })
+    );
     render(<SessionInvitePage />);
 
     expect(screen.getByText("Conexão perdida")).toBeInTheDocument();

@@ -41,14 +41,14 @@ valida apenas o envelope, nunca o conteúdo SDP/ICE:
 
 **Cliente → servidor (novo):**
 
-| Mensagem | Payload | Efeito |
-| --- | --- | --- |
+| Mensagem | Payload                      | Efeito                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `signal` | `{ payload: SignalPayload }` | Repassado ao peer da sessão via `peerOf()` (já existe em `connection-registry.ts`, sem mudança nele). Só é repassado se a sessão estiver `status: "accepted"`; caso contrário, ignorado silenciosamente (mesma postura defensiva de `accept`/`reject` fora de papel no Plano 4/9). Se não houver peer conectado no momento (`peerOf` retorna `undefined`), a mensagem é descartada sem erro — ver §5 sobre o limite conhecido disso. |
 
 **Servidor → cliente (novo):**
 
-| Mensagem | Payload | Quando |
-| --- | --- | --- |
+| Mensagem | Payload                      | Quando                                                                                              |
+| -------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
 | `signal` | `{ payload: SignalPayload }` | Repasse direto (não é broadcast — só para o par, via `peerOf()`) do `signal` recebido do outro lado |
 
 `SignalPayload` (novo tipo em `packages/shared/src/signaling.ts`):
@@ -91,7 +91,7 @@ Um novo case `signal` na máquina de mensagens existente:
   (sem `error`, para não vazar estado de sessão a uma conexão que ainda não
   devia estar mandando `signal`).
 - Em caso válido: `registry.peerOf(token, role)?.send(JSON.stringify({
-  type: "signal", payload }))` — repasse direto, sem tocar
+type: "signal", payload }))` — repasse direto, sem tocar
   `session-store.ts` nem `connection-registry.ts` (nenhum dos dois precisa
   saber que SDP/ICE existe).
 
@@ -160,7 +160,7 @@ Responsabilidades internas:
   dedicado).
 - **Regra determinística de quem oferta:** `role === "host"` sempre cria a
   oferta (`createOffer` → `setLocalDescription` → `sendSignal({kind:
-  "offer", sdp})`); `role === "guest"` sempre responde (recebe `offer` via
+"offer", sdp})`); `role === "guest"` sempre responde (recebe `offer` via
   `lastSignal` → `setRemoteDescription` → `createAnswer` →
   `setLocalDescription` → `sendSignal({kind:"answer", sdp})`). Evita
   qualquer corrida de "quem manda primeiro" sem precisar do padrão
@@ -235,11 +235,11 @@ Planos 3/9 e 4/9.
 
 ## 7. Stack e decisões de tooling
 
-| Camada | Escolha | Motivo |
-| --- | --- | --- |
-| STUN | `stun:stun.l.google.com:19302` (público, sem custo) | Cobre NAT simples/doméstico para provar conectividade real sem decisão de provedor gerenciado (TURN fica para depois) |
-| WebRTC no cliente | API nativa do navegador (`RTCPeerConnection`) | Decisão já tomada na spec do produto §3.6 — sem biblioteca (`simple-peer` etc.) |
-| WebRTC em teste automatizado | Não usado — ver §9 | `jsdom` não implementa `RTCPeerConnection`; adicionar uma stack WebRTC em Node (`wrtc`/`node-datachannel`) só para testes é desproporcional ao escopo deste plano |
+| Camada                       | Escolha                                             | Motivo                                                                                                                                                            |
+| ---------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| STUN                         | `stun:stun.l.google.com:19302` (público, sem custo) | Cobre NAT simples/doméstico para provar conectividade real sem decisão de provedor gerenciado (TURN fica para depois)                                             |
+| WebRTC no cliente            | API nativa do navegador (`RTCPeerConnection`)       | Decisão já tomada na spec do produto §3.6 — sem biblioteca (`simple-peer` etc.)                                                                                   |
+| WebRTC em teste automatizado | Não usado — ver §9                                  | `jsdom` não implementa `RTCPeerConnection`; adicionar uma stack WebRTC em Node (`wrtc`/`node-datachannel`) só para testes é desproporcional ao escopo deste plano |
 
 Nenhuma dependência nova em `package.json` (STUN é só uma URL de
 configuração, não uma lib).
@@ -277,7 +277,7 @@ configuração, não uma lib).
   fluxo completo create→join→accept — e não precisou de caso novo aqui.)
 - **`apps/web`** — `usePeerConnection` é testado substituindo o construtor
   global `RTCPeerConnection` (`vi.stubGlobal("RTCPeerConnection",
-  FakePeerConnection)`, ver §4.2) por uma implementação fake mínima
+FakePeerConnection)`, ver §4.2) por uma implementação fake mínima
   controlada pelo teste (métodos
   `createOffer`/`createAnswer`/`setLocalDescription`/`setRemoteDescription`/
   `addIceCandidate` como stubs previsíveis, disparando os eventos certos) —

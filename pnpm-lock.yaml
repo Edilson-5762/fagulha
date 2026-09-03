@@ -24,7 +24,7 @@ importers:
         specifier: ^7.1.1
         version: 7.1.1(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
       prettier:
-        specifier: ^3.4.0
+        specifier: 3.9.6
         version: 3.9.6
       turbo:
         specifier: ^2.3.0

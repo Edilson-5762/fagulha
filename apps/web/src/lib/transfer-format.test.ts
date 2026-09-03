@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatDuration, formatSpeed, SIZE_CLASS_LABELS, summarizeBatch } from "./transfer-format.js";
+import {
+  formatBytes,
+  formatDuration,
+  formatSpeed,
+  SIZE_CLASS_LABELS,
+  summarizeBatch
+} from "./transfer-format.js";
 
 describe("formatBytes", () => {
   it("formats across unit boundaries", () => {
@@ -29,13 +35,18 @@ describe("summarizeBatch", () => {
   });
 
   it("uses singular forms for a single file", () => {
-    expect(summarizeBatch([{ type: "image/jpeg", size: 10 * 1024 }])).toBe("1 arquivo — 1 foto — 10 KB");
+    expect(summarizeBatch([{ type: "image/jpeg", size: 10 * 1024 }])).toBe(
+      "1 arquivo — 1 foto — 10 KB"
+    );
   });
 
   it("labels unknown types as 'arquivo(s)'", () => {
-    expect(summarizeBatch([{ type: "", size: 2048 }, { type: "application/zip", size: 0 }])).toBe(
-      "2 arquivos — 2 arquivos — 2 KB"
-    );
+    expect(
+      summarizeBatch([
+        { type: "", size: 2048 },
+        { type: "application/zip", size: 0 }
+      ])
+    ).toBe("2 arquivos — 2 arquivos — 2 KB");
   });
 });
 

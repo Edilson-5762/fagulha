@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ClientMessage, ConnectionRole, Session, ServerMessage, SignalPayload } from "@transfergo/shared";
+import type {
+  ClientMessage,
+  ConnectionRole,
+  Session,
+  ServerMessage,
+  SignalPayload
+} from "@transfergo/shared";
 
 export type SignalingConnectionState = "connecting" | "open" | "reconnecting";
 
@@ -89,7 +95,10 @@ export function useSignalingSocket(): UseSignalingSocketResult {
           };
         } else if (message.type === "peer_presence") {
           setPeerOnline(message.connected);
-        } else if (message.type === "error" && (message.code === "not_found" || message.code === "expired")) {
+        } else if (
+          message.type === "error" &&
+          (message.code === "not_found" || message.code === "expired")
+        ) {
           terminalRef.current = true;
           setSession(null);
         } else if (message.type === "signal") {
@@ -125,10 +134,27 @@ export function useSignalingSocket(): UseSignalingSocketResult {
   }, []);
 
   const createSession = useCallback(() => connect({ type: "create" }), [connect]);
-  const joinSession = useCallback((token: string) => connect({ type: "join", token, role: "guest" }), [connect]);
+  const joinSession = useCallback(
+    (token: string) => connect({ type: "join", token, role: "guest" }),
+    [connect]
+  );
   const accept = useCallback(() => sendRaw({ type: "accept" }), [sendRaw]);
   const reject = useCallback(() => sendRaw({ type: "reject" }), [sendRaw]);
-  const sendSignal = useCallback((payload: SignalPayload) => sendRaw({ type: "signal", payload }), [sendRaw]);
+  const sendSignal = useCallback(
+    (payload: SignalPayload) => sendRaw({ type: "signal", payload }),
+    [sendRaw]
+  );
 
-  return { session, peerOnline, connectionState, role, lastSignal, createSession, joinSession, accept, reject, sendSignal };
+  return {
+    session,
+    peerOnline,
+    connectionState,
+    role,
+    lastSignal,
+    createSession,
+    joinSession,
+    accept,
+    reject,
+    sendSignal
+  };
 }

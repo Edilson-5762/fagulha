@@ -8,7 +8,7 @@ const SHA256_EMPTY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b78
 const utf8 = (s: string) => new TextEncoder().encode(s);
 
 describe("createSha256Hasher", () => {
-  it("matches the NIST vector for \"abc\"", () => {
+  it('matches the NIST vector for "abc"', () => {
     const h = createSha256Hasher();
     h.update(utf8("abc"));
     expect(h.digest()).toBe(SHA256_ABC);

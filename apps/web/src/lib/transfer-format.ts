@@ -49,7 +49,7 @@ type Category = "foto" | "vídeo" | "PDF" | "arquivo";
 const CATEGORY_ORDER: Category[] = ["foto", "vídeo", "PDF", "arquivo"];
 const PLURAL: Record<Category, string> = {
   foto: "fotos",
-  "vídeo": "vídeos",
+  vídeo: "vídeos",
   PDF: "PDFs",
   arquivo: "arquivos"
 };

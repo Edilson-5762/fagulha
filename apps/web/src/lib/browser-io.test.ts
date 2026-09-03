@@ -57,8 +57,14 @@ describe("pickSaveTarget", () => {
 
 describe("createDownloadSink", () => {
   it("accumulates chunks and triggers a download on close", async () => {
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:x"), revokeObjectURL: vi.fn() });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:x"),
+      revokeObjectURL: vi.fn()
+    });
 
     const sink = createDownloadSink({ id: "f1", name: "out.bin", size: 4, type: "text/plain" });
     await sink.write(new Uint8Array([1, 2]).buffer);
@@ -83,7 +89,7 @@ describe("adaptRtcDataChannel", () => {
       binaryType: "blob",
       bufferedAmount: 42,
       bufferedAmountLowThreshold: 0,
-      addEventListener: (t: string, l: (e: unknown) => void) => ((listeners[t] ??= []).push(l)),
+      addEventListener: (t: string, l: (e: unknown) => void) => (listeners[t] ??= []).push(l),
       removeEventListener: vi.fn()
     } as unknown as RTCDataChannel;
 

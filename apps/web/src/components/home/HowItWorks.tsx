@@ -1,9 +1,21 @@
 import { MousePointerClick, Share2, Wifi } from "@transfergo/ui";
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Selecionar", description: "Escolha um ou mais arquivos no seu dispositivo." },
-  { icon: Wifi, title: "Conectar", description: "Compartilhe o link seguro com o outro dispositivo." },
-  { icon: Share2, title: "Transferir", description: "Os arquivos vão direto de um dispositivo para o outro." }
+  {
+    icon: MousePointerClick,
+    title: "Selecionar",
+    description: "Escolha um ou mais arquivos no seu dispositivo."
+  },
+  {
+    icon: Wifi,
+    title: "Conectar",
+    description: "Compartilhe o link seguro com o outro dispositivo."
+  },
+  {
+    icon: Share2,
+    title: "Transferir",
+    description: "Os arquivos vão direto de um dispositivo para o outro."
+  }
 ];
 
 export function HowItWorks() {

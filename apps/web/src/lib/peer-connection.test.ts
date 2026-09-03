@@ -95,7 +95,9 @@ afterEach(() => {
 
 describe("usePeerConnection", () => {
   it("does not create a peer connection before the session is accepted", () => {
-    renderHook(() => usePeerConnection({ role: "host", accepted: false, sendSignal: vi.fn(), lastSignal: null }));
+    renderHook(() =>
+      usePeerConnection({ role: "host", accepted: false, sendSignal: vi.fn(), lastSignal: null })
+    );
     expect(FakePeerConnection.instances).toHaveLength(0);
   });
 
@@ -128,23 +130,39 @@ describe("usePeerConnection", () => {
     const sendSignal = vi.fn();
     const { rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "guest",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 
     rerender({ lastSignal: { kind: "offer", sdp: "remote-offer-sdp" } });
     await flushAsync();
 
-    expect(latestPeerConnection().remoteDescriptions).toEqual([{ type: "offer", sdp: "remote-offer-sdp" }]);
+    expect(latestPeerConnection().remoteDescriptions).toEqual([
+      { type: "offer", sdp: "remote-offer-sdp" }
+    ]);
     expect(sendSignal).toHaveBeenCalledWith({ kind: "answer", sdp: "answer-sdp" });
   });
 
   it("buffers an ICE candidate received before the remote description, then flushes it", async () => {
     const sendSignal = vi.fn();
-    const candidate = { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: "0", sdpMLineIndex: 0 };
+    const candidate = {
+      candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+      sdpMid: "0",
+      sdpMLineIndex: 0
+    };
     const { rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "guest",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 
@@ -159,9 +177,15 @@ describe("usePeerConnection", () => {
 
   it("forwards local ICE candidates to sendSignal", () => {
     const sendSignal = vi.fn();
-    renderHook(() => usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null }));
+    renderHook(() =>
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+    );
 
-    const candidate = { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: "0", sdpMLineIndex: 0 };
+    const candidate = {
+      candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+      sdpMid: "0",
+      sdpMLineIndex: 0
+    };
     act(() => latestPeerConnection().onicecandidate?.({ candidate }));
 
     expect(sendSignal).toHaveBeenCalledWith({ kind: "candidate", candidate });
@@ -169,7 +193,9 @@ describe("usePeerConnection", () => {
 
   it("ignores a null candidate from onicecandidate (end-of-gathering marker)", () => {
     const sendSignal = vi.fn();
-    renderHook(() => usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null }));
+    renderHook(() =>
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+    );
 
     act(() => latestPeerConnection().onicecandidate?.({ candidate: null }));
 
@@ -192,14 +218,21 @@ describe("usePeerConnection", () => {
     const sendSignal = vi.fn();
     const { rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "host",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 
     rerender({ lastSignal: { kind: "answer", sdp: "remote-answer-sdp" } });
     await flushAsync();
 
-    expect(latestPeerConnection().remoteDescriptions).toEqual([{ type: "answer", sdp: "remote-answer-sdp" }]);
+    expect(latestPeerConnection().remoteDescriptions).toEqual([
+      { type: "answer", sdp: "remote-answer-sdp" }
+    ]);
   });
 
   it("as guest: binds the data channel delivered via ondatachannel", () => {
@@ -248,7 +281,12 @@ describe("usePeerConnection", () => {
     const sendSignal = vi.fn();
     const { rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "guest",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 
@@ -268,7 +306,12 @@ describe("usePeerConnection", () => {
     const sendSignal = vi.fn();
     const { result, rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "guest",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 

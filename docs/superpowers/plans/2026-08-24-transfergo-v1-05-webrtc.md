@@ -25,13 +25,15 @@
 
 ## Task 1: `signal` message in the shared protocol (`packages/shared`)
 
-Adds the wire-level type for SDP/ICE relay and its runtime validator. `IceCandidateData` is a small structural type (not the DOM `RTCIceCandidateInit`) because `packages/shared`'s `tsconfig.json` only has `"lib": ["ES2022"]` (no `"DOM"`) — it's consumed by `apps/signaling-server`, a Node package with no browser types. `apps/web` (which does have the `DOM` lib) passes real `RTCIceCandidate` fields into this shape without any cast, since `IceCandidateData`'s three required fields (`candidate: string`, `sdpMid: string | null`, `sdpMLineIndex: number | null`) mirror the *instance* properties of a browser `RTCIceCandidate` exactly (not the optional `RTCIceCandidateInit` dictionary).
+Adds the wire-level type for SDP/ICE relay and its runtime validator. `IceCandidateData` is a small structural type (not the DOM `RTCIceCandidateInit`) because `packages/shared`'s `tsconfig.json` only has `"lib": ["ES2022"]` (no `"DOM"`) — it's consumed by `apps/signaling-server`, a Node package with no browser types. `apps/web` (which does have the `DOM` lib) passes real `RTCIceCandidate` fields into this shape without any cast, since `IceCandidateData`'s three required fields (`candidate: string`, `sdpMid: string | null`, `sdpMLineIndex: number | null`) mirror the _instance_ properties of a browser `RTCIceCandidate` exactly (not the optional `RTCIceCandidateInit` dictionary).
 
 **Files:**
+
 - Modify: `packages/shared/src/signaling.ts`
 - Modify: `packages/shared/src/signaling.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: `IceCandidateData` (`{ candidate: string; sdpMid: string | null; sdpMLineIndex: number | null }`), `SignalPayload` (`{ kind: "offer"; sdp: string } | { kind: "answer"; sdp: string } | { kind: "candidate"; candidate: IceCandidateData }`), `ClientMessage` gains `{ type: "signal"; payload: SignalPayload }`, `ServerMessage` gains `{ type: "signal"; payload: SignalPayload }`, `parseClientMessage` now accepts `"signal"`.
 
@@ -40,58 +42,66 @@ Adds the wire-level type for SDP/ICE relay and its runtime validator. `IceCandid
 Add to `packages/shared/src/signaling.test.ts` (append inside the existing `describe("parseClientMessage", ...)` block, after the last `it`):
 
 ```ts
-  it("parses a signal message with an offer payload", () => {
-    const payload = { kind: "offer", sdp: "v=0 offer-sdp" };
-    const raw = JSON.stringify({ type: "signal", payload });
-    expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
-  });
+it("parses a signal message with an offer payload", () => {
+  const payload = { kind: "offer", sdp: "v=0 offer-sdp" };
+  const raw = JSON.stringify({ type: "signal", payload });
+  expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
+});
 
-  it("parses a signal message with an answer payload", () => {
-    const payload = { kind: "answer", sdp: "v=0 answer-sdp" };
-    const raw = JSON.stringify({ type: "signal", payload });
-    expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
-  });
+it("parses a signal message with an answer payload", () => {
+  const payload = { kind: "answer", sdp: "v=0 answer-sdp" };
+  const raw = JSON.stringify({ type: "signal", payload });
+  expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
+});
 
-  it("parses a signal message with a candidate payload", () => {
-    const payload = {
-      kind: "candidate",
-      candidate: { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: "0", sdpMLineIndex: 0 }
-    };
-    const raw = JSON.stringify({ type: "signal", payload });
-    expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
-  });
+it("parses a signal message with a candidate payload", () => {
+  const payload = {
+    kind: "candidate",
+    candidate: {
+      candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+      sdpMid: "0",
+      sdpMLineIndex: 0
+    }
+  };
+  const raw = JSON.stringify({ type: "signal", payload });
+  expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
+});
 
-  it("parses a signal candidate payload with null sdpMid/sdpMLineIndex", () => {
-    const payload = {
-      kind: "candidate",
-      candidate: { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: null, sdpMLineIndex: null }
-    };
-    const raw = JSON.stringify({ type: "signal", payload });
-    expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
-  });
+it("parses a signal candidate payload with null sdpMid/sdpMLineIndex", () => {
+  const payload = {
+    kind: "candidate",
+    candidate: {
+      candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+      sdpMid: null,
+      sdpMLineIndex: null
+    }
+  };
+  const raw = JSON.stringify({ type: "signal", payload });
+  expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
+});
 
-  it("returns null for a signal message with an unknown payload kind", () => {
-    const raw = JSON.stringify({ type: "signal", payload: { kind: "bogus" } });
-    expect(parseClientMessage(raw)).toBeNull();
-  });
+it("returns null for a signal message with an unknown payload kind", () => {
+  const raw = JSON.stringify({ type: "signal", payload: { kind: "bogus" } });
+  expect(parseClientMessage(raw)).toBeNull();
+});
 
-  it("returns null for a signal offer payload missing sdp", () => {
-    const raw = JSON.stringify({ type: "signal", payload: { kind: "offer" } });
-    expect(parseClientMessage(raw)).toBeNull();
-  });
+it("returns null for a signal offer payload missing sdp", () => {
+  const raw = JSON.stringify({ type: "signal", payload: { kind: "offer" } });
+  expect(parseClientMessage(raw)).toBeNull();
+});
 
-  it("returns null for a signal candidate payload missing the candidate field", () => {
-    const raw = JSON.stringify({ type: "signal", payload: { kind: "candidate" } });
-    expect(parseClientMessage(raw)).toBeNull();
-  });
+it("returns null for a signal candidate payload missing the candidate field", () => {
+  const raw = JSON.stringify({ type: "signal", payload: { kind: "candidate" } });
+  expect(parseClientMessage(raw)).toBeNull();
+});
 
-  it("returns null for a signal candidate payload with a malformed candidate shape", () => {
-    const raw = JSON.stringify({
-      type: "signal",
-      payload: { kind: "candidate", candidate: { sdpMid: "0", sdpMLineIndex: 0 } }
-    });
-    expect(parseClientMessage(raw)).toBeNull();
+it("returns null for a signal candidate payload with a malformed candidate shape", () => {
+  const raw = JSON.stringify({
+    type: "signal",
+    payload: { kind: "candidate", candidate: { sdpMid: "0", sdpMLineIndex: 0 } }
   });
+  expect(parseClientMessage(raw)).toBeNull();
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -226,10 +236,12 @@ git commit -m "feat(shared): add the signal message for SDP/ICE relay"
 Adds one branch to `handleMessage`: forward a `signal` to the sender's peer via the existing `registry.peerOf()`, but only once the session is `accepted`. No change to `connection-registry.ts` or `session-store.ts`.
 
 **Files:**
+
 - Modify: `apps/signaling-server/src/ws-handler.ts`
 - Modify: `apps/signaling-server/src/ws-handler.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SessionStore.get` (existing, unchanged), `ConnectionRegistry.peerOf` (existing, unchanged), `SignalPayload` from `@transfergo/shared` (Task 1).
 - No new exported interface — `WsHandler`'s shape (`handleMessage`, `handleClose`) is unchanged.
 
@@ -238,74 +250,77 @@ Adds one branch to `handleMessage`: forward a `signal` to the sender's peer via 
 Add to `apps/signaling-server/src/ws-handler.test.ts` (append inside the existing `describe("createWsHandler", ...)` block, after the `"reports already_resolved when accepting twice"` test and before the `"pushes an expired session_state..."` test — grouping it with the rest of the protocol-behavior tests):
 
 ```ts
-  it("relays a signal payload to the peer once the session is accepted", () => {
-    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
-    const host = fakeSocket();
-    send(handler, host.socket, { type: "create" });
-    const token = (host.received[0] as { session: { token: string } }).session.token;
-    const guest = fakeSocket();
-    send(handler, guest.socket, { type: "join", token, role: "guest" });
-    send(handler, guest.socket, { type: "accept" });
+it("relays a signal payload to the peer once the session is accepted", () => {
+  const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+  const host = fakeSocket();
+  send(handler, host.socket, { type: "create" });
+  const token = (host.received[0] as { session: { token: string } }).session.token;
+  const guest = fakeSocket();
+  send(handler, guest.socket, { type: "join", token, role: "guest" });
+  send(handler, guest.socket, { type: "accept" });
 
-    const payload = { kind: "offer", sdp: "v=0 offer-sdp" };
-    send(handler, host.socket, { type: "signal", payload });
+  const payload = { kind: "offer", sdp: "v=0 offer-sdp" };
+  send(handler, host.socket, { type: "signal", payload });
 
-    expect(guest.received.at(-1)).toEqual({ type: "signal", payload });
-  });
+  expect(guest.received.at(-1)).toEqual({ type: "signal", payload });
+});
 
-  it("relays a signal in both directions", () => {
-    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
-    const host = fakeSocket();
-    send(handler, host.socket, { type: "create" });
-    const token = (host.received[0] as { session: { token: string } }).session.token;
-    const guest = fakeSocket();
-    send(handler, guest.socket, { type: "join", token, role: "guest" });
-    send(handler, guest.socket, { type: "accept" });
+it("relays a signal in both directions", () => {
+  const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+  const host = fakeSocket();
+  send(handler, host.socket, { type: "create" });
+  const token = (host.received[0] as { session: { token: string } }).session.token;
+  const guest = fakeSocket();
+  send(handler, guest.socket, { type: "join", token, role: "guest" });
+  send(handler, guest.socket, { type: "accept" });
 
-    const answer = { kind: "answer", sdp: "v=0 answer-sdp" };
-    send(handler, guest.socket, { type: "signal", payload: answer });
+  const answer = { kind: "answer", sdp: "v=0 answer-sdp" };
+  send(handler, guest.socket, { type: "signal", payload: answer });
 
-    expect(host.received.at(-1)).toEqual({ type: "signal", payload: answer });
-  });
+  expect(host.received.at(-1)).toEqual({ type: "signal", payload: answer });
+});
 
-  it("does not relay a signal before the session is accepted", () => {
-    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
-    const host = fakeSocket();
-    send(handler, host.socket, { type: "create" });
-    const token = (host.received[0] as { session: { token: string } }).session.token;
-    const guest = fakeSocket();
-    send(handler, guest.socket, { type: "join", token, role: "guest" });
+it("does not relay a signal before the session is accepted", () => {
+  const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+  const host = fakeSocket();
+  send(handler, host.socket, { type: "create" });
+  const token = (host.received[0] as { session: { token: string } }).session.token;
+  const guest = fakeSocket();
+  send(handler, guest.socket, { type: "join", token, role: "guest" });
 
-    const receivedBefore = guest.received.length;
-    send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } });
+  const receivedBefore = guest.received.length;
+  send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } });
 
-    expect(guest.received.length).toBe(receivedBefore);
-  });
+  expect(guest.received.length).toBe(receivedBefore);
+});
 
-  it("ignores a signal from a socket that never joined or created a session", () => {
-    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
-    const stray = fakeSocket();
+it("ignores a signal from a socket that never joined or created a session", () => {
+  const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+  const stray = fakeSocket();
 
-    expect(() =>
-      send(handler, stray.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
-    ).not.toThrow();
-    expect(stray.received).toEqual([]);
-  });
+  expect(() =>
+    send(handler, stray.socket, {
+      type: "signal",
+      payload: { kind: "offer", sdp: "v=0 offer-sdp" }
+    })
+  ).not.toThrow();
+  expect(stray.received).toEqual([]);
+});
 
-  it("drops a signal silently when the peer is not currently connected", () => {
-    const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
-    const host = fakeSocket();
-    send(handler, host.socket, { type: "create" });
-    const token = (host.received[0] as { session: { token: string } }).session.token;
-    const guest = fakeSocket();
-    send(handler, guest.socket, { type: "join", token, role: "guest" });
-    send(handler, guest.socket, { type: "accept" });
-    handler.handleClose(guest.socket);
+it("drops a signal silently when the peer is not currently connected", () => {
+  const handler = createWsHandler(createSessionStore(), createConnectionRegistry());
+  const host = fakeSocket();
+  send(handler, host.socket, { type: "create" });
+  const token = (host.received[0] as { session: { token: string } }).session.token;
+  const guest = fakeSocket();
+  send(handler, guest.socket, { type: "join", token, role: "guest" });
+  send(handler, guest.socket, { type: "accept" });
+  handler.handleClose(guest.socket);
 
-    expect(() =>
-      send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
-    ).not.toThrow();
-  });
+  expect(() =>
+    send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
+  ).not.toThrow();
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -318,23 +333,23 @@ Expected: FAIL — a `signal` message falls through to the `accept`/`reject` bra
 Modify `apps/signaling-server/src/ws-handler.ts` — insert a new branch in `handleMessage`, between the existing `join` block and the `// message.type is now "accept" | "reject"` comment:
 
 ```ts
-    if (message.type === "signal") {
-      const binding = bindings.get(socket);
-      if (!binding) {
-        return;
-      }
-      const session = store.get(binding.token);
-      if (!session || session.status !== "accepted") {
-        return;
-      }
-      const peer = registry.peerOf(binding.token, binding.role);
-      if (peer) {
-        send(peer, { type: "signal", payload: message.payload });
-      }
-      return;
-    }
+if (message.type === "signal") {
+  const binding = bindings.get(socket);
+  if (!binding) {
+    return;
+  }
+  const session = store.get(binding.token);
+  if (!session || session.status !== "accepted") {
+    return;
+  }
+  const peer = registry.peerOf(binding.token, binding.role);
+  if (peer) {
+    send(peer, { type: "signal", payload: message.payload });
+  }
+  return;
+}
 
-    // message.type is now "accept" | "reject" — both require a prior create/join.
+// message.type is now "accept" | "reject" — both require a prior create/join.
 ```
 
 (This replaces the line `// message.type is now "accept" | "reject" — both require a prior create/join.` with the block above followed by that same comment — the rest of `handleMessage` below it is unchanged.)
@@ -363,12 +378,14 @@ git commit -m "feat(signaling-server): relay signal messages between accepted-se
 Extends the existing hook with the plumbing `usePeerConnection` (Task 4) needs: a way to send a `SignalPayload` and to observe the latest one received, plus the local connection's role (needed to decide who offers). Also updates the two page test files' `makeResult()` helpers so `apps/web` keeps typechecking after this task — they reference `UseSignalingSocketResult`, which is growing.
 
 **Files:**
+
 - Modify: `apps/web/src/lib/signaling-socket.ts`
 - Modify: `apps/web/src/lib/signaling-socket.test.ts`
 - Modify: `apps/web/src/app/transferir/page.test.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `SignalPayload`, `ConnectionRole` from `@transfergo/shared` (Task 1).
 - Produces: `UseSignalingSocketResult` gains `role: ConnectionRole | undefined`, `lastSignal: SignalPayload | null`, `sendSignal: (payload: SignalPayload) => void`.
 
@@ -377,39 +394,39 @@ Extends the existing hook with the plumbing `usePeerConnection` (Task 4) needs: 
 Add to `apps/web/src/lib/signaling-socket.test.ts` (append inside the existing `describe("useSignalingSocket", ...)` block, after the last `it`):
 
 ```ts
-  it("exposes the host role after creating a session", () => {
-    const { result } = renderHook(() => useSignalingSocket());
-    act(() => result.current.createSession());
-    expect(result.current.role).toBe("host");
-  });
+it("exposes the host role after creating a session", () => {
+  const { result } = renderHook(() => useSignalingSocket());
+  act(() => result.current.createSession());
+  expect(result.current.role).toBe("host");
+});
 
-  it("exposes the guest role after joining a session", () => {
-    const { result } = renderHook(() => useSignalingSocket());
-    act(() => result.current.joinSession("abc123"));
-    expect(result.current.role).toBe("guest");
-  });
+it("exposes the guest role after joining a session", () => {
+  const { result } = renderHook(() => useSignalingSocket());
+  act(() => result.current.joinSession("abc123"));
+  expect(result.current.role).toBe("guest");
+});
 
-  it("stores the payload received via a signal message", () => {
-    const { result } = renderHook(() => useSignalingSocket());
-    act(() => result.current.joinSession("abc123"));
-    act(() => latestSocket().open());
+it("stores the payload received via a signal message", () => {
+  const { result } = renderHook(() => useSignalingSocket());
+  act(() => result.current.joinSession("abc123"));
+  act(() => latestSocket().open());
 
-    const payload = { kind: "offer" as const, sdp: "v=0 offer-sdp" };
-    act(() => latestSocket().emitMessage({ type: "signal", payload }));
+  const payload = { kind: "offer" as const, sdp: "v=0 offer-sdp" };
+  act(() => latestSocket().emitMessage({ type: "signal", payload }));
 
-    expect(result.current.lastSignal).toEqual(payload);
-  });
+  expect(result.current.lastSignal).toEqual(payload);
+});
 
-  it("sends a signal payload wrapped in a signal message", () => {
-    const { result } = renderHook(() => useSignalingSocket());
-    act(() => result.current.joinSession("abc123"));
-    act(() => latestSocket().open());
+it("sends a signal payload wrapped in a signal message", () => {
+  const { result } = renderHook(() => useSignalingSocket());
+  act(() => result.current.joinSession("abc123"));
+  act(() => latestSocket().open());
 
-    const payload = { kind: "answer" as const, sdp: "v=0 answer-sdp" };
-    act(() => result.current.sendSignal(payload));
+  const payload = { kind: "answer" as const, sdp: "v=0 answer-sdp" };
+  act(() => result.current.sendSignal(payload));
 
-    expect(JSON.parse(latestSocket().sent.at(-1)!)).toEqual({ type: "signal", payload });
-  });
+  expect(JSON.parse(latestSocket().sent.at(-1)!)).toEqual({ type: "signal", payload });
+});
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -424,7 +441,13 @@ Modify `apps/web/src/lib/signaling-socket.ts`:
 Change the import line:
 
 ```ts
-import type { ClientMessage, ConnectionRole, Session, ServerMessage, SignalPayload } from "@transfergo/shared";
+import type {
+  ClientMessage,
+  ConnectionRole,
+  Session,
+  ServerMessage,
+  SignalPayload
+} from "@transfergo/shared";
 ```
 
 Change `UseSignalingSocketResult`:
@@ -447,8 +470,8 @@ export interface UseSignalingSocketResult {
 Add two state variables alongside the existing ones (`session`, `peerOnline`, `connectionState`):
 
 ```ts
-  const [role, setRole] = useState<ConnectionRole | undefined>(undefined);
-  const [lastSignal, setLastSignal] = useState<SignalPayload | null>(null);
+const [role, setRole] = useState<ConnectionRole | undefined>(undefined);
+const [lastSignal, setLastSignal] = useState<SignalPayload | null>(null);
 ```
 
 In `connect`, set the role synchronously from what's being requested — add this as the first line inside the function body, before the `if (reconnectTimerRef.current)` check:
@@ -470,13 +493,27 @@ In `onmessage`, add a branch for `signal` (append after the existing `else if (m
 Add `sendSignal` next to the existing `accept`/`reject` callbacks:
 
 ```ts
-  const sendSignal = useCallback((payload: SignalPayload) => sendRaw({ type: "signal", payload }), [sendRaw]);
+const sendSignal = useCallback(
+  (payload: SignalPayload) => sendRaw({ type: "signal", payload }),
+  [sendRaw]
+);
 ```
 
 Update the final `return`:
 
 ```ts
-  return { session, peerOnline, connectionState, role, lastSignal, createSession, joinSession, accept, reject, sendSignal };
+return {
+  session,
+  peerOnline,
+  connectionState,
+  role,
+  lastSignal,
+  createSession,
+  joinSession,
+  accept,
+  reject,
+  sendSignal
+};
 ```
 
 Modify `apps/web/src/app/transferir/page.test.tsx` and `apps/web/src/app/s/[token]/page.test.tsx` — in each file's `makeResult()`, add the three new fields so the object still satisfies `UseSignalingSocketResult`:
@@ -523,10 +560,12 @@ git commit -m "feat(web): add sendSignal/lastSignal/role to useSignalingSocket"
 The core of this plan: a hook, independent of `useSignalingSocket`, that owns an `RTCPeerConnection` and negotiates it to an open `RTCDataChannel` using `sendSignal`/`lastSignal` as its only transport. Kept in its own file so `signaling-socket.ts` (already ~130 lines covering WS transport + reconnection) doesn't grow to cover a second, unrelated concern.
 
 **Files:**
+
 - Create: `apps/web/src/lib/peer-connection.ts`
 - Create: `apps/web/src/lib/peer-connection.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ConnectionRole`, `SignalPayload`, `IceCandidateData` from `@transfergo/shared` (Task 1); `sendSignal`/`lastSignal`/`role` from `useSignalingSocket` (Task 3) — passed in as parameters, not imported.
 - Produces: `PeerChannelState` (`"idle" | "connecting" | "open" | "failed"`), `UsePeerConnectionResult` (`{ dataChannel: RTCDataChannel | null; channelState: PeerChannelState }`), `UsePeerConnectionParams` (`{ role: ConnectionRole | undefined; accepted: boolean; sendSignal: (payload: SignalPayload) => void; lastSignal: SignalPayload | null }`), `usePeerConnection(params: UsePeerConnectionParams): UsePeerConnectionResult`.
 
@@ -627,7 +666,9 @@ afterEach(() => {
 
 describe("usePeerConnection", () => {
   it("does not create a peer connection before the session is accepted", () => {
-    renderHook(() => usePeerConnection({ role: "host", accepted: false, sendSignal: vi.fn(), lastSignal: null }));
+    renderHook(() =>
+      usePeerConnection({ role: "host", accepted: false, sendSignal: vi.fn(), lastSignal: null })
+    );
     expect(FakePeerConnection.instances).toHaveLength(0);
   });
 
@@ -658,23 +699,39 @@ describe("usePeerConnection", () => {
     const sendSignal = vi.fn();
     const { rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "guest",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 
     rerender({ lastSignal: { kind: "offer", sdp: "remote-offer-sdp" } });
     await flushAsync();
 
-    expect(latestPeerConnection().remoteDescriptions).toEqual([{ type: "offer", sdp: "remote-offer-sdp" }]);
+    expect(latestPeerConnection().remoteDescriptions).toEqual([
+      { type: "offer", sdp: "remote-offer-sdp" }
+    ]);
     expect(sendSignal).toHaveBeenCalledWith({ kind: "answer", sdp: "answer-sdp" });
   });
 
   it("buffers an ICE candidate received before the remote description, then flushes it", async () => {
     const sendSignal = vi.fn();
-    const candidate = { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: "0", sdpMLineIndex: 0 };
+    const candidate = {
+      candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+      sdpMid: "0",
+      sdpMLineIndex: 0
+    };
     const { rerender } = renderHook(
       (props: { lastSignal: SignalPayload | null }) =>
-        usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: props.lastSignal }),
+        usePeerConnection({
+          role: "guest",
+          accepted: true,
+          sendSignal,
+          lastSignal: props.lastSignal
+        }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
 
@@ -689,9 +746,15 @@ describe("usePeerConnection", () => {
 
   it("forwards local ICE candidates to sendSignal", () => {
     const sendSignal = vi.fn();
-    renderHook(() => usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null }));
+    renderHook(() =>
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+    );
 
-    const candidate = { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: "0", sdpMLineIndex: 0 };
+    const candidate = {
+      candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+      sdpMid: "0",
+      sdpMLineIndex: 0
+    };
     act(() => latestPeerConnection().onicecandidate?.({ candidate }));
 
     expect(sendSignal).toHaveBeenCalledWith({ kind: "candidate", candidate });
@@ -699,7 +762,9 @@ describe("usePeerConnection", () => {
 
   it("ignores a null candidate from onicecandidate (end-of-gathering marker)", () => {
     const sendSignal = vi.fn();
-    renderHook(() => usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null }));
+    renderHook(() =>
+      usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+    );
 
     act(() => latestPeerConnection().onicecandidate?.({ candidate: null }));
 
@@ -873,15 +938,17 @@ git commit -m "feat(web): add usePeerConnection to negotiate RTCPeerConnection o
 
 ## Task 5: Wire both pages to `usePeerConnection`
 
-Composes `usePeerConnection` into `/transferir` and `/s/[token]` so negotiation actually starts once a session is accepted. Also fixes the "A conexão real entre os dispositivos chega em um próximo passo do projeto." copy on both pages' `accepted` screen — that line was written in Plano 3/9 pointing at a future step; this plan *is* that step, so leaving it would just be a new stale forward-reference. No other rendering changes (decision already made: no visual indicator of P2P status this plan).
+Composes `usePeerConnection` into `/transferir` and `/s/[token]` so negotiation actually starts once a session is accepted. Also fixes the "A conexão real entre os dispositivos chega em um próximo passo do projeto." copy on both pages' `accepted` screen — that line was written in Plano 3/9 pointing at a future step; this plan _is_ that step, so leaving it would just be a new stale forward-reference. No other rendering changes (decision already made: no visual indicator of P2P status this plan).
 
 **Files:**
+
 - Modify: `apps/web/src/app/transferir/page.tsx`
 - Modify: `apps/web/src/app/transferir/page.test.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `usePeerConnection` from `../../lib/peer-connection.js` / `../../../lib/peer-connection.js` (Task 4); `role`, `sendSignal`, `lastSignal` from `useSignalingSocket` (Task 3).
 - No new exported interface — both pages remain default exports of a React component.
 

@@ -31,11 +31,13 @@
 Defines the wire protocol as TypeScript types plus a runtime parser/validator for incoming client messages — the signaling-server must never trust raw JSON from a socket without validating its shape first.
 
 **Files:**
+
 - Create: `packages/shared/src/signaling.ts`
 - Create: `packages/shared/src/signaling.test.ts`
 - Modify: `packages/shared/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Session` from `packages/shared/src/session.ts` (existing).
 - Produces: `ConnectionRole` (`"host" | "guest"`), `ClientMessage` (discriminated union: `{type:"create"} | {type:"join";token:string;role:ConnectionRole} | {type:"accept"} | {type:"reject"}`), `ServerErrorCode` (`"not_found" | "expired" | "already_resolved" | "invalid_role"`), `ServerMessage` (`{type:"session_state";session:Session} | {type:"peer_presence";connected:boolean} | {type:"error";code:ServerErrorCode}`), `parseClientMessage(raw: string): ClientMessage | null` — all re-exported from `@transfergo/shared`.
 
@@ -180,10 +182,12 @@ git commit -m "feat(shared): add the WebSocket signaling message protocol"
 Tracks which socket is the `host` and which is the `guest` for a given session token, independent of `session-store.ts` (which only knows session data, never sockets).
 
 **Files:**
+
 - Create: `apps/signaling-server/src/connection-registry.ts`
 - Create: `apps/signaling-server/src/connection-registry.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ConnectionRole`, `ServerMessage` from `@transfergo/shared` (Task 1).
 - Produces: `SignalingSocket` (interface: `{ send(data: string): void; close(code?: number, reason?: string): void }`), `ConnectionRegistry` (interface: `{ attach(token, role, socket): void; detach(token, role, socket): void; peerOf(token, role): SignalingSocket | undefined; broadcast(token, message: ServerMessage): void }`), `createConnectionRegistry(): ConnectionRegistry`.
 
@@ -283,7 +287,9 @@ describe("createConnectionRegistry", () => {
 
   it("broadcast on an unknown token is a no-op", () => {
     const registry = createConnectionRegistry();
-    expect(() => registry.broadcast("unknown", { type: "peer_presence", connected: true })).not.toThrow();
+    expect(() =>
+      registry.broadcast("unknown", { type: "peer_presence", connected: true })
+    ).not.toThrow();
   });
 });
 ```
@@ -384,10 +390,12 @@ git commit -m "feat(signaling-server): add the WS connection registry"
 Wires `session-store.ts` (Plano 3/9, unchanged) and `connection-registry.ts` (Task 2) together into the actual protocol behavior from the spec — this is transport-agnostic (works against fake sockets in tests, real `ws` sockets in Task 4).
 
 **Files:**
+
 - Create: `apps/signaling-server/src/ws-handler.ts`
 - Create: `apps/signaling-server/src/ws-handler.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SessionStore`/`createSessionStore` from `./session-store.js` (existing, unchanged), `ConnectionRegistry`, `SignalingSocket` from `./connection-registry.js` (Task 2), `parseClientMessage`, `ServerMessage` from `@transfergo/shared` (Task 1).
 - Produces: `WsHandler` (interface: `{ handleMessage(socket: SignalingSocket, raw: string): void; handleClose(socket: SignalingSocket): void }`), `createWsHandler(store: SessionStore, registry: ConnectionRegistry): WsHandler`.
 
@@ -414,7 +422,11 @@ function fakeSocket() {
   return { socket, received, state };
 }
 
-function send(handler: ReturnType<typeof createWsHandler>, socket: SignalingSocket, message: unknown) {
+function send(
+  handler: ReturnType<typeof createWsHandler>,
+  socket: SignalingSocket,
+  message: unknown
+) {
   handler.handleMessage(socket, JSON.stringify(message));
 }
 
@@ -426,7 +438,10 @@ describe("createWsHandler", () => {
     send(handler, host.socket, { type: "create" });
 
     expect(host.received).toHaveLength(1);
-    expect(host.received[0]).toMatchObject({ type: "session_state", session: { status: "waiting" } });
+    expect(host.received[0]).toMatchObject({
+      type: "session_state",
+      session: { status: "waiting" }
+    });
   });
 
   it("rejects a join for a token that does not exist", () => {
@@ -634,7 +649,8 @@ export function createWsHandler(store: SessionStore, registry: ConnectionRegistr
       return;
     }
 
-    const result = message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
+    const result =
+      message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
     if (!result.ok) {
       send(socket, { type: "error", code: result.reason });
       return;
@@ -684,12 +700,14 @@ git commit -m "feat(signaling-server): add the WS message handler for the signal
 Replaces the 4 REST routes with the `/ws` upgrade endpoint. This is the task that actually deletes the Plano 3/9 REST transport.
 
 **Files:**
+
 - Modify: `apps/signaling-server/package.json`
 - Modify: `apps/signaling-server/src/server.ts`
 - Create: `apps/signaling-server/src/signaling.integration.test.ts`
 - Delete: `apps/signaling-server/src/sessions.test.ts` (tested the REST routes this task removes; superseded by Task 3's `ws-handler.test.ts` and this task's integration test)
 
 **Interfaces:**
+
 - Consumes: `createConnectionRegistry` (Task 2), `createWsHandler` (Task 3), `createSessionStore`/`SessionStore` (existing, unchanged).
 - Produces: `createServer(store?: SessionStore): http.Server` — same exported signature as before, now upgrading `/ws` instead of exposing REST session routes.
 
@@ -799,13 +817,22 @@ describe("signaling over WebSocket", () => {
     await waitForOpen(guest);
     guest.send(JSON.stringify({ type: "join", token, role: "guest" }));
 
-    expect(await nextMessage(guest)).toMatchObject({ type: "session_state", session: { status: "waiting" } });
+    expect(await nextMessage(guest)).toMatchObject({
+      type: "session_state",
+      session: { status: "waiting" }
+    });
     expect(await nextMessage(guest)).toEqual({ type: "peer_presence", connected: true });
     expect(await nextMessage(host)).toEqual({ type: "peer_presence", connected: true });
 
     guest.send(JSON.stringify({ type: "accept" }));
-    expect(await nextMessage(host)).toMatchObject({ type: "session_state", session: { status: "accepted" } });
-    expect(await nextMessage(guest)).toMatchObject({ type: "session_state", session: { status: "accepted" } });
+    expect(await nextMessage(host)).toMatchObject({
+      type: "session_state",
+      session: { status: "accepted" }
+    });
+    expect(await nextMessage(guest)).toMatchObject({
+      type: "session_state",
+      session: { status: "accepted" }
+    });
 
     host.close();
     guest.close();
@@ -948,10 +975,12 @@ git commit -m "feat(signaling-server): replace REST session routes with a WebSoc
 Adds a hook that owns the browser `WebSocket`, exposes the current session/presence/connection state, and reconnects automatically with backoff, rejoining the same session it was last attached to. `lib/sessions-api.ts` (the Plano 3/9 REST client) is left in place for now — Tasks 7 and 8 still import it until they're rewritten — and is only deleted at the end of Task 8, once nothing references it anymore. Deleting it here would leave `apps/web` typechecking red between this task and Task 8.
 
 **Files:**
+
 - Create: `apps/web/src/lib/signaling-socket.ts`
 - Create: `apps/web/src/lib/signaling-socket.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ClientMessage`, `ServerMessage`, `Session` from `@transfergo/shared` (Task 1).
 - Produces: `SignalingConnectionState` (`"connecting" | "open" | "reconnecting"`), `UseSignalingSocketResult` (`{ session: Session | null | undefined; peerOnline: boolean; connectionState: SignalingConnectionState; createSession(): void; joinSession(token: string): void; accept(): void; reject(): void }`), `useSignalingSocket(): UseSignalingSocketResult`.
 
@@ -1055,7 +1084,11 @@ describe("useSignalingSocket", () => {
     act(() => result.current.joinSession("abc123"));
     act(() => latestSocket().open());
 
-    expect(JSON.parse(latestSocket().sent[0])).toEqual({ type: "join", token: "abc123", role: "guest" });
+    expect(JSON.parse(latestSocket().sent[0])).toEqual({
+      type: "join",
+      token: "abc123",
+      role: "guest"
+    });
   });
 
   it("tracks peer presence updates", () => {
@@ -1095,7 +1128,11 @@ describe("useSignalingSocket", () => {
     expect(MockWebSocket.instances).toHaveLength(2);
 
     act(() => latestSocket().open());
-    expect(JSON.parse(latestSocket().sent[0])).toEqual({ type: "join", token: "abc123", role: "guest" });
+    expect(JSON.parse(latestSocket().sent[0])).toEqual({
+      type: "join",
+      token: "abc123",
+      role: "guest"
+    });
     expect(result.current.connectionState).toBe("open");
   });
 
@@ -1195,7 +1232,10 @@ export function useSignalingSocket(): UseSignalingSocketResult {
           };
         } else if (message.type === "peer_presence") {
           setPeerOnline(message.connected);
-        } else if (message.type === "error" && (message.code === "not_found" || message.code === "expired")) {
+        } else if (
+          message.type === "error" &&
+          (message.code === "not_found" || message.code === "expired")
+        ) {
           setSession(null);
         }
       };
@@ -1228,7 +1268,10 @@ export function useSignalingSocket(): UseSignalingSocketResult {
   }, []);
 
   const createSession = useCallback(() => connect({ type: "create" }), [connect]);
-  const joinSession = useCallback((token: string) => connect({ type: "join", token, role: "guest" }), [connect]);
+  const joinSession = useCallback(
+    (token: string) => connect({ type: "join", token, role: "guest" }),
+    [connect]
+  );
   const accept = useCallback(() => sendRaw({ type: "accept" }), [sendRaw]);
   const reject = useCallback(() => sendRaw({ type: "reject" }), [sendRaw]);
 
@@ -1260,10 +1303,12 @@ git commit -m "feat(web): add useSignalingSocket alongside the existing REST cli
 Small, self-contained prop addition — done before the pages that consume it so Task 7 can wire it up directly.
 
 **Files:**
+
 - Modify: `apps/web/src/components/transferir/SessionLinkPanel.tsx`
 - Modify: `apps/web/src/components/transferir/SessionLinkPanel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: `SessionLinkPanelProps` gains a required `peerOnline: boolean` field.
 
@@ -1272,10 +1317,10 @@ Small, self-contained prop addition — done before the pages that consume it so
 Modify `apps/web/src/components/transferir/SessionLinkPanel.test.tsx` — update every existing `render(<SessionLinkPanel token="abc123" />)` call to pass `peerOnline={false}`, and add:
 
 ```tsx
-  it("shows a different description once the peer is connected", () => {
-    render(<SessionLinkPanel token="abc123" peerOnline={true} />);
-    expect(screen.getByText("Destinatário conectado, aguardando resposta.")).toBeInTheDocument();
-  });
+it("shows a different description once the peer is connected", () => {
+  render(<SessionLinkPanel token="abc123" peerOnline={true} />);
+  expect(screen.getByText("Destinatário conectado, aguardando resposta.")).toBeInTheDocument();
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1295,7 +1340,8 @@ export interface SessionLinkPanelProps {
 
 export function SessionLinkPanel({ token, peerOnline }: SessionLinkPanelProps) {
   const [copied, setCopied] = useState(false);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
+  const link =
+    typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : `/s/${token}`;
 
   async function handleCopyLink() {
     await navigator.clipboard.writeText(link);
@@ -1342,10 +1388,12 @@ git commit -m "feat(web): show peer presence in SessionLinkPanel"
 ## Task 7: `/transferir` page uses the WebSocket hook
 
 **Files:**
+
 - Modify: `apps/web/src/app/transferir/page.tsx`
 - Modify: `apps/web/src/app/transferir/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `useSignalingSocket` (Task 5), `SessionLinkPanel` with `peerOnline` (Task 6).
 
 - [ ] **Step 1: Write the failing test**
@@ -1401,7 +1449,12 @@ describe("TransferPage", () => {
   });
 
   it("shows the shareable link and peer presence while waiting", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, peerOnline: true }));
     render(<TransferPage />);
 
@@ -1411,14 +1464,24 @@ describe("TransferPage", () => {
   });
 
   it("shows the accepted screen", () => {
-    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<TransferPage />);
     expect(screen.getByRole("heading", { name: "Convite aceito" })).toBeInTheDocument();
   });
 
   it("shows the rejected screen with a retry action", async () => {
-    const session = { token: "abc123", status: "rejected" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "rejected" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     const createSession = vi.fn();
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, createSession }));
     const user = userEvent.setup();
@@ -1430,15 +1493,27 @@ describe("TransferPage", () => {
   });
 
   it("shows the expired screen", () => {
-    const session = { token: "abc123", status: "expired" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "expired" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<TransferPage />);
     expect(screen.getByRole("heading", { name: "Link expirado" })).toBeInTheDocument();
   });
 
   it("shows a reconnecting banner when the connection drops", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
-    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, connectionState: "reconnecting" }));
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(
+      makeResult({ session, connectionState: "reconnecting" })
+    );
     render(<TransferPage />);
     expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
   });
@@ -1468,14 +1543,23 @@ export default function TransferPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
-        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="Tentando reconectar..."
+        />
       )}
       {renderContent(session, peerOnline, createSession)}
     </main>
   );
 }
 
-function renderContent(session: Session | null | undefined, peerOnline: boolean, onCreateSession: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  peerOnline: boolean,
+  onCreateSession: () => void
+) {
   if (!session) {
     return (
       <StateScreen
@@ -1551,12 +1635,14 @@ git commit -m "feat(web): wire /transferir to useSignalingSocket"
 This is also the task that retires the Plano 3/9 REST client: once this page stops importing it, nothing in `apps/web` does.
 
 **Files:**
+
 - Modify: `apps/web/src/app/s/[token]/page.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.test.tsx`
 - Delete: `apps/web/src/lib/sessions-api.ts` (Step 6, after the rewrite)
 - Delete: `apps/web/src/lib/sessions-api.test.ts` (Step 6, after the rewrite)
 
 **Interfaces:**
+
 - Consumes: `useSignalingSocket` (Task 5).
 
 - [ ] **Step 1: Write the failing test**
@@ -1567,7 +1653,10 @@ Replace the full contents of `apps/web/src/app/s/[token]/page.test.tsx`:
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useSignalingSocket, type UseSignalingSocketResult } from "../../../lib/signaling-socket.js";
+import {
+  useSignalingSocket,
+  type UseSignalingSocketResult
+} from "../../../lib/signaling-socket.js";
 import SessionInvitePage from "./page.js";
 
 vi.mock("next/navigation", () => ({
@@ -1612,7 +1701,12 @@ describe("SessionInvitePage", () => {
   });
 
   it("shows the invite with accept/reject actions while waiting", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<SessionInvitePage />);
 
@@ -1629,7 +1723,12 @@ describe("SessionInvitePage", () => {
 
   it("calls accept when the accept button is clicked", async () => {
     const accept = vi.fn();
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, accept }));
     const user = userEvent.setup();
     render(<SessionInvitePage />);
@@ -1640,7 +1739,12 @@ describe("SessionInvitePage", () => {
 
   it("calls reject when the reject button is clicked", async () => {
     const reject = vi.fn();
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, reject }));
     const user = userEvent.setup();
     render(<SessionInvitePage />);
@@ -1650,8 +1754,15 @@ describe("SessionInvitePage", () => {
   });
 
   it("shows a reconnecting banner on top of the invite when the connection drops", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
-    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, connectionState: "reconnecting" }));
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(
+      makeResult({ session, connectionState: "reconnecting" })
+    );
     render(<SessionInvitePage />);
 
     expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
@@ -1675,7 +1786,15 @@ Replace the full contents of `apps/web/src/app/s/[token]/page.tsx`:
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  StateScreen,
+  WifiOff,
+  XCircle
+} from "@transfergo/ui";
 import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
@@ -1689,16 +1808,27 @@ export default function SessionInvitePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
-        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="Tentando reconectar..."
+        />
       )}
       {renderContent(session, accept, reject)}
     </main>
   );
 }
 
-function renderContent(session: Session | null | undefined, onAccept: () => void, onReject: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  onAccept: () => void,
+  onReject: () => void
+) {
   if (session === undefined) {
-    return <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />;
+    return (
+      <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />
+    );
   }
 
   if (session === null) {
@@ -1831,13 +1961,15 @@ No commit for this task — it is verification of work already committed in Task
 
 ## Task 10: Push session expiry over WebSocket (apps/signaling-server)
 
-Added after the final whole-branch review found a real gap against this plan's own design spec (§2: `session_state` must be sent "a cada transição de status (accept/reject/**expiração detectada**)"). Without this, a client already connected and idly waiting on a `waiting` session never learns it expired — the "Link expirado" branch on both pages is unreachable dead code for anyone who doesn't force a fresh `join`. `session-store.ts`'s TTL/expiry computation itself is unchanged and correct (Plano 3/9); what was missing is *pushing* that transition to already-connected sockets instead of only computing it on demand.
+Added after the final whole-branch review found a real gap against this plan's own design spec (§2: `session_state` must be sent "a cada transição de status (accept/reject/**expiração detectada**)"). Without this, a client already connected and idly waiting on a `waiting` session never learns it expired — the "Link expirado" branch on both pages is unreachable dead code for anyone who doesn't force a fresh `join`. `session-store.ts`'s TTL/expiry computation itself is unchanged and correct (Plano 3/9); what was missing is _pushing_ that transition to already-connected sockets instead of only computing it on demand.
 
 **Files:**
+
 - Modify: `apps/signaling-server/src/ws-handler.ts`
 - Modify: `apps/signaling-server/src/ws-handler.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SessionStore.get`, `ConnectionRegistry.broadcast` (both existing, unchanged signatures).
 - No new public interface — `WsHandler`'s shape (`handleMessage`, `handleClose`) is unchanged; this is internal scheduling logic.
 
@@ -1859,8 +1991,14 @@ it("pushes an expired session_state to both sides once the TTL elapses", () => {
 
     vi.advanceTimersByTime(1050); // ttlMs (1000) + the scheduling buffer (50)
 
-    expect(host.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
-    expect(guest.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
+    expect(host.received.at(-1)).toMatchObject({
+      type: "session_state",
+      session: { status: "expired" }
+    });
+    expect(guest.received.at(-1)).toMatchObject({
+      type: "session_state",
+      session: { status: "expired" }
+    });
   } finally {
     vi.useRealTimers();
   }
@@ -1943,7 +2081,8 @@ if (message.type === "create") {
 In the `accept`/`reject` branch, right after the `result.ok` check succeeds and before `registry.broadcast(...)`:
 
 ```ts
-const result = message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
+const result =
+  message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
 if (!result.ok) {
   send(socket, { type: "error", code: result.reason });
   return;

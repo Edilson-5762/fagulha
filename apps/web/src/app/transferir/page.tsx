@@ -9,7 +9,8 @@ import { useFileTransfer } from "../../lib/use-file-transfer.js";
 import { useSignalingSocket } from "../../lib/signaling-socket.js";
 
 export default function TransferPage() {
-  const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } = useSignalingSocket();
+  const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } =
+    useSignalingSocket();
   const { dataChannel, channelState } = usePeerConnection({
     role,
     accepted: session?.status === "accepted",
@@ -21,7 +22,12 @@ export default function TransferPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
-        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="Tentando reconectar..."
+        />
       )}
       {session?.status === "accepted" && channelState === "open" ? (
         <SendPanel transfer={transfer} />
@@ -32,7 +38,11 @@ export default function TransferPage() {
   );
 }
 
-function renderContent(session: Session | null | undefined, peerOnline: boolean, onCreateSession: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  peerOnline: boolean,
+  onCreateSession: () => void
+) {
   if (!session) {
     return (
       <StateScreen

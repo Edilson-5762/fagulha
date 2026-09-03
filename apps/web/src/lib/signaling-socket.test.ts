@@ -97,7 +97,11 @@ describe("useSignalingSocket", () => {
     act(() => result.current.joinSession("abc123"));
     act(() => latestSocket().open());
 
-    expect(JSON.parse(latestSocket().sent[0]!)).toEqual({ type: "join", token: "abc123", role: "guest" });
+    expect(JSON.parse(latestSocket().sent[0]!)).toEqual({
+      type: "join",
+      token: "abc123",
+      role: "guest"
+    });
   });
 
   it("tracks peer presence updates", () => {
@@ -137,7 +141,11 @@ describe("useSignalingSocket", () => {
     expect(MockWebSocket.instances).toHaveLength(2);
 
     act(() => latestSocket().open());
-    expect(JSON.parse(latestSocket().sent[0]!)).toEqual({ type: "join", token: "abc123", role: "guest" });
+    expect(JSON.parse(latestSocket().sent[0]!)).toEqual({
+      type: "join",
+      token: "abc123",
+      role: "guest"
+    });
     expect(result.current.connectionState).toBe("open");
   });
 

@@ -1,6 +1,16 @@
 "use client";
 
-import { AlertTriangle, Button, CheckCircle2, Download, FileText, Inbox, ProgressBar, StateScreen, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  Button,
+  CheckCircle2,
+  Download,
+  FileText,
+  Inbox,
+  ProgressBar,
+  StateScreen,
+  XCircle
+} from "@transfergo/ui";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { formatBytes, formatDuration, formatSpeed } from "../../lib/transfer-format.js";
 
@@ -62,7 +72,9 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
     const activeName = incomingBatch?.files[overall.filesDone]?.name ?? "";
     const bytesPct = overall.bytesTotal > 0 ? (overall.bytesDone / overall.bytesTotal) * 100 : 0;
 
-    const statusParts: string[] = [`${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`];
+    const statusParts: string[] = [
+      `${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`
+    ];
     if (stats.speedBytesPerSec === 0) {
       statusParts.push("parado");
     } else if (stats.speedBytesPerSec != null) {
@@ -112,7 +124,9 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
                     <span className="truncate">{file.name}</span>
                   </span>
                   <span className="ml-3 flex shrink-0 items-center gap-1 text-text-muted">
-                    {state === "completed" && <CheckCircle2 className="size-3 text-success" aria-hidden="true" />}
+                    {state === "completed" && (
+                      <CheckCircle2 className="size-3 text-success" aria-hidden="true" />
+                    )}
                     {label}
                   </span>
                 </div>
@@ -149,7 +163,8 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
       />
       {incomingBatch.requiresMemoryWarning && (
         <p className="mt-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-          Este navegador vai precisar segurar o arquivo inteiro na memória. Para arquivos grandes, use o Chrome ou o Edge no computador.
+          Este navegador vai precisar segurar o arquivo inteiro na memória. Para arquivos grandes,
+          use o Chrome ou o Edge no computador.
         </p>
       )}
     </div>

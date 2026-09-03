@@ -25,10 +25,16 @@ class FakeChannel implements DataChannelLike {
   send(data: string | ArrayBuffer): void {
     this.sent.push(data);
   }
-  addEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  addEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     if (type === "message") this.listeners.push(listener);
   }
-  removeEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  removeEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     this.listeners = this.listeners.filter((l) => l !== listener);
   }
   feed(data: unknown): void {
@@ -67,7 +73,8 @@ const meta = (over: Partial<FileMeta> = {}): FileMeta => ({
   ...over
 });
 const flush = () => new Promise((r) => setTimeout(r, 0));
-const offer = (files: FileMeta[], id = "b1") => encodeControl({ t: "batch-offer", batch: { id, files } });
+const offer = (files: FileMeta[], id = "b1") =>
+  encodeControl({ t: "batch-offer", batch: { id, files } });
 
 describe("TransferReceiver", () => {
   it("validates limits and emits a sanitized batch offer", () => {
@@ -163,7 +170,12 @@ describe("TransferReceiver", () => {
   it("rejects an oversized binary frame as bad-frame", async () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onError }, { maxBinaryFrameBytes: 8 });
+    const receiver = new TransferReceiver(
+      ch,
+      () => Promise.resolve(new MemorySink()),
+      { onError },
+      { maxBinaryFrameBytes: 8 }
+    );
     ch.feed(offer([meta({ id: "f1", size: 100 })]));
     receiver.accept();
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
@@ -231,7 +243,10 @@ describe("TransferReceiver", () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
     const onBatchComplete = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onError, onBatchComplete });
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), {
+      onError,
+      onBatchComplete
+    });
     ch.feed(offer([meta({ id: "f1", size: 4 }), meta({ id: "f2", size: 4 })]));
     receiver.accept();
     ch.feed(encodeControl({ t: "batch-complete" }));
@@ -278,8 +293,12 @@ describe("TransferReceiver", () => {
   it("reports the count of fully-received files when cancelled mid-batch", async () => {
     const ch = new FakeChannel();
     const onCancelled = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onCancelled });
-    ch.feed(offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 }), meta({ id: "f3", size: 2 })]));
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), {
+      onCancelled
+    });
+    ch.feed(
+      offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 }), meta({ id: "f3", size: 2 })])
+    );
     receiver.accept();
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
     await flush();
@@ -296,7 +315,9 @@ describe("TransferReceiver", () => {
   it("reports 0 fully-received files when cancelled before any file-end", async () => {
     const ch = new FakeChannel();
     const onCancelled = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onCancelled });
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), {
+      onCancelled
+    });
     ch.feed(offer([meta({ id: "f1", size: 2 })]));
     receiver.accept();
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));

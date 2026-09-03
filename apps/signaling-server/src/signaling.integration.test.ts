@@ -83,13 +83,22 @@ describe("signaling over WebSocket", () => {
     await waitForOpen(guest);
     guest.send(JSON.stringify({ type: "join", token, role: "guest" }));
 
-    expect(await nextMessage(guest)).toMatchObject({ type: "session_state", session: { status: "waiting" } });
+    expect(await nextMessage(guest)).toMatchObject({
+      type: "session_state",
+      session: { status: "waiting" }
+    });
     expect(await nextMessage(guest)).toEqual({ type: "peer_presence", connected: true });
     expect(await nextMessage(host)).toEqual({ type: "peer_presence", connected: true });
 
     guest.send(JSON.stringify({ type: "accept" }));
-    expect(await nextMessage(host)).toMatchObject({ type: "session_state", session: { status: "accepted" } });
-    expect(await nextMessage(guest)).toMatchObject({ type: "session_state", session: { status: "accepted" } });
+    expect(await nextMessage(host)).toMatchObject({
+      type: "session_state",
+      session: { status: "accepted" }
+    });
+    expect(await nextMessage(guest)).toMatchObject({
+      type: "session_state",
+      session: { status: "accepted" }
+    });
 
     host.close();
     guest.close();

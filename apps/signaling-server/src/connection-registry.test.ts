@@ -89,6 +89,8 @@ describe("createConnectionRegistry", () => {
 
   it("broadcast on an unknown token is a no-op", () => {
     const registry = createConnectionRegistry();
-    expect(() => registry.broadcast("unknown", { type: "peer_presence", connected: true })).not.toThrow();
+    expect(() =>
+      registry.broadcast("unknown", { type: "peer_presence", connected: true })
+    ).not.toThrow();
   });
 });

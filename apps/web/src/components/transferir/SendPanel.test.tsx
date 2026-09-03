@@ -26,14 +26,25 @@ const base: UseFileTransferResult = {
   cancel: vi.fn()
 };
 
-const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({ ...base, ...over });
+const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({
+  ...base,
+  ...over
+});
 
 describe("SendPanel", () => {
   it("lists selected files with a size badge and a total", () => {
     render(
       <SendPanel
         transfer={withOverrides({
-          selectedFiles: [{ id: "f1", name: "a.jpg", size: 5 * 1024 * 1024, type: "image/jpeg", sizeClass: "small" }],
+          selectedFiles: [
+            {
+              id: "f1",
+              name: "a.jpg",
+              size: 5 * 1024 * 1024,
+              type: "image/jpeg",
+              sizeClass: "small"
+            }
+          ],
           totalBytes: 5 * 1024 * 1024
         })}
       />
@@ -50,7 +61,8 @@ describe("SendPanel", () => {
         transfer={withOverrides({
           selectedFiles: [{ id: "f1", name: "big.bin", size: 9e9, type: "", sizeClass: "large" }],
           totalBytes: 9e9,
-          limitError: "Você selecionou 8.4 GB. O limite por envio é 5 GB. Remova alguns arquivos para continuar."
+          limitError:
+            "Você selecionou 8.4 GB. O limite por envio é 5 GB. Remova alguns arquivos para continuar."
         })}
       />
     );
@@ -168,21 +180,35 @@ describe("SendPanel", () => {
   it("says nothing arrived when filesSaved is 0 on cancel", () => {
     render(
       <SendPanel
-        transfer={withOverrides({ phase: "cancelled", filesSaved: 0, overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 5 } })}
+        transfer={withOverrides({
+          phase: "cancelled",
+          filesSaved: 0,
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 5 }
+        })}
       />
     );
     expect(screen.getByText("Nenhum arquivo chegou.")).toBeInTheDocument();
   });
 
   it("shows the preparing message", () => {
-    render(<SendPanel transfer={withOverrides({ phase: "preparing", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 3 } })} />);
+    render(
+      <SendPanel
+        transfer={withOverrides({
+          phase: "preparing",
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 3 }
+        })}
+      />
+    );
     expect(screen.getByText("Preparando a transferência…")).toBeInTheDocument();
   });
 
   it("shows the success screen when completed", () => {
     render(
       <SendPanel
-        transfer={withOverrides({ phase: "completed", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 2 } })}
+        transfer={withOverrides({
+          phase: "completed",
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 2 }
+        })}
       />
     );
     expect(screen.getByText("2 arquivos transferidos com sucesso")).toBeInTheDocument();
@@ -190,7 +216,12 @@ describe("SendPanel", () => {
 
   it("shows the error screen when failed", () => {
     render(
-      <SendPanel transfer={withOverrides({ phase: "failed", errorMessage: "O outro lado recusou a transferência." })} />
+      <SendPanel
+        transfer={withOverrides({
+          phase: "failed",
+          errorMessage: "O outro lado recusou a transferência."
+        })}
+      />
     );
     expect(screen.getByText("O outro lado recusou a transferência.")).toBeInTheDocument();
   });

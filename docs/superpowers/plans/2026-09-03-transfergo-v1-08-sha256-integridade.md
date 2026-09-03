@@ -22,12 +22,12 @@
 - **`createHasher` injetável** nos dois lados (`SenderOptions`/`ReceiverOptions`), default `createSha256Hasher`.
 - **Verificação ANTES do `close()`** no receptor: `fail()` aborta o sink, o arquivo corrompido nunca é `close()`d.
 - **Textos pt-BR (fonte única):**
-  | Contexto | Texto |
-  | --- | --- |
-  | Rótulo de arquivo verificado (receptor) | `Verificado` |
-  | Rótulo de arquivo concluído (emissor) | `Concluído` (inalterado) |
-  | Linha de integridade nas telas de sucesso | `Integridade verificada (SHA-256)` |
-  | `ERROR_MESSAGES.integrity` | `Um arquivo chegou corrompido. A transferência foi interrompida.` |
+  | Contexto                                  | Texto                                                             |
+  | ----------------------------------------- | ----------------------------------------------------------------- |
+  | Rótulo de arquivo verificado (receptor)   | `Verificado`                                                      |
+  | Rótulo de arquivo concluído (emissor)     | `Concluído` (inalterado)                                          |
+  | Linha de integridade nas telas de sucesso | `Integridade verificada (SHA-256)`                                |
+  | `ERROR_MESSAGES.integrity`                | `Um arquivo chegou corrompido. A transferência foi interrompida.` |
 - **Portão por tarefa:** cada tarefa termina com os testes do pacote afetado verdes. A última tarefa roda `pnpm turbo run lint typecheck test build` inteiro.
 - **Commits frequentes**, um por tarefa no mínimo, mensagem `feat(...)` / `fix(...)` / `test(...)` conforme o conteúdo, terminando com:
   `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`
@@ -36,27 +36,27 @@
 
 ## Estrutura de arquivos
 
-| Arquivo | Papel | Tarefa |
-| --- | --- | --- |
-| `packages/transfer-engine/package.json` + `pnpm-lock.yaml` | `@noble/hashes` como `dependencies` | 1 |
-| `packages/transfer-engine/src/hash.ts` | **novo** — `interface Hasher`, `type CreateHasher`, `createSha256Hasher` | 1 |
-| `packages/transfer-engine/src/hash.test.ts` | **novo** — vetores NIST, incremental = de uma vez, formato do digest | 1 |
-| `packages/transfer-engine/src/protocol.ts` | `sha256` no `file-end`; `decodeControl` valida 64 hex | 2 |
-| `packages/transfer-engine/src/protocol.test.ts` | round-trip com `sha256`; casos malformados | 2 |
-| `packages/transfer-engine/src/types.ts` | `TransferErrorCode` ganha `"integrity"` | 2 |
-| `packages/transfer-engine/src/sender.ts` | `createHasher?` em `SenderOptions` + default; `Hasher` por arquivo; `sha256` no `file-end` | 3 |
-| `packages/transfer-engine/src/sender.test.ts` | ajusta asserção de `file-end`; testa `sha256` real e hash por arquivo | 3 |
-| `packages/transfer-engine/src/receiver.ts` | `createHasher?` + default; `currentHash`; comparação no `file-end`; `fail("integrity")` | 4 |
-| `packages/transfer-engine/src/receiver.test.ts` | helper `fileEnd()`; ajusta call sites; testa `integrity` | 4 |
-| `packages/transfer-engine/src/loopback.integration.test.ts` | asserção de `sha256` real; `Endpoint` que corrompe 1 byte → `integrity` | 5 |
-| `apps/web/src/lib/use-file-transfer.ts` | `ERROR_MESSAGES.integrity`; `integrityVerified: boolean` no resultado | 6 |
-| `apps/web/src/lib/use-file-transfer.test.ts` | testa mensagem de erro e `integrityVerified` | 6 |
-| `apps/web/src/app/transferir/page.test.tsx` | stub do mock ganha `integrityVerified: false` | 6 |
-| `apps/web/src/app/s/[token]/page.test.tsx` | idem | 6 |
-| `apps/web/src/components/s/ReceivePanel.tsx` | rótulo `completed` → "Verificado" + `CheckCircle2`; linha de integridade na tela final | 7 |
-| `apps/web/src/components/s/ReceivePanel.test.tsx` | fixture `base` ganha `integrityVerified`; testes novos | 7 |
-| `apps/web/src/components/transferir/SendPanel.tsx` | linha de integridade na tela final (rótulo por arquivo inalterado) | 7 |
-| `apps/web/src/components/transferir/SendPanel.test.tsx` | fixture `base` ganha `integrityVerified`; testes novos | 7 |
+| Arquivo                                                     | Papel                                                                                      | Tarefa |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------ |
+| `packages/transfer-engine/package.json` + `pnpm-lock.yaml`  | `@noble/hashes` como `dependencies`                                                        | 1      |
+| `packages/transfer-engine/src/hash.ts`                      | **novo** — `interface Hasher`, `type CreateHasher`, `createSha256Hasher`                   | 1      |
+| `packages/transfer-engine/src/hash.test.ts`                 | **novo** — vetores NIST, incremental = de uma vez, formato do digest                       | 1      |
+| `packages/transfer-engine/src/protocol.ts`                  | `sha256` no `file-end`; `decodeControl` valida 64 hex                                      | 2      |
+| `packages/transfer-engine/src/protocol.test.ts`             | round-trip com `sha256`; casos malformados                                                 | 2      |
+| `packages/transfer-engine/src/types.ts`                     | `TransferErrorCode` ganha `"integrity"`                                                    | 2      |
+| `packages/transfer-engine/src/sender.ts`                    | `createHasher?` em `SenderOptions` + default; `Hasher` por arquivo; `sha256` no `file-end` | 3      |
+| `packages/transfer-engine/src/sender.test.ts`               | ajusta asserção de `file-end`; testa `sha256` real e hash por arquivo                      | 3      |
+| `packages/transfer-engine/src/receiver.ts`                  | `createHasher?` + default; `currentHash`; comparação no `file-end`; `fail("integrity")`    | 4      |
+| `packages/transfer-engine/src/receiver.test.ts`             | helper `fileEnd()`; ajusta call sites; testa `integrity`                                   | 4      |
+| `packages/transfer-engine/src/loopback.integration.test.ts` | asserção de `sha256` real; `Endpoint` que corrompe 1 byte → `integrity`                    | 5      |
+| `apps/web/src/lib/use-file-transfer.ts`                     | `ERROR_MESSAGES.integrity`; `integrityVerified: boolean` no resultado                      | 6      |
+| `apps/web/src/lib/use-file-transfer.test.ts`                | testa mensagem de erro e `integrityVerified`                                               | 6      |
+| `apps/web/src/app/transferir/page.test.tsx`                 | stub do mock ganha `integrityVerified: false`                                              | 6      |
+| `apps/web/src/app/s/[token]/page.test.tsx`                  | idem                                                                                       | 6      |
+| `apps/web/src/components/s/ReceivePanel.tsx`                | rótulo `completed` → "Verificado" + `CheckCircle2`; linha de integridade na tela final     | 7      |
+| `apps/web/src/components/s/ReceivePanel.test.tsx`           | fixture `base` ganha `integrityVerified`; testes novos                                     | 7      |
+| `apps/web/src/components/transferir/SendPanel.tsx`          | linha de integridade na tela final (rótulo por arquivo inalterado)                         | 7      |
+| `apps/web/src/components/transferir/SendPanel.test.tsx`     | fixture `base` ganha `integrityVerified`; testes novos                                     | 7      |
 
 Um arquivo de produção novo (`hash.ts`) + um de teste novo (`hash.test.ts`). Sem mudança no barrel `index.ts` (o default embutido cobre o hook; os testes importam `./hash.js` direto).
 
@@ -65,11 +65,13 @@ Um arquivo de produção novo (`hash.ts`) + um de teste novo (`hash.test.ts`). S
 ## Task 1: `hash.ts` — wrapper SHA-256 incremental + dependência `@noble/hashes`
 
 **Files:**
+
 - Modify: `packages/transfer-engine/package.json`, `pnpm-lock.yaml` (via `pnpm add`)
 - Create: `packages/transfer-engine/src/hash.ts`
 - Test: `packages/transfer-engine/src/hash.test.ts`
 
 **Interfaces:**
+
 - Consumes: `@noble/hashes` — `sha256.create()` → `.update(Uint8Array)` → `.digest()` (`Uint8Array`); `bytesToHex`.
 - Produces:
   - `export interface Hasher { update(bytes: Uint8Array): void; digest(): string }` — `digest()` devolve hex minúsculo de 64 chars e consome o hasher (chamar uma vez só).
@@ -81,6 +83,7 @@ Um arquivo de produção novo (`hash.ts`) + um de teste novo (`hash.test.ts`). S
 Run: `pnpm add @noble/hashes --filter @transfergo/transfer-engine`
 
 Depois confira a versão que resolveu em `packages/transfer-engine/package.json` (algo como `"@noble/hashes": "^1.8.0"`) e verifique o caminho de import da API SHA-256:
+
 - **1.7 ou maior** (o caso esperado): `import { sha256 } from "@noble/hashes/sha2"`
 - **1.x anterior a 1.7**: `import { sha256 } from "@noble/hashes/sha256"`
 
@@ -101,7 +104,7 @@ const SHA256_EMPTY = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b78
 const utf8 = (s: string) => new TextEncoder().encode(s);
 
 describe("createSha256Hasher", () => {
-  it("matches the NIST vector for \"abc\"", () => {
+  it('matches the NIST vector for "abc"', () => {
     const h = createSha256Hasher();
     h.update(utf8("abc"));
     expect(h.digest()).toBe(SHA256_ABC);
@@ -188,11 +191,13 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 2: Protocolo — `sha256` no `file-end`, validação, código de erro `integrity`
 
 **Files:**
+
 - Modify: `packages/transfer-engine/src/protocol.ts:9` (tipo `ControlFrame`), `:79-82` (`case "file-end"` em `decodeControl`)
 - Modify: `packages/transfer-engine/src/types.ts:50-57` (`TransferErrorCode`)
 - Test: `packages/transfer-engine/src/protocol.test.ts`
 
 **Interfaces:**
+
 - Consumes: nada novo.
 - Produces:
   - `ControlFrame` membro `file-end` passa a ser `{ t: "file-end"; id: string; bytesSent: number; sha256: string }`.
@@ -210,21 +215,38 @@ Em `packages/transfer-engine/src/protocol.test.ts`, no teste `"round-trips every
 No teste `"rejects malformed JSON, unknown kinds, and bad payload shapes"`, acrescente estas asserções:
 
 ```ts
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1 }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(63) }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(65) }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "A".repeat(64) }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: `${"a".repeat(63)}z` }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: 12345 }))).toBeNull();
+expect(decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1 }))).toBeNull();
+expect(
+  decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(63) }))
+).toBeNull();
+expect(
+  decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "a".repeat(65) }))
+).toBeNull();
+expect(
+  decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: "A".repeat(64) }))
+).toBeNull();
+expect(
+  decodeControl(
+    JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: `${"a".repeat(63)}z` })
+  )
+).toBeNull();
+expect(
+  decodeControl(JSON.stringify({ t: "file-end", id: "f1", bytesSent: 1, sha256: 12345 }))
+).toBeNull();
 ```
 
 E um teste novo logo depois do bloco `describe("encodeControl / decodeControl", …)` fecha — dentro do mesmo `describe`:
 
 ```ts
-  it("round-trips a file-end carrying a sha256 digest", () => {
-    const frame = { t: "file-end", id: "f1", bytesSent: 2048, sha256: "0123456789abcdef".repeat(4) } as const;
-    expect(decodeControl(encodeControl(frame))).toEqual(frame);
-  });
+it("round-trips a file-end carrying a sha256 digest", () => {
+  const frame = {
+    t: "file-end",
+    id: "f1",
+    bytesSent: 2048,
+    sha256: "0123456789abcdef".repeat(4)
+  } as const;
+  expect(decodeControl(encodeControl(frame))).toEqual(frame);
+});
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -295,10 +317,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 3: Emissor — hash por arquivo, `sha256` no `file-end`
 
 **Files:**
+
 - Modify: `packages/transfer-engine/src/sender.ts` — `import`, `SenderOptions`, `DEFAULTS`, `runBatch`
 - Test: `packages/transfer-engine/src/sender.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createSha256Hasher`, `type CreateHasher` de `./hash.js`.
 - Produces:
   - `SenderOptions` ganha `createHasher?: CreateHasher` (default `createSha256Hasher`).
@@ -323,60 +347,60 @@ const sha = (bytes: Uint8Array): string => {
 No teste `"after batch-accept: file-begin, ordered chunks that reassemble, file-end, batch-complete"`, troque a asserção do array de `controlFrames` para incluir o hash:
 
 ```ts
-    expect(ch.controlFrames).toEqual([
-      { t: "batch-offer", batch: { id: "b1", files: [meta({ id: "f1", size: 50 })] } },
-      { t: "file-begin", id: "f1", offset: 0 },
-      { t: "file-end", id: "f1", bytesSent: 50, sha256: sha(data) },
-      { t: "batch-complete" }
-    ]);
+expect(ch.controlFrames).toEqual([
+  { t: "batch-offer", batch: { id: "b1", files: [meta({ id: "f1", size: 50 })] } },
+  { t: "file-begin", id: "f1", offset: 0 },
+  { t: "file-end", id: "f1", bytesSent: 50, sha256: sha(data) },
+  { t: "batch-complete" }
+]);
 ```
 
 Acrescente dois testes novos ao final do `describe("TransferSender", …)`:
 
 ```ts
-  it("puts the real SHA-256 of the file content on the file-end frame", async () => {
-    const ch = new FakeChannel();
-    const data = new Uint8Array(40).map((_, i) => (i * 3) % 256);
-    const sender = new TransferSender(
-      ch,
-      "b1",
-      [{ meta: meta({ id: "f1", size: 40 }), source: bytesSource(data) }],
-      {},
-      { chunkSize: 16 }
-    );
-    sender.start();
-    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
-    await flush();
+it("puts the real SHA-256 of the file content on the file-end frame", async () => {
+  const ch = new FakeChannel();
+  const data = new Uint8Array(40).map((_, i) => (i * 3) % 256);
+  const sender = new TransferSender(
+    ch,
+    "b1",
+    [{ meta: meta({ id: "f1", size: 40 }), source: bytesSource(data) }],
+    {},
+    { chunkSize: 16 }
+  );
+  sender.start();
+  ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+  await flush();
 
-    const end = ch.controlFrames.find((f) => f?.t === "file-end");
-    expect(end).toEqual({ t: "file-end", id: "f1", bytesSent: 40, sha256: sha(data) });
-  });
+  const end = ch.controlFrames.find((f) => f?.t === "file-end");
+  expect(end).toEqual({ t: "file-end", id: "f1", bytesSent: 40, sha256: sha(data) });
+});
 
-  it("hashes each file independently — no digest bleed between files", async () => {
-    const ch = new FakeChannel();
-    const a = new Uint8Array([1, 1, 1, 1]);
-    const b = new Uint8Array([2, 2, 2, 2]);
-    const sender = new TransferSender(
-      ch,
-      "b1",
-      [
-        { meta: meta({ id: "f1", size: 4 }), source: bytesSource(a) },
-        { meta: meta({ id: "f2", size: 4 }), source: bytesSource(b) }
-      ],
-      {},
-      { chunkSize: 4 }
-    );
-    sender.start();
-    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
-    await flush();
+it("hashes each file independently — no digest bleed between files", async () => {
+  const ch = new FakeChannel();
+  const a = new Uint8Array([1, 1, 1, 1]);
+  const b = new Uint8Array([2, 2, 2, 2]);
+  const sender = new TransferSender(
+    ch,
+    "b1",
+    [
+      { meta: meta({ id: "f1", size: 4 }), source: bytesSource(a) },
+      { meta: meta({ id: "f2", size: 4 }), source: bytesSource(b) }
+    ],
+    {},
+    { chunkSize: 4 }
+  );
+  sender.start();
+  ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+  await flush();
 
-    const ends = ch.controlFrames.filter((f) => f?.t === "file-end");
-    expect(ends).toEqual([
-      { t: "file-end", id: "f1", bytesSent: 4, sha256: sha(a) },
-      { t: "file-end", id: "f2", bytesSent: 4, sha256: sha(b) }
-    ]);
-    expect(ends[0]).not.toEqual(ends[1]);
-  });
+  const ends = ch.controlFrames.filter((f) => f?.t === "file-end");
+  expect(ends).toEqual([
+    { t: "file-end", id: "f1", bytesSent: 4, sha256: sha(a) },
+    { t: "file-end", id: "f2", bytesSent: 4, sha256: sha(b) }
+  ]);
+  expect(ends[0]).not.toEqual(ends[1]);
+});
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -421,25 +445,28 @@ const DEFAULTS = {
 No `runBatch`, dentro do `for` por arquivo, logo depois de `const { meta, source } = this.inputs[index]!;` crie o hasher:
 
 ```ts
-        const { meta, source } = this.inputs[index]!;
-        const hasher = this.opts.createHasher();
-        this.send({ t: "file-begin", id: meta.id, offset: 0 });
+const { meta, source } = this.inputs[index]!;
+const hasher = this.opts.createHasher();
+this.send({ t: "file-begin", id: meta.id, offset: 0 });
 ```
 
 Dentro do `while`, depois dos checks de cancel e antes do `this.channel.send(chunk);`, alimente o hasher com o mesmo buffer:
 
 ```ts
-          if (chunk.byteLength === 0) {
-            throw new TransferError("channel-error", `source.read returned 0 bytes with ${source.size - sent} still to send`);
-          }
-          hasher.update(new Uint8Array(chunk));
-          this.channel.send(chunk);
+if (chunk.byteLength === 0) {
+  throw new TransferError(
+    "channel-error",
+    `source.read returned 0 bytes with ${source.size - sent} still to send`
+  );
+}
+hasher.update(new Uint8Array(chunk));
+this.channel.send(chunk);
 ```
 
 E troque o `file-end`:
 
 ```ts
-        this.send({ t: "file-end", id: meta.id, bytesSent: sent, sha256: hasher.digest() });
+this.send({ t: "file-end", id: meta.id, bytesSent: sent, sha256: hasher.digest() });
 ```
 
 - [ ] **Step 5: Rodar e ver passar**
@@ -461,10 +488,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 4: Receptor — verificação de integridade no `file-end`
 
 **Files:**
+
 - Modify: `packages/transfer-engine/src/receiver.ts` — `import`, `ReceiverOptions`, `DEFAULTS`, campo `currentHash`, `file-begin`, `handleBinary`, `file-end`, `cancel`, `fail`
 - Test: `packages/transfer-engine/src/receiver.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createSha256Hasher`, `type CreateHasher`, `type Hasher` de `./hash.js`.
 - Produces:
   - `ReceiverOptions` ganha `createHasher?: CreateHasher` (default `createSha256Hasher`).
@@ -516,92 +545,92 @@ Agora troque cada `ch.feed(encodeControl({ t: "file-end", … }))` existente:
 Acrescente três testes novos ao final do `describe("TransferReceiver", …)`:
 
 ```ts
-  it("fails 'integrity' when the file-end digest does not match the received bytes", async () => {
-    const ch = new FakeChannel();
-    const sink = new MemorySink();
-    const onError = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
-    ch.feed(offer([meta({ id: "f1", size: 3 })]));
-    receiver.accept();
-    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
-    await flush();
-    ch.feed(new Uint8Array([1, 2, 3]).buffer);
-    ch.feed(fileEndBadHash("f1", 3));
-    await flush();
+it("fails 'integrity' when the file-end digest does not match the received bytes", async () => {
+  const ch = new FakeChannel();
+  const sink = new MemorySink();
+  const onError = vi.fn();
+  const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
+  ch.feed(offer([meta({ id: "f1", size: 3 })]));
+  receiver.accept();
+  ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+  await flush();
+  ch.feed(new Uint8Array([1, 2, 3]).buffer);
+  ch.feed(fileEndBadHash("f1", 3));
+  await flush();
 
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "integrity" }));
-    expect(sink.aborted).toBe(true);
-    expect(sink.closed).toBe(false);
-    expect(ch.sentStrings).toContain(encodeControl({ t: "cancel", scope: "batch" }));
-  });
+  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "integrity" }));
+  expect(sink.aborted).toBe(true);
+  expect(sink.closed).toBe(false);
+  expect(ch.sentStrings).toContain(encodeControl({ t: "cancel", scope: "batch" }));
+});
 
-  it("fails 'integrity' when a chunk was tampered with in transit", async () => {
-    const ch = new FakeChannel();
-    const sink = new MemorySink();
-    const onError = vi.fn();
-    const original = new Uint8Array([9, 9, 9, 9]);
-    const tampered = new Uint8Array([9, 8, 9, 9]);
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
-    ch.feed(offer([meta({ id: "f1", size: 4 })]));
-    receiver.accept();
-    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
-    await flush();
-    ch.feed(tampered.buffer);
-    // O emissor honesto mandaria o hash do conteúdo ORIGINAL.
-    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 4, sha256: sha(original) }));
-    await flush();
+it("fails 'integrity' when a chunk was tampered with in transit", async () => {
+  const ch = new FakeChannel();
+  const sink = new MemorySink();
+  const onError = vi.fn();
+  const original = new Uint8Array([9, 9, 9, 9]);
+  const tampered = new Uint8Array([9, 8, 9, 9]);
+  const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
+  ch.feed(offer([meta({ id: "f1", size: 4 })]));
+  receiver.accept();
+  ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+  await flush();
+  ch.feed(tampered.buffer);
+  // O emissor honesto mandaria o hash do conteúdo ORIGINAL.
+  ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 4, sha256: sha(original) }));
+  await flush();
 
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "integrity" }));
-    expect(sink.closed).toBe(false);
-  });
+  expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "integrity" }));
+  expect(sink.closed).toBe(false);
+});
 
-  it("passes a matching digest through to a normal close()", async () => {
-    const ch = new FakeChannel();
-    const sink = new MemorySink();
-    const onFileComplete = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onFileComplete });
-    ch.feed(offer([meta({ id: "f1", size: 4 })]));
-    receiver.accept();
-    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
-    await flush();
-    ch.feed(new Uint8Array([5, 6, 7, 8]).buffer);
-    ch.feed(fileEnd("f1", new Uint8Array([5, 6, 7, 8])));
-    await flush();
+it("passes a matching digest through to a normal close()", async () => {
+  const ch = new FakeChannel();
+  const sink = new MemorySink();
+  const onFileComplete = vi.fn();
+  const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onFileComplete });
+  ch.feed(offer([meta({ id: "f1", size: 4 })]));
+  receiver.accept();
+  ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+  await flush();
+  ch.feed(new Uint8Array([5, 6, 7, 8]).buffer);
+  ch.feed(fileEnd("f1", new Uint8Array([5, 6, 7, 8])));
+  await flush();
 
-    expect(sink.closed).toBe(true);
-    expect(sink.aborted).toBe(false);
-    expect(onFileComplete).toHaveBeenCalledWith("f1");
-  });
+  expect(sink.closed).toBe(true);
+  expect(sink.aborted).toBe(false);
+  expect(onFileComplete).toHaveBeenCalledWith("f1");
+});
 
-  it("uses a fresh hasher per file", async () => {
-    const ch = new FakeChannel();
-    let created = 0;
-    const receiver = new TransferReceiver(
-      ch,
-      () => Promise.resolve(new MemorySink()),
-      { onError: vi.fn() },
-      {
-        createHasher: () => {
-          created += 1;
-          return createSha256Hasher();
-        }
+it("uses a fresh hasher per file", async () => {
+  const ch = new FakeChannel();
+  let created = 0;
+  const receiver = new TransferReceiver(
+    ch,
+    () => Promise.resolve(new MemorySink()),
+    { onError: vi.fn() },
+    {
+      createHasher: () => {
+        created += 1;
+        return createSha256Hasher();
       }
-    );
-    ch.feed(offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 })]));
-    receiver.accept();
-    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
-    await flush();
-    ch.feed(new Uint8Array([1, 2]).buffer);
-    ch.feed(fileEnd("f1", new Uint8Array([1, 2])));
-    await flush();
-    ch.feed(encodeControl({ t: "file-begin", id: "f2", offset: 0 }));
-    await flush();
-    ch.feed(new Uint8Array([3, 4]).buffer);
-    ch.feed(fileEnd("f2", new Uint8Array([3, 4])));
-    await flush();
+    }
+  );
+  ch.feed(offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 })]));
+  receiver.accept();
+  ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+  await flush();
+  ch.feed(new Uint8Array([1, 2]).buffer);
+  ch.feed(fileEnd("f1", new Uint8Array([1, 2])));
+  await flush();
+  ch.feed(encodeControl({ t: "file-begin", id: "f2", offset: 0 }));
+  await flush();
+  ch.feed(new Uint8Array([3, 4]).buffer);
+  ch.feed(fileEnd("f2", new Uint8Array([3, 4])));
+  await flush();
 
-    expect(created).toBe(2);
-  });
+  expect(created).toBe(2);
+});
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -630,7 +659,11 @@ export interface ReceiverOptions {
 `DEFAULTS`:
 
 ```ts
-const DEFAULTS = { progressIntervalMs: 250, maxBinaryFrameBytes: MAX_BINARY_FRAME_BYTES, createHasher: createSha256Hasher };
+const DEFAULTS = {
+  progressIntervalMs: 250,
+  maxBinaryFrameBytes: MAX_BINARY_FRAME_BYTES,
+  createHasher: createSha256Hasher
+};
 ```
 
 Novo campo de instância, junto de `currentSink`/`currentMeta`/`currentBytes`:
@@ -644,18 +677,18 @@ Novo campo de instância, junto de `currentSink`/`currentMeta`/`currentBytes`:
 No `case "file-begin":`, logo depois de `this.currentSink = await this.openSink(meta, frame.offset);`:
 
 ```ts
-    this.currentSink = await this.openSink(meta, frame.offset);
-    this.currentHash = this.opts.createHasher();
-    return;
+this.currentSink = await this.openSink(meta, frame.offset);
+this.currentHash = this.opts.createHasher();
+return;
 ```
 
 Em `handleBinary`, depois de `await this.currentSink.write(chunk);`:
 
 ```ts
-    await this.currentSink.write(chunk);
-    this.currentHash!.update(new Uint8Array(chunk));
-    this.currentBytes += chunk.byteLength;
-    this.emitProgress(false);
+await this.currentSink.write(chunk);
+this.currentHash!.update(new Uint8Array(chunk));
+this.currentBytes += chunk.byteLength;
+this.emitProgress(false);
 ```
 
 (Usar `!`, não `?.`: `currentHash` e `currentSink` são setados juntos no `file-begin` e `handleBinary` já checa `!this.currentSink` no topo; se um bug futuro os dessincronizar, queremos o estouro, não o silêncio.)
@@ -691,8 +724,8 @@ No `case "file-end":`, insira a comparação **entre** a checagem de tamanho e o
 No `cancel()` público e no método `fail()`, onde já há `void this.currentSink?.abort()…`, acrescente `this.currentHash = null;` na linha seguinte. Em `cancel()`:
 
 ```ts
-    void this.currentSink?.abort().catch(() => undefined);
-    this.currentHash = null;
+void this.currentSink?.abort().catch(() => undefined);
+this.currentHash = null;
 ```
 
 Em `fail()`:
@@ -728,9 +761,11 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 5: Loopback — prova de ponta a ponta + teste de corrupção
 
 **Files:**
+
 - Modify: `packages/transfer-engine/src/loopback.integration.test.ts`
 
 **Interfaces:**
+
 - Consumes: `TransferSender`, `TransferReceiver`, `createSha256Hasher`.
 - Produces: nada (só provas).
 
@@ -778,101 +813,107 @@ function makeLoopbackPair(
 Dentro do IIFE, antes de `const timer = setInterval(…)`, um contador por endpoint e a aplicação do transform no `pump`:
 
 ```ts
-  let binarySeen = 0;
-  const pump = (ep: Endpoint) => {
-    let budget = drainRate;
-    while (ep._outbox.length > 0 && budget > 0) {
-      const frame = ep._outbox.shift()!;
-      const size = typeof frame === "string" ? frame.length : frame.byteLength;
-      budget -= size;
-      if (typeof frame !== "string") {
-        corrupt?.(frame, binarySeen);
-        binarySeen += 1;
-      }
-      const wasOver = ep.bufferedAmount > ep.bufferedAmountLowThreshold;
-      ep.bufferedAmount = Math.max(0, ep.bufferedAmount - size);
-      for (const l of ep._peer._messageListeners) l({ data: frame });
-      if (wasOver && ep.bufferedAmount <= ep.bufferedAmountLowThreshold) {
-        for (const l of ep._lowListeners) l();
-      }
+let binarySeen = 0;
+const pump = (ep: Endpoint) => {
+  let budget = drainRate;
+  while (ep._outbox.length > 0 && budget > 0) {
+    const frame = ep._outbox.shift()!;
+    const size = typeof frame === "string" ? frame.length : frame.byteLength;
+    budget -= size;
+    if (typeof frame !== "string") {
+      corrupt?.(frame, binarySeen);
+      binarySeen += 1;
     }
-  };
+    const wasOver = ep.bufferedAmount > ep.bufferedAmountLowThreshold;
+    ep.bufferedAmount = Math.max(0, ep.bufferedAmount - size);
+    for (const l of ep._peer._messageListeners) l({ data: frame });
+    if (wasOver && ep.bufferedAmount <= ep.bufferedAmountLowThreshold) {
+      for (const l of ep._lowListeners) l();
+    }
+  }
+};
 ```
 
 No teste existente `"delivers a multi-file batch byte-for-byte, exercising backpressure"`, acrescente a captura e a asserção dos hashes. Antes do `const receiver = …`, guarde os `file-end` observados:
 
 ```ts
-    const observedEnds: { id: string; sha256: string }[] = [];
-    guestCh.addEventListener("message", (event) => {
-      if (typeof event.data === "string" && event.data.includes("\"file-end\"")) {
-        const f = JSON.parse(event.data) as { t: string; id: string; sha256: string };
-        if (f.t === "file-end") observedEnds.push({ id: f.id, sha256: f.sha256 });
-      }
-    });
+const observedEnds: { id: string; sha256: string }[] = [];
+guestCh.addEventListener("message", (event) => {
+  if (typeof event.data === "string" && event.data.includes('"file-end"')) {
+    const f = JSON.parse(event.data) as { t: string; id: string; sha256: string };
+    if (f.t === "file-end") observedEnds.push({ id: f.id, sha256: f.sha256 });
+  }
+});
 ```
 
 Depois do `await finished;`, além da comparação de bytes já existente:
 
 ```ts
-    for (const f of files) {
-      const expected = createSha256Hasher();
-      expected.update(f.bytes);
-      expect(observedEnds.find((e) => e.id === f.meta.id)?.sha256).toBe(expected.digest());
-    }
+for (const f of files) {
+  const expected = createSha256Hasher();
+  expected.update(f.bytes);
+  expect(observedEnds.find((e) => e.id === f.meta.id)?.sha256).toBe(expected.digest());
+}
 ```
 
 Acrescente o teste de corrupção como um `it` novo dentro do mesmo `describe`:
 
 ```ts
-  it("stops with an integrity error when a byte is flipped in transit and never commits the file", async () => {
-    // XOR no 1º byte do 3º frame binário que cruza o canal.
-    const [hostCh, guestCh] = makeLoopbackPair(2 * 1024, (frame, i) => {
-      if (i === 2) new Uint8Array(frame)[0] ^= 0xff;
-    });
-
-    const files: { meta: FileMeta; bytes: Uint8Array }[] = [
-      { meta: { id: "a", name: "a.bin", size: 200, type: "" }, bytes: new Uint8Array(200).map((_, i) => i % 256) },
-      { meta: { id: "b", name: "b.bin", size: 4 * 1024, type: "" }, bytes: new Uint8Array(4 * 1024).map((_, i) => (i * 7) % 256) }
-    ];
-
-    const sinkMap = new Map<string, MemorySink>();
-    let settle!: (e: unknown) => void;
-    const errored = new Promise<unknown>((res) => {
-      settle = res;
-    });
-    const onBatchComplete = vi.fn();
-
-    const receiver = new TransferReceiver(
-      guestCh,
-      (meta) => {
-        const sink = new MemorySink();
-        sinkMap.set(meta.id, sink);
-        return Promise.resolve(sink);
-      },
-      { onBatchComplete, onError: (e) => settle(e) }
-    );
-
-    const sender = new TransferSender(
-      hostCh,
-      "batch-x",
-      files.map((f) => ({ meta: f.meta, source: sourceOf(f.bytes) })),
-      {},
-      { chunkSize: 512, highWaterMark: 3 * 1024, lowWaterMark: 512 }
-    );
-
-    guestCh.addEventListener("message", (event) => {
-      if (typeof event.data === "string" && event.data.includes("batch-offer")) receiver.accept();
-    });
-
-    sender.start();
-    const err = (await errored) as { code: string };
-
-    expect(err.code).toBe("integrity");
-    expect(onBatchComplete).not.toHaveBeenCalled();
-    const corrupted = sinkMap.get("a")!;
-    expect(corrupted.closed).toBe(false);
-    expect(corrupted.aborted).toBe(true);
+it("stops with an integrity error when a byte is flipped in transit and never commits the file", async () => {
+  // XOR no 1º byte do 3º frame binário que cruza o canal.
+  const [hostCh, guestCh] = makeLoopbackPair(2 * 1024, (frame, i) => {
+    if (i === 2) new Uint8Array(frame)[0] ^= 0xff;
   });
+
+  const files: { meta: FileMeta; bytes: Uint8Array }[] = [
+    {
+      meta: { id: "a", name: "a.bin", size: 200, type: "" },
+      bytes: new Uint8Array(200).map((_, i) => i % 256)
+    },
+    {
+      meta: { id: "b", name: "b.bin", size: 4 * 1024, type: "" },
+      bytes: new Uint8Array(4 * 1024).map((_, i) => (i * 7) % 256)
+    }
+  ];
+
+  const sinkMap = new Map<string, MemorySink>();
+  let settle!: (e: unknown) => void;
+  const errored = new Promise<unknown>((res) => {
+    settle = res;
+  });
+  const onBatchComplete = vi.fn();
+
+  const receiver = new TransferReceiver(
+    guestCh,
+    (meta) => {
+      const sink = new MemorySink();
+      sinkMap.set(meta.id, sink);
+      return Promise.resolve(sink);
+    },
+    { onBatchComplete, onError: (e) => settle(e) }
+  );
+
+  const sender = new TransferSender(
+    hostCh,
+    "batch-x",
+    files.map((f) => ({ meta: f.meta, source: sourceOf(f.bytes) })),
+    {},
+    { chunkSize: 512, highWaterMark: 3 * 1024, lowWaterMark: 512 }
+  );
+
+  guestCh.addEventListener("message", (event) => {
+    if (typeof event.data === "string" && event.data.includes("batch-offer")) receiver.accept();
+  });
+
+  sender.start();
+  const err = (await errored) as { code: string };
+
+  expect(err.code).toBe("integrity");
+  expect(onBatchComplete).not.toHaveBeenCalled();
+  const corrupted = sinkMap.get("a")!;
+  expect(corrupted.closed).toBe(false);
+  expect(corrupted.aborted).toBe(true);
+});
 ```
 
 > Este teste usa `vi` — acrescente-o ao import do `vitest` no topo (`import { describe, expect, it, vi } from "vitest";`).
@@ -901,11 +942,13 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 6: Hook — mensagem de erro `integrity` + `integrityVerified`
 
 **Files:**
+
 - Modify: `apps/web/src/lib/use-file-transfer.ts` — `ERROR_MESSAGES`, `UseFileTransferResult`, valor de retorno
 - Test: `apps/web/src/lib/use-file-transfer.test.ts`
 - Modify: `apps/web/src/app/transferir/page.test.tsx`, `apps/web/src/app/s/[token]/page.test.tsx` (stubs do mock)
 
 **Interfaces:**
+
 - Consumes: `phase` (já existe).
 - Produces:
   - `UseFileTransferResult` ganha `integrityVerified: boolean`.
@@ -935,27 +978,27 @@ describe("useFileTransfer — integridade (Plano 8)", () => {
 > **Nota para o implementador:** o caminho realista para `onError({code:"integrity"})` no hook é o receptor. Prefira testar pelo lado `guest`, dirigindo `acceptAsGuest` e alimentando um `file-end` com `sha256` errado, espelhando `use-file-transfer.test.ts` já existente para `size-mismatch` (procure o teste de `size-mismatch` no arquivo e clone a estrutura, trocando o `file-end` por um com `sha256: "f".repeat(64)` e bytes que não batem). O essencial a afirmar:
 
 ```ts
-    expect(result.current.phase).toBe("failed");
-    expect(result.current.errorMessage).toBe(
-      "Um arquivo chegou corrompido. A transferência foi interrompida."
-    );
+expect(result.current.phase).toBe("failed");
+expect(result.current.errorMessage).toBe(
+  "Um arquivo chegou corrompido. A transferência foi interrompida."
+);
 ```
 
 E dois testes de `integrityVerified` que não dependem do fio:
 
 ```ts
-  it("integrityVerified is false until the batch completes", () => {
-    const { result } = renderTransfer("guest");
-    expect(result.current.integrityVerified).toBe(false);
-  });
+it("integrityVerified is false until the batch completes", () => {
+  const { result } = renderTransfer("guest");
+  expect(result.current.integrityVerified).toBe(false);
+});
 
-  it("integrityVerified is true once phase is completed", async () => {
-    const { result } = renderTransfer("guest");
-    // leve um lote de 1 arquivo até batch-complete (clone o teste de conclusão
-    // feliz já existente no arquivo para o guest), então:
-    expect(result.current.phase).toBe("completed");
-    expect(result.current.integrityVerified).toBe(true);
-  });
+it("integrityVerified is true once phase is completed", async () => {
+  const { result } = renderTransfer("guest");
+  // leve um lote de 1 arquivo até batch-complete (clone o teste de conclusão
+  // feliz já existente no arquivo para o guest), então:
+  expect(result.current.phase).toBe("completed");
+  expect(result.current.integrityVerified).toBe(true);
+});
 ```
 
 - [ ] **Step 2: Rodar e ver falhar**
@@ -993,19 +1036,17 @@ Acrescente o campo à interface, perto de `errorMessage`:
 No corpo do hook, logo antes do `return {`:
 
 ```ts
-  // Verdadeiro só no estado terminal de sucesso. No receptor é literal — batch-complete
-  // só chega depois de todo file-end ter passado pela comparação de hash. No emissor é
-  // verdade por inferência — um hash divergente no receptor dispara fail("integrity") →
-  // cancel, e o emissor nunca vê batch-complete.
-  const integrityVerified = phase === "completed";
+// Verdadeiro só no estado terminal de sucesso. No receptor é literal — batch-complete
+// só chega depois de todo file-end ter passado pela comparação de hash. No emissor é
+// verdade por inferência — um hash divergente no receptor dispara fail("integrity") →
+// cancel, e o emissor nunca vê batch-complete.
+const integrityVerified = phase === "completed";
 ```
 
 E no objeto retornado, junto de `errorMessage`:
 
 ```ts
-    errorMessage,
-    integrityVerified,
-    cancel
+(errorMessage, integrityVerified, cancel);
 ```
 
 - [ ] **Step 5: Atualizar os stubs do mock nos testes de página**
@@ -1035,12 +1076,14 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 7: UI — "Verificado" no receptor + linha de integridade nos dois painéis
 
 **Files:**
+
 - Modify: `apps/web/src/components/s/ReceivePanel.tsx`
 - Test: `apps/web/src/components/s/ReceivePanel.test.tsx`
 - Modify: `apps/web/src/components/transferir/SendPanel.tsx`
 - Test: `apps/web/src/components/transferir/SendPanel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `transfer.integrityVerified` (Task 6), `CheckCircle2` (já importado nos dois painéis de `@transfergo/ui`).
 - Produces: nenhum contrato novo — só marcação.
 
@@ -1155,25 +1198,25 @@ No `map` dos arquivos da fase ativa, troque o cálculo do `label` e renderize o 
 Troque o bloco `if (phase === "completed")` para envolver o `StateScreen` num wrapper e acrescentar a linha de integridade (`StateScreen` não aceita filhos — vai como irmão):
 
 ```tsx
-  if (phase === "completed") {
-    const n = transfer.overall.filesTotal;
-    return (
-      <div className="w-full">
-        <StateScreen
-          icon={CheckCircle2}
-          tone="success"
-          title={n === 1 ? "Arquivo recebido com sucesso" : `${n} arquivos recebidos com sucesso`}
-          description="Os arquivos foram salvos neste dispositivo."
-        />
-        {transfer.integrityVerified && (
-          <p className="-mt-6 flex items-center justify-center gap-1 text-xs text-success">
-            <CheckCircle2 className="size-3.5" aria-hidden="true" />
-            Integridade verificada (SHA-256)
-          </p>
-        )}
-      </div>
-    );
-  }
+if (phase === "completed") {
+  const n = transfer.overall.filesTotal;
+  return (
+    <div className="w-full">
+      <StateScreen
+        icon={CheckCircle2}
+        tone="success"
+        title={n === 1 ? "Arquivo recebido com sucesso" : `${n} arquivos recebidos com sucesso`}
+        description="Os arquivos foram salvos neste dispositivo."
+      />
+      {transfer.integrityVerified && (
+        <p className="-mt-6 flex items-center justify-center gap-1 text-xs text-success">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" />
+          Integridade verificada (SHA-256)
+        </p>
+      )}
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 5: Implementar — `SendPanel.tsx` tela de sucesso**
@@ -1181,26 +1224,28 @@ Troque o bloco `if (phase === "completed")` para envolver o `StateScreen` num wr
 O rótulo por arquivo do emissor **não muda** (continua "Concluído"). Só a tela de sucesso ganha a linha. Troque o bloco `if (phase === "completed")`:
 
 ```tsx
-  if (phase === "completed") {
-    const n = transfer.overall.filesTotal;
-    return (
-      <div className="w-full">
-        <StateScreen
-          icon={CheckCircle2}
-          tone="success"
-          title={n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`}
-          description="Os arquivos chegaram ao outro dispositivo."
-          actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
-        />
-        {transfer.integrityVerified && (
-          <p className="-mt-2 flex items-center justify-center gap-1 text-xs text-success">
-            <CheckCircle2 className="size-3.5" aria-hidden="true" />
-            Integridade verificada (SHA-256)
-          </p>
-        )}
-      </div>
-    );
-  }
+if (phase === "completed") {
+  const n = transfer.overall.filesTotal;
+  return (
+    <div className="w-full">
+      <StateScreen
+        icon={CheckCircle2}
+        tone="success"
+        title={
+          n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`
+        }
+        description="Os arquivos chegaram ao outro dispositivo."
+        actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
+      />
+      {transfer.integrityVerified && (
+        <p className="-mt-2 flex items-center justify-center gap-1 text-xs text-success">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" />
+          Integridade verificada (SHA-256)
+        </p>
+      )}
+    </div>
+  );
+}
 ```
 
 > As margens negativas (`-mt-6` / `-mt-2`) só encostam a linha no `StateScreen` (que tem `py-12` / `mt-6` nos `actions`). Se o resultado visual ficar apertado na verificação manual da Task 8, troque por uma margem positiva pequena — o texto e a condição (`integrityVerified`) são o que importa.
@@ -1240,6 +1285,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - [ ] **Step 2: Verificação manual (dois navegadores reais)**
 
 Suba o app (`pnpm --filter @transfergo/web dev` + o servidor de signaling conforme os planos anteriores), abra host e guest, transfira um lote de 2–3 arquivos com bytes reais. Confirme:
+
 - As duas telas de sucesso mostram **"Integridade verificada (SHA-256)"**.
 - No painel do receptor, cada arquivo terminado aparece como **"Verificado"** com o ícone de check; no do emissor, **"Concluído"**.
 - `sha256sum` (ou `Get-FileHash -Algorithm SHA256`) do arquivo recebido bate com o do original.
@@ -1256,34 +1302,35 @@ Nada a commitar — as Tasks 1–7 já cobriram tudo. Marque o plano como conclu
 
 **1. Cobertura da spec**
 
-| Item da spec | Task |
-| --- | --- |
-| §2 dependência `@noble/hashes` no pacote do motor | 1, 8 (fallback web) |
-| §3 `hash.ts` — `Hasher`/`CreateHasher`/`createSha256Hasher`, síncrono | 1 |
-| §4.1 `file-end` com `sha256` | 2 |
-| §4.2 `decodeControl` valida `/^[0-9a-f]{64}$/` | 2 |
-| §4.3 `TransferErrorCode` ganha `"integrity"` + mensagem interna | 2 (código), 4 (mensagem no `fail`) |
-| §5.1 sem estado `verifying` | respeitado — nenhuma task adiciona `verifying` |
-| §5.2 emissor: `createHasher` + `Hasher` por arquivo + `sha256` no `file-end` | 3 |
-| §5.3 receptor: `createHasher`, `currentHash`, comparação antes do `close()`, `fail("integrity")`, higiene em cancel/fail | 4 |
-| §6 hook: `ERROR_MESSAGES.integrity`, `integrityVerified` derivado | 6 |
-| §7.1 rótulo "Verificado" (receptor) / "Concluído" (emissor) | 7 |
-| §7.2 linha "Integridade verificada (SHA-256)" nas duas telas de sucesso | 7 |
-| §7.3 tela de `failed` sem marcação nova | respeitado — nada muda em `phase === "failed"` |
+| Item da spec                                                                                                                         | Task                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| §2 dependência `@noble/hashes` no pacote do motor                                                                                    | 1, 8 (fallback web)                                                                                               |
+| §3 `hash.ts` — `Hasher`/`CreateHasher`/`createSha256Hasher`, síncrono                                                                | 1                                                                                                                 |
+| §4.1 `file-end` com `sha256`                                                                                                         | 2                                                                                                                 |
+| §4.2 `decodeControl` valida `/^[0-9a-f]{64}$/`                                                                                       | 2                                                                                                                 |
+| §4.3 `TransferErrorCode` ganha `"integrity"` + mensagem interna                                                                      | 2 (código), 4 (mensagem no `fail`)                                                                                |
+| §5.1 sem estado `verifying`                                                                                                          | respeitado — nenhuma task adiciona `verifying`                                                                    |
+| §5.2 emissor: `createHasher` + `Hasher` por arquivo + `sha256` no `file-end`                                                         | 3                                                                                                                 |
+| §5.3 receptor: `createHasher`, `currentHash`, comparação antes do `close()`, `fail("integrity")`, higiene em cancel/fail             | 4                                                                                                                 |
+| §6 hook: `ERROR_MESSAGES.integrity`, `integrityVerified` derivado                                                                    | 6                                                                                                                 |
+| §7.1 rótulo "Verificado" (receptor) / "Concluído" (emissor)                                                                          | 7                                                                                                                 |
+| §7.2 linha "Integridade verificada (SHA-256)" nas duas telas de sucesso                                                              | 7                                                                                                                 |
+| §7.3 tela de `failed` sem marcação nova                                                                                              | respeitado — nada muda em `phase === "failed"`                                                                    |
 | §8 bordas: 0 byte, hash malformado, divergência, cancel no meio, `file-begin` duplo, view com `byteOffset`, `createHasher` injetável | 1 (0 byte, formato), 2 (malformado), 4 (divergência, injeção, file-begin duplo herda o abort atual), 5 (loopback) |
-| §9.1 testes de protocolo | 2 |
-| §9.2 testes de `hash.ts` | 1 |
-| §9.3 testes de emissor | 3 |
-| §9.4 testes de receptor | 4 |
-| §9.5 loopback (prova principal) | 5 |
-| §9.6 testes do hook | 6 |
-| §9.7 testes do `ReceivePanel` | 7 |
-| §9.8 testes do `SendPanel` | 7 |
-| §9.9 portão | 8 |
+| §9.1 testes de protocolo                                                                                                             | 2                                                                                                                 |
+| §9.2 testes de `hash.ts`                                                                                                             | 1                                                                                                                 |
+| §9.3 testes de emissor                                                                                                               | 3                                                                                                                 |
+| §9.4 testes de receptor                                                                                                              | 4                                                                                                                 |
+| §9.5 loopback (prova principal)                                                                                                      | 5                                                                                                                 |
+| §9.6 testes do hook                                                                                                                  | 6                                                                                                                 |
+| §9.7 testes do `ReceivePanel`                                                                                                        | 7                                                                                                                 |
+| §9.8 testes do `SendPanel`                                                                                                           | 7                                                                                                                 |
+| §9.9 portão                                                                                                                          | 8                                                                                                                 |
 
 **2. Placeholders:** a Task 6 tem duas passagens em prosa ("clone o teste de `size-mismatch`", "clone o teste de conclusão feliz") em vez de código completo — isso é deliberado: o caminho realista de erro no hook vem do fio do receptor e o arquivo `use-file-transfer.test.ts` já tem a máquina de estados montada para `size-mismatch`/conclusão; reproduzir 60+ linhas de setup aqui divergiria do arquivo real. As asserções finais (o que verificar) estão explícitas. Se o executor preferir, os dois testes de `integrityVerified` que não dependem do fio (`false` no início, `true` após `completed`) já estão completos e cobrem o contrato novo.
 
 **3. Consistência de tipos:**
+
 - `Hasher.update(bytes: Uint8Array): void` / `digest(): string` — usado em 1, 3, 4, 5 sempre como `h.update(new Uint8Array(chunk))` + `h.digest()` (nunca encadeado).
 - `CreateHasher = () => Hasher` — `SenderOptions.createHasher?` e `ReceiverOptions.createHasher?`, ambos com default `createSha256Hasher` em `DEFAULTS`, lidos como `this.opts.createHasher()`.
 - `ControlFrame` `file-end` = `{ t; id; bytesSent; sha256 }` — produzido em 3 (`sender.send`), consumido em 4 (`frame.sha256`), validado em 2 (`decodeControl`).

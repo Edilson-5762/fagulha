@@ -9,10 +9,15 @@ const makeSink = () => ({
 });
 
 vi.mock("./browser-io.js", () => ({
-  createFileChunkSource: (file: File) => ({ size: file.size, read: () => Promise.resolve(new ArrayBuffer(0)) }),
+  createFileChunkSource: (file: File) => ({
+    size: file.size,
+    read: () => Promise.resolve(new ArrayBuffer(0))
+  }),
   adaptRtcDataChannel: (c: unknown) => c,
   isFileSystemAccessSupported: vi.fn(() => false),
-  pickSaveTarget: vi.fn(() => Promise.resolve({ kind: "download", openSink: vi.fn(() => Promise.resolve(makeSink())) }))
+  pickSaveTarget: vi.fn(() =>
+    Promise.resolve({ kind: "download", openSink: vi.fn(() => Promise.resolve(makeSink())) })
+  )
 }));
 
 import { isFileSystemAccessSupported } from "./browser-io.js";
@@ -57,7 +62,13 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 const renderTransfer = (role: "host" | "guest") =>
-  renderHook(() => useFileTransfer({ role, dataChannel: channel as unknown as RTCDataChannel, channelState: "open" }));
+  renderHook(() =>
+    useFileTransfer({
+      role,
+      dataChannel: channel as unknown as RTCDataChannel,
+      channelState: "open"
+    })
+  );
 
 const enc = (frame: unknown) => JSON.stringify(frame);
 // Digest real dos bytes que o teste alimentou — usa o crypto do Node como
@@ -69,7 +80,10 @@ const offer = (files: { id: string; name: string; size: number; type: string }[]
 
 // Drives the guest receiver through a real frame sequence. Returns after each
 // caller-inserted `act`.
-async function acceptAsGuest(result: { current: ReturnType<typeof useFileTransfer> }, files: { id: string; name: string; size: number; type: string }[]) {
+async function acceptAsGuest(
+  result: { current: ReturnType<typeof useFileTransfer> },
+  files: { id: string; name: string; size: number; type: string }[]
+) {
   act(() => channel.feed(offer(files)));
   await act(async () => {
     await result.current.acceptBatch();
@@ -119,7 +133,12 @@ describe("useFileTransfer — guest progress by bytes", () => {
     const { result } = renderTransfer("guest");
     await acceptAsGuest(result, files);
     expect(result.current.phase).toBe("preparing");
-    expect(result.current.overall).toMatchObject({ bytesDone: 0, bytesTotal: 5, filesDone: 0, filesTotal: 2 });
+    expect(result.current.overall).toMatchObject({
+      bytesDone: 0,
+      bytesTotal: 5,
+      filesDone: 0,
+      filesTotal: 2
+    });
 
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
@@ -127,10 +146,19 @@ describe("useFileTransfer — guest progress by bytes", () => {
     await flush();
     expect(result.current.phase).toBe("receiving");
     expect(result.current.overall.bytesDone).toBe(2);
-    expect(result.current.perFile.f1).toMatchObject({ bytes: 2, size: 3, pct: 67, state: "receiving" });
+    expect(result.current.perFile.f1).toMatchObject({
+      bytes: 2,
+      size: 3,
+      pct: 67,
+      state: "receiving"
+    });
 
     act(() => channel.feed(new Uint8Array([3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
+    act(() =>
+      channel.feed(
+        enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })
+      )
+    );
     await flush();
     expect(result.current.overall).toMatchObject({ bytesDone: 3, filesDone: 1 });
     expect(result.current.perFile.f1).toMatchObject({ pct: 100, state: "completed" });
@@ -138,7 +166,11 @@ describe("useFileTransfer — guest progress by bytes", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f2", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([4, 5]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f2", bytesSent: 2, sha256: sha(new Uint8Array([4, 5])) })));
+    act(() =>
+      channel.feed(
+        enc({ t: "file-end", id: "f2", bytesSent: 2, sha256: sha(new Uint8Array([4, 5])) })
+      )
+    );
     act(() => channel.feed(enc({ t: "batch-complete" })));
     await flush();
     expect(result.current.phase).toBe("completed");
@@ -152,7 +184,11 @@ describe("useFileTransfer — guest progress by bytes", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
+    act(() =>
+      channel.feed(
+        enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })
+      )
+    );
     await flush();
     await act(async () => {
       channel.feed(enc({ t: "cancel", scope: "batch" }));
@@ -170,7 +206,11 @@ describe("useFileTransfer — guest progress by bytes", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
+    act(() =>
+      channel.feed(
+        enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })
+      )
+    );
     await flush();
     await act(async () => {
       channel.feed(enc({ t: "cancel", scope: "batch" }));
@@ -187,7 +227,12 @@ describe("useFileTransfer — guest progress by bytes", () => {
     });
     expect(result.current.phase).toBe("idle");
     expect(result.current.filesSaved).toBe(0);
-    expect(result.current.overall).toEqual({ bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 });
+    expect(result.current.overall).toEqual({
+      bytesDone: 0,
+      bytesTotal: 0,
+      filesDone: 0,
+      filesTotal: 0
+    });
     expect(result.current.stats).toEqual({ speedBytesPerSec: null, etaSeconds: null });
     expect(result.current.incomingBatch?.files[0]?.name).toBe("c.bin");
   });
@@ -197,7 +242,9 @@ describe("useFileTransfer — guest progress by bytes", () => {
     await acceptAsGuest(result, [{ id: "f1", name: "empty", size: 0, type: "" }]);
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 0, sha256: sha(new Uint8Array([])) })));
+    act(() =>
+      channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 0, sha256: sha(new Uint8Array([])) }))
+    );
     act(() => channel.feed(enc({ t: "batch-complete" })));
     await flush();
     expect(result.current.perFile.f1?.pct).toBe(100);
@@ -326,7 +373,11 @@ describe("useFileTransfer — integridade (Plano 8)", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
+    act(() =>
+      channel.feed(
+        enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })
+      )
+    );
     act(() => channel.feed(enc({ t: "batch-complete" })));
     await flush();
     expect(result.current.phase).toBe("completed");
