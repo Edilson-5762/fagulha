@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useFileTransfer } from "../../../lib/use-file-transfer.js";
@@ -71,14 +71,20 @@ function renderContent(session: Session | null | undefined, onAccept: () => void
     case "accepted":
       return (
         <StateScreen
-          icon={ShieldCheck}
+          icon={CheckCircle2}
+          tone="success"
           title="Convite aceito"
-          description="Estabelecendo a conexão direta entre os dispositivos…"
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":
       return (
-        <StateScreen icon={XCircle} tone="danger" title="Convite recusado" description="Você recusou esta transferência." />
+        <StateScreen
+          icon={XCircle}
+          tone="danger"
+          title="Convite recusado"
+          description="Você recusou esta transferência."
+        />
       );
     case "expired":
       return (
