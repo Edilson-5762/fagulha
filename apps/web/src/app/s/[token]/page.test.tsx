@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useSignalingSocket, type UseSignalingSocketResult } from "../../../lib/signaling-socket.js";
+import type { UseFileTransferResult } from "../../../lib/use-file-transfer.js";
 import SessionInvitePage from "./page.js";
 
 vi.mock("next/navigation", () => ({
@@ -17,8 +18,35 @@ vi.mock("../../../lib/peer-connection.js", () => ({
   usePeerConnection: vi.fn()
 }));
 
+vi.mock("../../../lib/use-file-transfer.js", () => ({
+  useFileTransfer: vi.fn(
+    (): UseFileTransferResult => ({
+      ready: false,
+      selectedFiles: [],
+      totalBytes: 0,
+      limitError: null,
+      addFiles: vi.fn(),
+      removeFile: vi.fn(),
+      clearSelection: vi.fn(),
+      startSend: vi.fn(),
+      incomingBatch: null,
+      acceptBatch: vi.fn(),
+      rejectBatch: vi.fn(),
+      phase: "idle",
+      perFile: {},
+      overall: { done: 0, total: 0 },
+      errorMessage: null,
+      cancel: vi.fn()
+    })
+  )
+}));
+
 const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
 const mockedUsePeerConnection = vi.mocked(usePeerConnection);
+
+beforeEach(() => {
+  mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "connecting" });
+});
 
 function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSignalingSocketResult {
   return {
@@ -76,6 +104,15 @@ describe("SessionInvitePage", () => {
     render(<SessionInvitePage />);
 
     expect(mockedUsePeerConnection).toHaveBeenCalledWith(expect.objectContaining({ role: "guest", accepted: true }));
+  });
+
+  it("shows the receive panel once the data channel is open", () => {
+    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
+    mockedUsePeerConnection.mockReturnValue({ dataChannel: {} as RTCDataChannel, channelState: "open" });
+    render(<SessionInvitePage />);
+
+    expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
   });
 
   it("calls accept when the accept button is clicked", async () => {

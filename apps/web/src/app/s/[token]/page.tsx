@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
 import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
+import { useFileTransfer } from "../../../lib/use-file-transfer.js";
 import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
@@ -15,14 +17,24 @@ export default function SessionInvitePage() {
     joinSession(token);
   }, [token, joinSession]);
 
-  usePeerConnection({ role, accepted: session?.status === "accepted", sendSignal, lastSignal });
+  const { dataChannel, channelState } = usePeerConnection({
+    role,
+    accepted: session?.status === "accepted",
+    sendSignal,
+    lastSignal
+  });
+  const transfer = useFileTransfer({ role, dataChannel, channelState });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
         <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
       )}
-      {renderContent(session, accept, reject)}
+      {session?.status === "accepted" && channelState === "open" ? (
+        <ReceivePanel transfer={transfer} />
+      ) : (
+        renderContent(session, accept, reject)
+      )}
     </main>
   );
 }

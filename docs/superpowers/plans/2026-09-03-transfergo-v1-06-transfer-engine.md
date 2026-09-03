@@ -194,7 +194,7 @@ Pure functions and type-only seams. No state, no channel.
   - `const MAX_BINARY_FRAME_BYTES = 256 * 1024`
   - `function encodeControl(frame: ControlFrame): string`
   - `function decodeControl(raw: string): ControlFrame | null` — shape validation only (no limit policy)
-  - `function validateBatchOffer(files: FileMeta[]): "ok" | "over-limit"`
+  - `function validateBatchOffer(files: readonly FileMeta[]): "ok" | "over-limit"` (accepts the `readonly` array from `ControlFrame`'s `batch-offer` variant)
   - `function sanitizeFileName(name: string): string`
 
 - [ ] **Step 1: Write the failing test**
@@ -462,7 +462,7 @@ export function decodeControl(raw: string): ControlFrame | null {
 }
 
 /** Policy check (limits), separate from `decodeControl`'s shape check. */
-export function validateBatchOffer(files: FileMeta[]): "ok" | "over-limit" {
+export function validateBatchOffer(files: readonly FileMeta[]): "ok" | "over-limit" {
   if (files.length < 1 || files.length > BATCH_MAX_FILES) {
     return "over-limit";
   }
@@ -508,7 +508,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Consumes: `DataChannelLike`, `ChunkSource`, `FileMeta`, `TransferProgress`, `TransferError` (`./types.js`); `ControlFrame`, `encodeControl`, `decodeControl` (`./protocol.js`).
 - Produces:
   - `interface SenderInput { meta: FileMeta; source: ChunkSource }`
-  - `interface SenderCallbacks { onProgress?: (p: TransferProgress) => void; onFileComplete?: (fileId: string) => void; onBatchComplete?: () => void; onError?: (e: TransferError) => void; onCancelled?: () => void }`
+  - `interface SenderCallbacks { onAccepted?: () => void; onProgress?: (p: TransferProgress) => void; onFileComplete?: (fileId: string) => void; onBatchComplete?: () => void; onError?: (e: TransferError) => void; onCancelled?: () => void }` — `onAccepted` fires once, when the peer's `batch-accept` arrives (before the first chunk).
   - `interface SenderOptions { chunkSize?: number; highWaterMark?: number; lowWaterMark?: number; progressIntervalMs?: number }`
   - `class TransferSender { constructor(channel: DataChannelLike, batchId: string, inputs: SenderInput[], callbacks?: SenderCallbacks, options?: SenderOptions); start(): void; cancel(): void; dispose(): void }`
   - Defaults: `chunkSize` 16384, `highWaterMark` 8388608, `lowWaterMark` 1048576, `progressIntervalMs` 250.
@@ -613,20 +613,20 @@ describe("TransferSender", () => {
       {},
       { chunkSize: 16, highWaterMark: 20, lowWaterMark: 5 }
     );
+    // FakeChannel.send does not grow bufferedAmount, so the test drives it directly.
+    // Set it over the mark BEFORE accept so runBatch pauses at the first waitForDrain.
+    ch.bufferedAmount = 100;
     sender.start();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     await flush();
-
-    // First chunk goes out, then bufferedAmount (simulated) is over the mark → paused.
-    ch.bufferedAmount = 100;
-    const framesWhilePaused = ch.binaryFrames.length;
-    await flush();
-    expect(ch.binaryFrames.length).toBe(framesWhilePaused);
+    // file-begin (a string frame) is out, but no binary chunk yet — paused.
+    expect(ch.binaryFrames.length).toBe(0);
 
     ch.bufferedAmount = 0;
     ch.emitDrain();
     await flush();
-    expect(ch.binaryFrames.length).toBeGreaterThan(framesWhilePaused);
+    expect(ch.binaryFrames.length).toBeGreaterThan(0);
+    expect(ch.controlFrames).toContainEqual({ t: "file-begin", id: "f1", offset: 0 });
   });
 
   it("maps a peer batch-reject to onError('rejected')", async () => {
@@ -636,6 +636,15 @@ describe("TransferSender", () => {
     ch.emitMessage(JSON.stringify({ t: "batch-reject", reason: "declined" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "rejected" }));
+  });
+
+  it("fires onAccepted once when the peer accepts, before any chunk", () => {
+    const ch = new FakeChannel();
+    const onAccepted = vi.fn();
+    new TransferSender(ch, "b1", [{ meta: meta({ size: 4 }), source: bytesSource(new Uint8Array(4)) }], { onAccepted }).start();
+    expect(onAccepted).not.toHaveBeenCalled();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    expect(onAccepted).toHaveBeenCalledOnce();
   });
 
   it("cancel() sends a cancel frame and fires onCancelled", () => {
@@ -680,6 +689,8 @@ export interface SenderInput {
 }
 
 export interface SenderCallbacks {
+  /** Fires once, when the peer's batch-accept arrives (before the first chunk). */
+  onAccepted?: () => void;
   onProgress?: (p: TransferProgress) => void;
   onFileComplete?: (fileId: string) => void;
   onBatchComplete?: () => void;
@@ -784,6 +795,7 @@ export class TransferSender {
 
   private handleControl(frame: ControlFrame): void {
     if (frame.t === "batch-accept") {
+      this.cb.onAccepted?.();
       void this.runBatch();
     } else if (frame.t === "batch-reject") {
       this.cb.onError?.(
@@ -1032,8 +1044,10 @@ describe("TransferReceiver", () => {
 
   it("writes chunks in order even when the sink is slow", async () => {
     const ch = new FakeChannel();
-    let release: (() => void) | null = null;
-    const gate = new Promise<void>((r) => (release = r));
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
     let firstWrite = true;
     const sink = new MemorySink(async () => {
       if (firstWrite) {
@@ -1050,7 +1064,7 @@ describe("TransferReceiver", () => {
     ch.feed(new Uint8Array([2]).buffer);
     ch.feed(new Uint8Array([3]).buffer);
     await flush();
-    release?.();
+    release();
     await flush();
     expect(sink.bytes).toEqual(new Uint8Array([1, 2, 3]));
   });
@@ -1181,6 +1195,19 @@ export class TransferReceiver {
 
   private readonly onMessage = (event: { data?: unknown }) => {
     const data = event.data;
+    // The pre-transfer `batch-offer` arrives before `accept()`, has nothing to
+    // order against, and its handler reaches no `await` — run it synchronously so
+    // callers can `accept()`/inspect `onBatchOffered` in the same tick. Every
+    // later frame (file-begin, binary, file-end, cancel, batch-complete) stays on
+    // the queue, so an awaited `sink.write()` for chunk N still finishes before
+    // chunk N+1's handler runs.
+    if (typeof data === "string" && !this.batch) {
+      const frame = decodeControl(data);
+      if (frame?.t === "batch-offer") {
+        void this.handleFrame(data);
+        return;
+      }
+    }
     this.queue = this.queue.then(() => this.handleFrame(data)).catch(() => undefined);
   };
 
@@ -1346,7 +1373,9 @@ export class TransferReceiver {
       return data;
     }
     if (ArrayBuffer.isView(data)) {
-      return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+      // TS 5.9 types `.buffer` as `ArrayBufferLike`; an RTCDataChannel message is
+      // never SharedArrayBuffer-backed in the browser or in Node tests.
+      return (data.buffer as ArrayBuffer).slice(data.byteOffset, data.byteOffset + data.byteLength);
     }
     return new ArrayBuffer(0);
   }
@@ -1509,22 +1538,6 @@ describe("transfer-engine loopback", () => {
       { meta: { id: "c", name: "mid.bin", size: 5 * 1024, type: "" }, bytes: new Uint8Array(5 * 1024).map((_, i) => (i * 13) % 256) }
     ];
 
-    const sinks = new Map<string, MemorySink>();
-    const done = new Promise<void>((resolve, reject) => {
-      new TransferReceiver(
-        guestCh,
-        (meta) => {
-          const sink = new MemorySink();
-          sinks.set(meta.id, sink);
-          return Promise.resolve(sink);
-        },
-        { onBatchComplete: resolve, onError: reject }
-      ).accept === undefined
-        ? reject(new Error("no receiver"))
-        : undefined;
-    });
-
-    // Re-create the receiver with a handle so we can call accept() after the offer.
     const sinkMap = new Map<string, MemorySink>();
     let resolveDone!: () => void;
     let rejectDone!: (e: unknown) => void;
@@ -1541,9 +1554,6 @@ describe("transfer-engine loopback", () => {
       },
       { onBatchComplete: resolveDone, onError: rejectDone }
     );
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    void done;
-    void sinks;
 
     const sender = new TransferSender(
       hostCh,
@@ -1570,11 +1580,9 @@ describe("transfer-engine loopback", () => {
 });
 ```
 
-> **Implementer note:** the block above deliberately shows the final wiring. When implementing, drop the throwaway `done`/`sinks`/first-receiver scaffolding and keep only the second `receiver` + `finished` promise + the `addEventListener("message", …)` auto-accept. The test must end with the per-file `expect(...).toEqual(f.bytes)` loop and nothing calling `setTimeout` beyond the loopback's own timer.
+> **Implementer note:** transcribe the test as written — one `TransferReceiver`, one `TransferSender`, the auto-accept `message` listener, `await finished`, the per-file assertion loop. The only timer is the loopback pair's own `setInterval`. The auto-accept listener is registered after the receiver's constructor, so on each delivered frame the receiver's `onMessage` runs first (it handles `batch-offer` synchronously and sets `this.batch`), then the listener's `receiver.accept()` succeeds.
 
-- [ ] **Step 3: Clean the test to the minimal wiring**
-
-Rewrite the test body so it contains exactly one `TransferReceiver`, one `TransferSender`, the auto-accept `message` listener, `await finished`, and the assertion loop. Run it.
+- [ ] **Step 3: Run the loopback test**
 
 Run: `pnpm --filter @transfergo/transfer-engine test loopback`
 Expected: PASS — all three files match byte-for-byte.
@@ -2116,12 +2124,14 @@ describe("useFileTransfer — host", () => {
     expect(result.current.limitError).toMatch(/limite.*50/i);
   });
 
-  it("startSend sends a batch-offer and moves to 'offering'", () => {
+  it("startSend sends a batch-offer, sits in 'offering', then moves to 'transferring' on accept", () => {
     const { result } = renderTransfer("host");
     act(() => result.current.addFiles([bigFile("a.bin", 10)]));
     act(() => result.current.startSend());
     expect(result.current.phase).toBe("offering");
     expect(channel.sent.some((d) => typeof d === "string" && d.includes("batch-offer"))).toBe(true);
+    act(() => channel.feed(JSON.stringify({ t: "batch-accept" })));
+    expect(result.current.phase).toBe("transferring");
   });
 
   it("maps a peer batch-reject to phase 'failed' with a pt-BR message", () => {
@@ -2395,11 +2405,13 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     );
     setOverall({ done: 0, total: selectedFiles.length });
     setErrorMessage(null);
-    const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, wireCommon);
+    const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
+      ...wireCommon,
+      onAccepted: () => setPhase("transferring")
+    });
     senderRef.current = sender;
     setPhase("offering");
     sender.start();
-    setPhase("transferring");
   }, [ready, dataChannel, role, limitError, selectedFiles, wireCommon]);
 
   const acceptBatch = useCallback(async () => {
@@ -2453,7 +2465,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
 Run: `pnpm --filter @transfergo/web test use-file-transfer`
 Expected: PASS (7 cases).
 
-> If the `offering`→`transferring` synchronous double-`setPhase` in `startSend` makes the "moves to 'offering'" assertion flaky, change that test to assert `channel.sent` contains the offer and `result.current.phase` is `"transferring"` — the `offering` state is only observable while awaiting the peer, which the fake accepts instantly. Prefer adjusting the test over weakening the hook.
+> The `offering` phase is real and observable: `startSend` sets it and leaves it; the hook only moves to `"transferring"` when `TransferSender`'s `onAccepted` fires (peer `batch-accept`). The test drives that by feeding a `batch-accept` frame. Do not collapse the two `setPhase` calls back into `startSend`.
 
 - [ ] **Step 5: Typecheck + lint**
 
@@ -2555,7 +2567,8 @@ describe("SendPanel", () => {
     );
     expect(screen.getByText("a.jpg")).toBeInTheDocument();
     expect(screen.getByText("Pequeno")).toBeInTheDocument();
-    expect(screen.getByText(/5 MB/)).toBeInTheDocument();
+    // "5 MB" appears twice — once per row, once in the footer total.
+    expect(screen.getAllByText(/5 MB/).length).toBeGreaterThan(0);
   });
 
   it("shows the limit error and disables the send button", () => {
@@ -3078,7 +3091,7 @@ Capture the `usePeerConnection` return, add `useFileTransfer`, and render `SendP
 "use client";
 
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
 import { SendPanel } from "../../components/transferir/SendPanel.js";
 import { usePeerConnection } from "../../lib/peer-connection.js";
@@ -3127,9 +3140,10 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
     case "accepted":
       return (
         <StateScreen
-          icon={Share2}
+          icon={CheckCircle2}
+          tone="success"
           title="Convite aceito"
-          description="Estabelecendo a conexão direta entre os dispositivos…"
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":
@@ -3168,7 +3182,7 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useFileTransfer } from "../../../lib/use-file-transfer.js";
@@ -3236,9 +3250,10 @@ function renderContent(session: Session | null | undefined, onAccept: () => void
     case "accepted":
       return (
         <StateScreen
-          icon={ShieldCheck}
+          icon={CheckCircle2}
+          tone="success"
           title="Convite aceito"
-          description="Estabelecendo a conexão direta entre os dispositivos…"
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":

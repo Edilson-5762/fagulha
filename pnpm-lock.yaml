@@ -69,6 +69,9 @@ importers:
       '@transfergo/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@transfergo/transfer-engine':
+        specifier: workspace:*
+        version: link:../../packages/transfer-engine
       '@transfergo/ui':
         specifier: workspace:*
         version: link:../../packages/ui

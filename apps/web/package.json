@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@transfergo/shared": "workspace:*",
+    "@transfergo/transfer-engine": "workspace:*",
     "@transfergo/ui": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
