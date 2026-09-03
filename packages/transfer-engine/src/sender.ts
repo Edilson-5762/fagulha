@@ -1,4 +1,5 @@
 import { encodeControl, decodeControl, type ControlFrame } from "./protocol.js";
+import { createSha256Hasher, type CreateHasher } from "./hash.js";
 import { TransferError, type ChunkSource, type DataChannelLike, type FileMeta, type TransferProgress } from "./types.js";
 
 export interface SenderInput {
@@ -21,13 +22,15 @@ export interface SenderOptions {
   highWaterMark?: number;
   lowWaterMark?: number;
   progressIntervalMs?: number;
+  createHasher?: CreateHasher;
 }
 
 const DEFAULTS = {
   chunkSize: 16 * 1024,
   highWaterMark: 8 * 1024 * 1024,
   lowWaterMark: 1 * 1024 * 1024,
-  progressIntervalMs: 250
+  progressIntervalMs: 250,
+  createHasher: createSha256Hasher
 };
 
 export class TransferSender {
@@ -144,6 +147,7 @@ export class TransferSender {
           return;
         }
         const { meta, source } = this.inputs[index]!;
+        const hasher = this.opts.createHasher();
         this.send({ t: "file-begin", id: meta.id, offset: 0 });
         let sent = 0;
         while (sent < source.size) {
@@ -164,11 +168,12 @@ export class TransferSender {
             // treat it as a broken source and route through the catch below.
             throw new TransferError("channel-error", `source.read returned 0 bytes with ${source.size - sent} still to send`);
           }
+          hasher.update(new Uint8Array(chunk));
           this.channel.send(chunk);
           sent += chunk.byteLength;
           this.maybeEmitProgress({ meta, fileBytes: sent, filesDone: index }, false);
         }
-        this.send({ t: "file-end", id: meta.id, bytesSent: sent });
+        this.send({ t: "file-end", id: meta.id, bytesSent: sent, sha256: hasher.digest() });
         this.cb.onFileComplete?.(meta.id);
         this.filesDone += 1;
         this.maybeEmitProgress({ meta, fileBytes: sent, filesDone: index + 1 }, true);

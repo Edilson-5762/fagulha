@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { decodeControl } from "./protocol.js";
 import { TransferSender, type SenderInput } from "./sender.js";
+import { createSha256Hasher } from "./hash.js";
 import type { DataChannelLike, FileMeta } from "./types.js";
+
+const sha = (bytes: Uint8Array): string => {
+  const h = createSha256Hasher();
+  h.update(bytes);
+  return h.digest();
+};
 
 class FakeChannel implements DataChannelLike {
   bufferedAmount = 0;
@@ -74,7 +81,7 @@ describe("TransferSender", () => {
     expect(ch.controlFrames).toEqual([
       { t: "batch-offer", batch: { id: "b1", files: [meta({ id: "f1", size: 50 })] } },
       { t: "file-begin", id: "f1", offset: 0 },
-      { t: "file-end", id: "f1", bytesSent: 50 },
+      { t: "file-end", id: "f1", bytesSent: 50, sha256: sha(data) },
       { t: "batch-complete" }
     ]);
     const reassembled = new Uint8Array(ch.binaryFrames.flatMap((b) => [...new Uint8Array(b)]));
@@ -251,5 +258,49 @@ describe("TransferSender", () => {
     expect(onCancelled).toHaveBeenCalledWith(0);
     resolveRead(new Uint8Array(4).buffer);
     await flush();
+  });
+
+  it("puts the real SHA-256 of the file content on the file-end frame", async () => {
+    const ch = new FakeChannel();
+    const data = new Uint8Array(40).map((_, i) => (i * 3) % 256);
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ id: "f1", size: 40 }), source: bytesSource(data) }],
+      {},
+      { chunkSize: 16 }
+    );
+    sender.start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush();
+
+    const end = ch.controlFrames.find((f) => f?.t === "file-end");
+    expect(end).toEqual({ t: "file-end", id: "f1", bytesSent: 40, sha256: sha(data) });
+  });
+
+  it("hashes each file independently — no digest bleed between files", async () => {
+    const ch = new FakeChannel();
+    const a = new Uint8Array([1, 1, 1, 1]);
+    const b = new Uint8Array([2, 2, 2, 2]);
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [
+        { meta: meta({ id: "f1", size: 4 }), source: bytesSource(a) },
+        { meta: meta({ id: "f2", size: 4 }), source: bytesSource(b) }
+      ],
+      {},
+      { chunkSize: 4 }
+    );
+    sender.start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush();
+
+    const ends = ch.controlFrames.filter((f) => f?.t === "file-end");
+    expect(ends).toEqual([
+      { t: "file-end", id: "f1", bytesSent: 4, sha256: sha(a) },
+      { t: "file-end", id: "f2", bytesSent: 4, sha256: sha(b) }
+    ]);
+    expect(ends[0]).not.toEqual(ends[1]);
   });
 });
