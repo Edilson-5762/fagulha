@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, SIZE_CLASS_LABELS, summarizeBatch } from "./transfer-format.js";
+import { formatBytes, formatDuration, formatSpeed, SIZE_CLASS_LABELS, summarizeBatch } from "./transfer-format.js";
 
 describe("formatBytes", () => {
   it("formats across unit boundaries", () => {
@@ -42,5 +42,32 @@ describe("summarizeBatch", () => {
 describe("SIZE_CLASS_LABELS", () => {
   it("is the pt-BR triplet", () => {
     expect(SIZE_CLASS_LABELS).toEqual({ small: "Pequeno", medium: "Médio", large: "Grande" });
+  });
+});
+
+describe("formatSpeed", () => {
+  it("reuses the byte scale with a /s suffix and a pt-BR comma", () => {
+    expect(formatSpeed(0)).toBe("0 B/s");
+    expect(formatSpeed(820 * 1024)).toBe("820 KB/s");
+    expect(formatSpeed(12.3 * 1024 * 1024)).toBe("12,3 MB/s");
+  });
+
+  it("rounds fractional byte counts before formatting", () => {
+    expect(formatSpeed(500.7)).toBe("501 B/s");
+  });
+});
+
+describe("formatDuration", () => {
+  it("uses coarse pt-BR buckets so the number does not jitter", () => {
+    expect(formatDuration(5)).toBe("menos de 10 s");
+    expect(formatDuration(10)).toBe("cerca de 10 s");
+    expect(formatDuration(44)).toBe("cerca de 40 s");
+    expect(formatDuration(95)).toBe("cerca de 2 min");
+    expect(formatDuration(3600)).toBe("mais de 1 h");
+    expect(formatDuration(4000)).toBe("mais de 1 h");
+  });
+
+  it("never shows '0 min' just below an hour", () => {
+    expect(formatDuration(60)).toBe("cerca de 1 min");
   });
 });

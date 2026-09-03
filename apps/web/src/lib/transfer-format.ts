@@ -16,6 +16,29 @@ export function formatBytes(bytes: number): string {
   return `${rounded.toLocaleString("pt-BR")} ${units[unit]}`;
 }
 
+/** Velocidade legível: reaproveita a escala de formatBytes e acrescenta "/s". */
+export function formatSpeed(bytesPerSec: number): string {
+  return `${formatBytes(Math.round(bytesPerSec))}/s`;
+}
+
+/**
+ * Tempo restante em faixas grosseiras, para o número não tremer a cada segundo.
+ * Nunca é uma estimativa "exata" — o hook só chama isto quando a medição já
+ * estabilizou (ver spec §4.4).
+ */
+export function formatDuration(seconds: number): string {
+  if (seconds < 10) {
+    return "menos de 10 s";
+  }
+  if (seconds < 60) {
+    return `cerca de ${Math.round(seconds / 10) * 10} s`;
+  }
+  if (seconds < 3600) {
+    return `cerca de ${Math.max(1, Math.round(seconds / 60))} min`;
+  }
+  return "mais de 1 h";
+}
+
 type Category = "foto" | "vídeo" | "PDF" | "arquivo";
 
 const CATEGORY_ORDER: Category[] = ["foto", "vídeo", "PDF", "arquivo"];
