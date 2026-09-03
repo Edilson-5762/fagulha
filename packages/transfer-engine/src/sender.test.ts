@@ -137,6 +137,57 @@ describe("TransferSender", () => {
     expect(onCancelled).toHaveBeenCalledOnce();
   });
 
+  it("does not send a binary frame for a read that resolves after cancel()", async () => {
+    const ch = new FakeChannel();
+    let resolveRead: (buf: ArrayBuffer) => void = () => {};
+    const gatedSource = {
+      size: 32,
+      read: () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          resolveRead = resolve;
+        })
+    };
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 32 }), source: gatedSource }],
+      {},
+      { chunkSize: 16 }
+    );
+    sender.start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush();
+    // The pump is parked inside the first source.read(). Cancel now, then let the read resolve.
+    sender.cancel();
+    resolveRead(new Uint8Array(16).buffer);
+    await flush();
+
+    expect(ch.binaryFrames.length).toBe(0);
+    expect(ch.controlFrames.at(-1)).toEqual({ t: "cancel", scope: "batch" });
+  });
+
+  it("acts on only the first batch-accept when it arrives twice", async () => {
+    const ch = new FakeChannel();
+    const onAccepted = vi.fn();
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ id: "f1", size: 16 }), source: bytesSource(new Uint8Array(16)) }],
+      { onAccepted },
+      { chunkSize: 16 }
+    );
+    sender.start();
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
+    await flush();
+
+    expect(onAccepted).toHaveBeenCalledOnce();
+    expect(ch.controlFrames.filter((f) => f?.t === "file-begin")).toEqual([
+      { t: "file-begin", id: "f1", offset: 0 }
+    ]);
+    expect(ch.controlFrames.filter((f) => f?.t === "batch-complete")).toHaveLength(1);
+  });
+
   it("maps a read failure to onError('channel-error') and sends a cancel frame", async () => {
     const ch = new FakeChannel();
     const onError = vi.fn();

@@ -38,6 +38,7 @@ export class TransferSender {
   private readonly opts: Required<SenderOptions>;
 
   private started = false;
+  private accepted = false;
   private cancelled = false;
   private disposed = false;
   private lastProgressAt = 0;
@@ -113,6 +114,10 @@ export class TransferSender {
 
   private handleControl(frame: ControlFrame): void {
     if (frame.t === "batch-accept") {
+      if (this.accepted) {
+        return;
+      }
+      this.accepted = true;
       this.cb.onAccepted?.();
       void this.runBatch();
     } else if (frame.t === "batch-reject") {
@@ -150,6 +155,9 @@ export class TransferSender {
           }
           const length = Math.min(this.opts.chunkSize, source.size - sent);
           const chunk = await source.read(sent, length);
+          if (this.cancelled || this.disposed) {
+            return;
+          }
           this.channel.send(chunk);
           sent += chunk.byteLength;
           this.maybeEmitProgress({ meta, fileBytes: sent, filesDone: index }, false);
