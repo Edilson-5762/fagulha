@@ -1,7 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
+import { createSha256Hasher } from "./hash.js";
 import { encodeControl } from "./protocol.js";
 import { TransferReceiver } from "./receiver.js";
 import type { DataChannelLike, FileMeta, FileSink } from "./types.js";
+
+const sha = (bytes: Uint8Array): string => {
+  const h = createSha256Hasher();
+  h.update(bytes);
+  return h.digest();
+};
+// Um file-end bem-formado: hash de verdade dos bytes que o teste alimentou.
+const fileEnd = (id: string, bytes: Uint8Array) =>
+  encodeControl({ t: "file-end", id, bytesSent: bytes.byteLength, sha256: sha(bytes) });
+// Um file-end com hash deliberadamente errado (mas sintaticamente válido).
+const fileEndBadHash = (id: string, bytesSent: number) =>
+  encodeControl({ t: "file-end", id, bytesSent, sha256: "f".repeat(64) });
 
 class FakeChannel implements DataChannelLike {
   bufferedAmount = 0;
@@ -95,7 +108,7 @@ describe("TransferReceiver", () => {
     await flush();
     ch.feed(new Uint8Array([10, 20, 30]).buffer);
     ch.feed(new Uint8Array([40, 50]).buffer);
-    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 5 }));
+    ch.feed(fileEnd("f1", new Uint8Array([10, 20, 30, 40, 50])));
     ch.feed(encodeControl({ t: "batch-complete" }));
     await flush();
 
@@ -141,7 +154,7 @@ describe("TransferReceiver", () => {
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
     await flush();
     ch.feed(new Uint8Array([1, 2]).buffer);
-    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 2 }));
+    ch.feed(fileEndBadHash("f1", 2));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "size-mismatch" }));
     expect(ch.sentStrings).toContain(encodeControl({ t: "cancel", scope: "batch" }));
@@ -208,7 +221,7 @@ describe("TransferReceiver", () => {
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
     await flush();
     ch.feed(new Uint8Array([1, 2]).buffer);
-    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 2 }));
+    ch.feed(fileEndBadHash("f1", 2));
     await flush();
     expect(sink.closed).toBe(false);
     expect(sink.aborted).toBe(true);
@@ -271,7 +284,7 @@ describe("TransferReceiver", () => {
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
     await flush();
     ch.feed(new Uint8Array([1, 2]).buffer);
-    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 2 }));
+    ch.feed(fileEnd("f1", new Uint8Array([1, 2])));
     await flush();
     ch.feed(encodeControl({ t: "file-begin", id: "f2", offset: 0 }));
     await flush();
@@ -291,5 +304,92 @@ describe("TransferReceiver", () => {
     ch.feed(encodeControl({ t: "cancel", scope: "batch" }));
     await flush();
     expect(onCancelled).toHaveBeenCalledWith(0);
+  });
+
+  it("fails 'integrity' when the file-end digest does not match the received bytes", async () => {
+    const ch = new FakeChannel();
+    const sink = new MemorySink();
+    const onError = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
+    ch.feed(offer([meta({ id: "f1", size: 3 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([1, 2, 3]).buffer);
+    ch.feed(fileEndBadHash("f1", 3));
+    await flush();
+
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "integrity" }));
+    expect(sink.aborted).toBe(true);
+    expect(sink.closed).toBe(false);
+    expect(ch.sentStrings).toContain(encodeControl({ t: "cancel", scope: "batch" }));
+  });
+
+  it("fails 'integrity' when a chunk was tampered with in transit", async () => {
+    const ch = new FakeChannel();
+    const sink = new MemorySink();
+    const onError = vi.fn();
+    const original = new Uint8Array([9, 9, 9, 9]);
+    const tampered = new Uint8Array([9, 8, 9, 9]);
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onError });
+    ch.feed(offer([meta({ id: "f1", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(tampered.buffer);
+    // O emissor honesto mandaria o hash do conteúdo ORIGINAL.
+    ch.feed(encodeControl({ t: "file-end", id: "f1", bytesSent: 4, sha256: sha(original) }));
+    await flush();
+
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "integrity" }));
+    expect(sink.closed).toBe(false);
+  });
+
+  it("passes a matching digest through to a normal close()", async () => {
+    const ch = new FakeChannel();
+    const sink = new MemorySink();
+    const onFileComplete = vi.fn();
+    const receiver = new TransferReceiver(ch, () => Promise.resolve(sink), { onFileComplete });
+    ch.feed(offer([meta({ id: "f1", size: 4 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([5, 6, 7, 8]).buffer);
+    ch.feed(fileEnd("f1", new Uint8Array([5, 6, 7, 8])));
+    await flush();
+
+    expect(sink.closed).toBe(true);
+    expect(sink.aborted).toBe(false);
+    expect(onFileComplete).toHaveBeenCalledWith("f1");
+  });
+
+  it("uses a fresh hasher per file", async () => {
+    const ch = new FakeChannel();
+    let created = 0;
+    const receiver = new TransferReceiver(
+      ch,
+      () => Promise.resolve(new MemorySink()),
+      { onError: vi.fn() },
+      {
+        createHasher: () => {
+          created += 1;
+          return createSha256Hasher();
+        }
+      }
+    );
+    ch.feed(offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 })]));
+    receiver.accept();
+    ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([1, 2]).buffer);
+    ch.feed(fileEnd("f1", new Uint8Array([1, 2])));
+    await flush();
+    ch.feed(encodeControl({ t: "file-begin", id: "f2", offset: 0 }));
+    await flush();
+    ch.feed(new Uint8Array([3, 4]).buffer);
+    ch.feed(fileEnd("f2", new Uint8Array([3, 4])));
+    await flush();
+
+    expect(created).toBe(2);
   });
 });
