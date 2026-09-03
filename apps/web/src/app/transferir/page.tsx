@@ -1,22 +1,33 @@
 "use client";
 
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { AlertTriangle, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
+import { SendPanel } from "../../components/transferir/SendPanel.js";
 import { usePeerConnection } from "../../lib/peer-connection.js";
+import { useFileTransfer } from "../../lib/use-file-transfer.js";
 import { useSignalingSocket } from "../../lib/signaling-socket.js";
 
 export default function TransferPage() {
   const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } = useSignalingSocket();
-
-  usePeerConnection({ role, accepted: session?.status === "accepted", sendSignal, lastSignal });
+  const { dataChannel, channelState } = usePeerConnection({
+    role,
+    accepted: session?.status === "accepted",
+    sendSignal,
+    lastSignal
+  });
+  const transfer = useFileTransfer({ role, dataChannel, channelState });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
         <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
       )}
-      {renderContent(session, peerOnline, createSession)}
+      {session?.status === "accepted" && channelState === "open" ? (
+        <SendPanel transfer={transfer} />
+      ) : (
+        renderContent(session, peerOnline, createSession)
+      )}
     </main>
   );
 }
@@ -39,10 +50,9 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
     case "accepted":
       return (
         <StateScreen
-          icon={CheckCircle2}
-          tone="success"
+          icon={Share2}
           title="Convite aceito"
-          description="Aguardando a conexão direta entre os dispositivos."
+          description="Estabelecendo a conexão direta entre os dispositivos…"
         />
       );
     case "rejected":

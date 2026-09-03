@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePeerConnection } from "../../lib/peer-connection.js";
 import { useSignalingSocket, type UseSignalingSocketResult } from "../../lib/signaling-socket.js";
+import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import TransferPage from "./page.js";
 
 vi.mock("../../lib/signaling-socket.js", () => ({
@@ -13,8 +14,35 @@ vi.mock("../../lib/peer-connection.js", () => ({
   usePeerConnection: vi.fn()
 }));
 
+vi.mock("../../lib/use-file-transfer.js", () => ({
+  useFileTransfer: vi.fn(
+    (): UseFileTransferResult => ({
+      ready: false,
+      selectedFiles: [],
+      totalBytes: 0,
+      limitError: null,
+      addFiles: vi.fn(),
+      removeFile: vi.fn(),
+      clearSelection: vi.fn(),
+      startSend: vi.fn(),
+      incomingBatch: null,
+      acceptBatch: vi.fn(),
+      rejectBatch: vi.fn(),
+      phase: "idle",
+      perFile: {},
+      overall: { done: 0, total: 0 },
+      errorMessage: null,
+      cancel: vi.fn()
+    })
+  )
+}));
+
 const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
 const mockedUsePeerConnection = vi.mocked(usePeerConnection);
+
+beforeEach(() => {
+  mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "connecting" });
+});
 
 function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSignalingSocketResult {
   return {
@@ -69,6 +97,14 @@ describe("TransferPage", () => {
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<TransferPage />);
     expect(screen.getByRole("heading", { name: "Convite aceito" })).toBeInTheDocument();
+  });
+
+  it("shows the send panel once the data channel is open", () => {
+    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
+    mockedUsePeerConnection.mockReturnValue({ dataChannel: {} as RTCDataChannel, channelState: "open" });
+    render(<TransferPage />);
+    expect(screen.getByRole("button", { name: "Escolher arquivos" })).toBeInTheDocument();
   });
 
   it("starts the peer connection once the session is accepted", () => {
