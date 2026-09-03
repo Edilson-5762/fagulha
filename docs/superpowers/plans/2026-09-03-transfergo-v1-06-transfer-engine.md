@@ -1538,22 +1538,6 @@ describe("transfer-engine loopback", () => {
       { meta: { id: "c", name: "mid.bin", size: 5 * 1024, type: "" }, bytes: new Uint8Array(5 * 1024).map((_, i) => (i * 13) % 256) }
     ];
 
-    const sinks = new Map<string, MemorySink>();
-    const done = new Promise<void>((resolve, reject) => {
-      new TransferReceiver(
-        guestCh,
-        (meta) => {
-          const sink = new MemorySink();
-          sinks.set(meta.id, sink);
-          return Promise.resolve(sink);
-        },
-        { onBatchComplete: resolve, onError: reject }
-      ).accept === undefined
-        ? reject(new Error("no receiver"))
-        : undefined;
-    });
-
-    // Re-create the receiver with a handle so we can call accept() after the offer.
     const sinkMap = new Map<string, MemorySink>();
     let resolveDone!: () => void;
     let rejectDone!: (e: unknown) => void;
@@ -1570,9 +1554,6 @@ describe("transfer-engine loopback", () => {
       },
       { onBatchComplete: resolveDone, onError: rejectDone }
     );
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    void done;
-    void sinks;
 
     const sender = new TransferSender(
       hostCh,
@@ -1599,11 +1580,9 @@ describe("transfer-engine loopback", () => {
 });
 ```
 
-> **Implementer note:** the block above deliberately shows the final wiring. When implementing, drop the throwaway `done`/`sinks`/first-receiver scaffolding and keep only the second `receiver` + `finished` promise + the `addEventListener("message", …)` auto-accept. The test must end with the per-file `expect(...).toEqual(f.bytes)` loop and nothing calling `setTimeout` beyond the loopback's own timer.
+> **Implementer note:** transcribe the test as written — one `TransferReceiver`, one `TransferSender`, the auto-accept `message` listener, `await finished`, the per-file assertion loop. The only timer is the loopback pair's own `setInterval`. The auto-accept listener is registered after the receiver's constructor, so on each delivered frame the receiver's `onMessage` runs first (it handles `batch-offer` synchronously and sets `this.batch`), then the listener's `receiver.accept()` succeeds.
 
-- [ ] **Step 3: Clean the test to the minimal wiring**
-
-Rewrite the test body so it contains exactly one `TransferReceiver`, one `TransferSender`, the auto-accept `message` listener, `await finished`, and the assertion loop. Run it.
+- [ ] **Step 3: Run the loopback test**
 
 Run: `pnpm --filter @transfergo/transfer-engine test loopback`
 Expected: PASS — all three files match byte-for-byte.
