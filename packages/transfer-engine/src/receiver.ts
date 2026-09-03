@@ -13,6 +13,7 @@ import {
   type FileSink,
   type TransferProgress
 } from "./types.js";
+import { createSha256Hasher, type CreateHasher, type Hasher } from "./hash.js";
 
 export interface ReceiverBatchOffer {
   batchId: string;
@@ -32,11 +33,12 @@ export interface ReceiverCallbacks {
 export interface ReceiverOptions {
   progressIntervalMs?: number;
   maxBinaryFrameBytes?: number;
+  createHasher?: CreateHasher;
 }
 
 export type OpenSink = (meta: FileMeta, offset: number) => Promise<FileSink>;
 
-const DEFAULTS = { progressIntervalMs: 250, maxBinaryFrameBytes: MAX_BINARY_FRAME_BYTES };
+const DEFAULTS = { progressIntervalMs: 250, maxBinaryFrameBytes: MAX_BINARY_FRAME_BYTES, createHasher: createSha256Hasher };
 
 export class TransferReceiver {
   private readonly channel: DataChannelLike;
@@ -51,6 +53,7 @@ export class TransferReceiver {
 
   private currentSink: FileSink | null = null;
   private currentMeta: FileMeta | null = null;
+  private currentHash: Hasher | null = null;
   private currentBytes = 0;
   private filesDone = 0;
   private lastProgressAt = 0;
@@ -106,6 +109,7 @@ export class TransferReceiver {
     }
     this.send({ t: "cancel", scope: "batch" });
     void this.currentSink?.abort().catch(() => undefined);
+    this.currentHash = null;
     this.cb.onCancelled?.(this.filesDone);
     this.dispose();
   }
@@ -172,6 +176,7 @@ export class TransferReceiver {
         // TODO(resume): frame.offset is always 0 in this plan. A resumable
         // transfer would seek the sink to frame.offset and set currentBytes to it.
         this.currentSink = await this.openSink(meta, frame.offset);
+        this.currentHash = this.opts.createHasher();
         return;
       }
       case "file-end": {
@@ -183,12 +188,18 @@ export class TransferReceiver {
           // partial write is discarded, never close()d.
           return this.fail("size-mismatch", `expected ${this.currentMeta.size} bytes, got ${this.currentBytes}`);
         }
+        const actual = this.currentHash!.digest();
+        if (actual !== frame.sha256) {
+          // Verifica ANTES do close(): fail() aborta o sink, o arquivo corrompido nunca é gravado.
+          return this.fail("integrity", `sha256 mismatch for ${frame.id}: expected ${frame.sha256}, got ${actual}`);
+        }
         await this.currentSink.close();
         this.filesDone += 1;
         this.cb.onFileComplete?.(this.currentMeta.id);
         this.emitProgress(true);
         this.currentSink = null;
         this.currentMeta = null;
+        this.currentHash = null;
         return;
       }
       case "batch-complete": {
@@ -202,6 +213,7 @@ export class TransferReceiver {
       }
       case "cancel": {
         void this.currentSink?.abort().catch(() => undefined);
+        this.currentHash = null;
         this.cb.onCancelled?.(this.filesDone);
         this.dispose();
         return;
@@ -222,12 +234,17 @@ export class TransferReceiver {
       return this.fail("size-mismatch", "received more bytes than declared");
     }
     await this.currentSink.write(chunk);
+    // ?. em vez de !: o cancel() público (fora da fila) pode zerar currentHash
+    // enquanto um write() está pendente. O desync que importa — "nenhum arquivo
+    // aberto" — já é barrado no topo de handleBinary.
+    this.currentHash?.update(new Uint8Array(chunk));
     this.currentBytes += chunk.byteLength;
     this.emitProgress(false);
   }
 
   private fail(code: TransferError["code"], message: string): void {
     void this.currentSink?.abort().catch(() => undefined);
+    this.currentHash = null;
     this.send({ t: "cancel", scope: "batch" });
     this.cb.onError?.(new TransferError(code, message));
     this.dispose();

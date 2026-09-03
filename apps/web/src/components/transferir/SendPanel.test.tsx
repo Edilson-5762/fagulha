@@ -22,6 +22,7 @@ const base: UseFileTransferResult = {
   stats: { speedBytesPerSec: null, etaSeconds: null },
   filesSaved: 0,
   errorMessage: null,
+  integrityVerified: false,
   cancel: vi.fn()
 };
 
@@ -192,5 +193,33 @@ describe("SendPanel", () => {
       <SendPanel transfer={withOverrides({ phase: "failed", errorMessage: "O outro lado recusou a transferência." })} />
     );
     expect(screen.getByText("O outro lado recusou a transferência.")).toBeInTheDocument();
+  });
+
+  it("keeps the sender per-file label as 'Concluído' (the sender verified nothing)", () => {
+    render(
+      <SendPanel
+        transfer={withOverrides({
+          phase: "sending",
+          overall: { bytesDone: 10, bytesTotal: 10, filesDone: 1, filesTotal: 1 },
+          selectedFiles: [{ id: "f1", name: "a.bin", size: 10, type: "", sizeClass: "small" }],
+          perFile: { f1: { bytes: 10, size: 10, pct: 100, state: "completed" } }
+        })}
+      />
+    );
+    expect(screen.getByText("Concluído")).toBeInTheDocument();
+    expect(screen.queryByText("Verificado")).not.toBeInTheDocument();
+  });
+
+  it("does not show an integrity line on the sender success screen", () => {
+    render(
+      <SendPanel
+        transfer={withOverrides({
+          phase: "completed",
+          integrityVerified: true,
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 2 }
+        })}
+      />
+    );
+    expect(screen.queryByText("Integridade verificada (SHA-256)")).not.toBeInTheDocument();
   });
 });

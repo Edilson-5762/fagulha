@@ -93,6 +93,7 @@ export interface UseFileTransferResult {
   stats: TransferStats;
   filesSaved: number;
   errorMessage: string | null;
+  integrityVerified: boolean;
   cancel: () => void;
 }
 
@@ -101,6 +102,7 @@ const ERROR_MESSAGES: Record<TransferError["code"], string | null> = {
   "over-limit": "A seleção passou do limite de 50 arquivos ou 5 GB.",
   busy: "O outro lado já está no meio de outra transferência.",
   "size-mismatch": "Um arquivo chegou incompleto. A transferência foi interrompida.",
+  integrity: "Um arquivo chegou corrompido. A transferência foi interrompida.",
   "bad-frame": "A conexão falhou durante a transferência.",
   "channel-error": "A conexão falhou durante a transferência.",
   cancelled: null
@@ -445,6 +447,13 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     setPhase((current) => (current === "completed" ? current : "cancelled"));
   }, []);
 
+  // Verdadeiro só quando ESTE lado verificou a integridade de todos os arquivos —
+  // ou seja, apenas no receptor. O `batch-complete` do receptor só chega depois de
+  // cada `file-end` ter passado pela comparação de hash. O emissor NÃO ganha esse
+  // sinal: ele mesmo envia `batch-complete` e se descarta, sem nenhum ack do
+  // receptor, então "verificado" seria uma afirmação que ele não pode sustentar.
+  const integrityVerified = role === "guest" && phase === "completed";
+
   return {
     ready,
     selectedFiles,
@@ -463,6 +472,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     stats,
     filesSaved,
     errorMessage,
+    integrityVerified,
     cancel
   };
 }

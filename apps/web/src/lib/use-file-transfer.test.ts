@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -59,6 +60,10 @@ const renderTransfer = (role: "host" | "guest") =>
   renderHook(() => useFileTransfer({ role, dataChannel: channel as unknown as RTCDataChannel, channelState: "open" }));
 
 const enc = (frame: unknown) => JSON.stringify(frame);
+// Digest real dos bytes que o teste alimentou — usa o crypto do Node como
+// oráculo independente do hasher da engine, para o file-end passar na
+// verificação de integridade do receptor.
+const sha = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const offer = (files: { id: string; name: string; size: number; type: string }[], id = "b1") =>
   enc({ t: "batch-offer", batch: { id, files } });
 
@@ -125,7 +130,7 @@ describe("useFileTransfer — guest progress by bytes", () => {
     expect(result.current.perFile.f1).toMatchObject({ bytes: 2, size: 3, pct: 67, state: "receiving" });
 
     act(() => channel.feed(new Uint8Array([3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3 })));
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
     await flush();
     expect(result.current.overall).toMatchObject({ bytesDone: 3, filesDone: 1 });
     expect(result.current.perFile.f1).toMatchObject({ pct: 100, state: "completed" });
@@ -133,7 +138,7 @@ describe("useFileTransfer — guest progress by bytes", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f2", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([4, 5]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f2", bytesSent: 2 })));
+    act(() => channel.feed(enc({ t: "file-end", id: "f2", bytesSent: 2, sha256: sha(new Uint8Array([4, 5])) })));
     act(() => channel.feed(enc({ t: "batch-complete" })));
     await flush();
     expect(result.current.phase).toBe("completed");
@@ -147,7 +152,7 @@ describe("useFileTransfer — guest progress by bytes", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3 })));
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
     await flush();
     await act(async () => {
       channel.feed(enc({ t: "cancel", scope: "batch" }));
@@ -165,7 +170,7 @@ describe("useFileTransfer — guest progress by bytes", () => {
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
     act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3 })));
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
     await flush();
     await act(async () => {
       channel.feed(enc({ t: "cancel", scope: "batch" }));
@@ -192,7 +197,7 @@ describe("useFileTransfer — guest progress by bytes", () => {
     await acceptAsGuest(result, [{ id: "f1", name: "empty", size: 0, type: "" }]);
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
-    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 0 })));
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 0, sha256: sha(new Uint8Array([])) })));
     act(() => channel.feed(enc({ t: "batch-complete" })));
     await flush();
     expect(result.current.perFile.f1?.pct).toBe(100);
@@ -287,5 +292,44 @@ describe("useFileTransfer — speed and ETA", () => {
     });
     expect(result.current.stats.speedBytesPerSec!).toBeLessThan(movingSpeed);
     expect(result.current.stats.etaSeconds).toBeNull();
+  });
+});
+
+describe("useFileTransfer — integridade (Plano 8)", () => {
+  const files = [{ id: "f1", name: "a.bin", size: 3, type: "" }];
+
+  it("maps an integrity TransferError to the pt-BR corrupted-file message", async () => {
+    const { result } = renderTransfer("guest");
+    await acceptAsGuest(result, files);
+    act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
+    await flush();
+    // Feed real bytes, then a file-end whose sha256 is syntactically valid but
+    // does NOT match those bytes → the receiver fails with code "integrity".
+    act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
+    await flush();
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: "f".repeat(64) })));
+    await flush();
+    expect(result.current.phase).toBe("failed");
+    expect(result.current.errorMessage).toBe(
+      "Um arquivo chegou corrompido. A transferência foi interrompida."
+    );
+  });
+
+  it("integrityVerified is false until the batch completes", () => {
+    const { result } = renderTransfer("guest");
+    expect(result.current.integrityVerified).toBe(false);
+  });
+
+  it("integrityVerified is true once phase is completed", async () => {
+    const { result } = renderTransfer("guest");
+    await acceptAsGuest(result, files);
+    act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
+    await flush();
+    act(() => channel.feed(new Uint8Array([1, 2, 3]).buffer));
+    act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3, sha256: sha(new Uint8Array([1, 2, 3])) })));
+    act(() => channel.feed(enc({ t: "batch-complete" })));
+    await flush();
+    expect(result.current.phase).toBe("completed");
+    expect(result.current.integrityVerified).toBe(true);
   });
 });
