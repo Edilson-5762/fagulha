@@ -88,7 +88,7 @@ export function decodeControl(raw: string): ControlFrame | null {
 }
 
 /** Policy check (limits), separate from `decodeControl`'s shape check. */
-export function validateBatchOffer(files: FileMeta[]): "ok" | "over-limit" {
+export function validateBatchOffer(files: readonly FileMeta[]): "ok" | "over-limit" {
   if (files.length < 1 || files.length > BATCH_MAX_FILES) {
     return "over-limit";
   }
