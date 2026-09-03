@@ -173,3 +173,86 @@ describe("useFileTransfer — stats placeholder (Task 3)", () => {
     expect(result.current.stats).toEqual({ speedBytesPerSec: null, etaSeconds: null });
   });
 });
+
+describe("useFileTransfer — speed and ETA", () => {
+  const files = [{ id: "f1", name: "big.bin", size: 1_000_000, type: "" }];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(performance, "now").mockImplementation(() => Date.now());
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Feeds a 16 KiB binary chunk and lets the engine's throttled progress through.
+  const pump = async (n = 1) => {
+    for (let i = 0; i < n; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(250);
+        channel.feed(new Uint8Array(16 * 1024).buffer);
+        await Promise.resolve();
+      });
+    }
+  };
+
+  // Offer → accept → file-begin. Split across act() settles so each receiver-driven
+  // state commit lands before the next frame (React 19.2 + fake timers).
+  const startReceiving = async (result: { current: ReturnType<typeof useFileTransfer> }) => {
+    await act(async () => {
+      channel.feed(offer(files));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await result.current.acceptBatch();
+    });
+    await act(async () => {
+      channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 }));
+      await Promise.resolve();
+    });
+  };
+
+  it("holds speed at null until the sample span reaches 1s, then reports a stable value", async () => {
+    const { result } = renderTransfer("guest");
+    await startReceiving(result);
+
+    await pump(3); // ~750ms of samples
+    expect(result.current.stats.speedBytesPerSec).toBeNull();
+
+    await pump(4); // now well past 1s
+    const speed = result.current.stats.speedBytesPerSec;
+    expect(speed).not.toBeNull();
+    // 16 KiB per 250ms ≈ 65536 B/s, within a wide tolerance
+    expect(speed!).toBeGreaterThan(30_000);
+    expect(speed!).toBeLessThan(120_000);
+  });
+
+  it("holds ETA at null before 3s of transfer, then reports a finite estimate", async () => {
+    const { result } = renderTransfer("guest");
+    await startReceiving(result);
+
+    await pump(8); // ~2s
+    expect(result.current.stats.etaSeconds).toBeNull();
+
+    await pump(6); // past 3s
+    const eta = result.current.stats.etaSeconds;
+    expect(eta).not.toBeNull();
+    expect(Number.isFinite(eta!)).toBe(true);
+    expect(eta!).toBeGreaterThan(0);
+  });
+
+  it("decays speed toward zero and drops ETA when the channel stalls", async () => {
+    const { result } = renderTransfer("guest");
+    await startReceiving(result);
+    await pump(16); // steady flow past 3s
+    const movingSpeed = result.current.stats.speedBytesPerSec!;
+    expect(movingSpeed).toBeGreaterThan(0);
+
+    // No more feeds. The 1s ticker keeps recomputing against a growing "now".
+    await act(async () => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(result.current.stats.speedBytesPerSec!).toBeLessThan(movingSpeed);
+    expect(result.current.stats.etaSeconds).toBeNull();
+  });
+});

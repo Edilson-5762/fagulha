@@ -109,6 +109,14 @@ const ERROR_MESSAGES: Record<TransferError["code"], string | null> = {
 const EMPTY_OVERALL: TransferOverall = { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 };
 const EMPTY_STATS: TransferStats = { speedBytesPerSec: null, etaSeconds: null };
 
+const SPEED_WINDOW_MS = 5000;
+const SPEED_MIN_SPAN_MS = 1000;
+const ETA_MIN_ELAPSED_MS = 3000;
+const STATS_TICK_MS = 1000;
+
+const monotonicNow = (): number =>
+  typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+
 let batchCounter = 0;
 const nextId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(batchCounter++).toString(36)}`;
 
@@ -121,7 +129,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const [phase, setPhase] = useState<TransferPhase>("idle");
   const [perFile, setPerFile] = useState<Record<string, PerFileStatus>>({});
   const [overall, setOverall] = useState<TransferOverall>(EMPTY_OVERALL);
-  const [stats] = useState<TransferStats>(EMPTY_STATS); // Task 4 troca por useState + setter
+  const [stats, setStats] = useState<TransferStats>(EMPTY_STATS);
   const [filesSaved, setFilesSaved] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // Bumped after a terminal state so the guest effect below rebuilds a fresh
@@ -135,6 +143,9 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const batchBytesTotalRef = useRef(0);
   // Arquivos concluídos (onFileComplete) no lote atual — usado para filesSaved.
   const filesCompletedRef = useRef(0);
+  // Amostras (t, bytes acumulados) para a janela de velocidade e o início da medição.
+  const samplesRef = useRef<{ t: number; bytes: number }[]>([]);
+  const startedAtRef = useRef<number | null>(null);
 
   const fileMapRef = useRef<Map<string, File>>(new Map());
   const senderRef = useRef<TransferSender | null>(null);
@@ -142,6 +153,45 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const openSinkRef = useRef<((meta: FileMeta, offset: number) => Promise<import("@transfergo/transfer-engine").FileSink>) | null>(
     null
   );
+
+  const recomputeStats = useCallback(() => {
+    const buf = samplesRef.current;
+    const nowT = monotonicNow();
+    // Descarta amostras fora da janela, sempre deixando pelo menos 2.
+    while (buf.length > 2 && nowT - buf[1]!.t > SPEED_WINDOW_MS) {
+      buf.shift();
+    }
+    if (buf.length < 2 || startedAtRef.current == null) {
+      setStats(EMPTY_STATS);
+      return;
+    }
+    const oldest = buf[0]!;
+    const newest = buf[buf.length - 1]!;
+    // Span medido contra AGORA (não contra a última amostra): numa travada,
+    // "agora" cresce, o span cresce e a velocidade decai sozinha.
+    const span = nowT - oldest.t;
+    let speed: number | null;
+    if (span < SPEED_MIN_SPAN_MS) {
+      speed = null;
+    } else {
+      speed = (Math.max(0, newest.bytes - oldest.bytes) / span) * 1000;
+    }
+    const elapsed = nowT - startedAtRef.current;
+    const remaining = Math.max(0, batchBytesTotalRef.current - newest.bytes);
+    let eta: number | null;
+    if (speed == null || speed <= 0 || elapsed < ETA_MIN_ELAPSED_MS || buf.length < 3) {
+      eta = null;
+    } else {
+      eta = remaining / speed;
+    }
+    setStats({ speedBytesPerSec: speed, etaSeconds: eta });
+  }, []);
+
+  const resetStats = useCallback(() => {
+    samplesRef.current = [];
+    startedAtRef.current = null;
+    setStats(EMPTY_STATS);
+  }, []);
 
   const applyProgress = useCallback(
     (p: TransferProgress) => {
@@ -155,6 +205,10 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
         filesDone: p.filesDone,
         filesTotal: p.filesTotal
       });
+      const sampleT = monotonicNow();
+      startedAtRef.current ??= sampleT;
+      samplesRef.current.push({ t: sampleT, bytes: bytesDone });
+      recomputeStats();
       const activeState: PerFileState = role === "host" ? "sending" : "receiving";
       setPerFile((prev) => ({
         ...prev,
@@ -167,7 +221,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       }));
       setPhase((cur) => (cur === "preparing" ? activeState : cur));
     },
-    [role]
+    [role, recomputeStats]
   );
 
   const wireCommon = useMemo(
@@ -239,6 +293,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
           filesCompletedRef.current = 0;
           setPerFile({});
           setOverall(EMPTY_OVERALL);
+          resetStats();
           setPhase("idle");
           setIncomingBatch({
             files: offer.files,
@@ -255,7 +310,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       receiver.dispose();
       receiverRef.current = null;
     };
-  }, [ready, role, dataChannel, wireCommon, receiverEpoch]);
+  }, [ready, role, dataChannel, wireCommon, receiverEpoch, resetStats]);
 
   // Tear down any in-flight transfer machinery when the hook unmounts so a
   // running send/receive loop can't outlive the component.
@@ -266,6 +321,16 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     },
     []
   );
+
+  // Enquanto os bytes andam, recalcula 1x/s mesmo sem evento novo — assim uma
+  // travada de canal faz a velocidade cair para ~0 em vez de congelar.
+  useEffect(() => {
+    if (phase !== "sending" && phase !== "receiving") {
+      return;
+    }
+    const id = setInterval(recomputeStats, STATS_TICK_MS);
+    return () => clearInterval(id);
+  }, [phase, recomputeStats]);
 
   const totalBytes = useMemo(() => selectedFiles.reduce((sum, f) => sum + f.size, 0), [selectedFiles]);
 
@@ -309,9 +374,10 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     setOverall(EMPTY_OVERALL);
     setFilesSaved(0);
     filesCompletedRef.current = 0;
+    resetStats();
     setErrorMessage(null);
     setPhase("idle");
-  }, []);
+  }, [resetStats]);
 
   const startSend = useCallback(() => {
     if (!ready || !dataChannel || role !== "host" || limitError || selectedFiles.length === 0) {
@@ -331,6 +397,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     batchBytesTotalRef.current = totalBytes;
     filesCompletedRef.current = 0;
     setFilesSaved(0);
+    resetStats();
     setOverall({ bytesDone: 0, bytesTotal: totalBytes, filesDone: 0, filesTotal: selectedFiles.length });
     setErrorMessage(null);
     const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
@@ -340,7 +407,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     senderRef.current = sender;
     setPhase("offering");
     sender.start();
-  }, [ready, dataChannel, role, limitError, selectedFiles, totalBytes, wireCommon]);
+  }, [ready, dataChannel, role, limitError, selectedFiles, totalBytes, wireCommon, resetStats]);
 
   const acceptBatch = useCallback(async () => {
     if (!receiverRef.current || !incomingBatch) {
@@ -362,10 +429,11 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     batchBytesTotalRef.current = incomingBatch.totalBytes;
     filesCompletedRef.current = 0;
     setFilesSaved(0);
+    resetStats();
     setOverall({ bytesDone: 0, bytesTotal: incomingBatch.totalBytes, filesDone: 0, filesTotal: incomingBatch.files.length });
     setPhase("preparing");
     receiverRef.current.accept();
-  }, [incomingBatch]);
+  }, [incomingBatch, resetStats]);
 
   const rejectBatch = useCallback(() => {
     receiverRef.current?.reject();
