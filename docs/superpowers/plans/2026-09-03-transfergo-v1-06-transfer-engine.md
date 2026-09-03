@@ -3091,7 +3091,7 @@ Capture the `usePeerConnection` return, add `useFileTransfer`, and render `SendP
 "use client";
 
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
 import { SendPanel } from "../../components/transferir/SendPanel.js";
 import { usePeerConnection } from "../../lib/peer-connection.js";
@@ -3140,9 +3140,10 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
     case "accepted":
       return (
         <StateScreen
-          icon={Share2}
+          icon={CheckCircle2}
+          tone="success"
           title="Convite aceito"
-          description="Estabelecendo a conexão direta entre os dispositivos…"
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":
@@ -3181,7 +3182,7 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
 import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useFileTransfer } from "../../../lib/use-file-transfer.js";
@@ -3249,9 +3250,10 @@ function renderContent(session: Session | null | undefined, onAccept: () => void
     case "accepted":
       return (
         <StateScreen
-          icon={ShieldCheck}
+          icon={CheckCircle2}
+          tone="success"
           title="Convite aceito"
-          description="Estabelecendo a conexão direta entre os dispositivos…"
+          description="Aguardando a conexão direta entre os dispositivos."
         />
       );
     case "rejected":
