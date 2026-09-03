@@ -194,7 +194,7 @@ Pure functions and type-only seams. No state, no channel.
   - `const MAX_BINARY_FRAME_BYTES = 256 * 1024`
   - `function encodeControl(frame: ControlFrame): string`
   - `function decodeControl(raw: string): ControlFrame | null` — shape validation only (no limit policy)
-  - `function validateBatchOffer(files: FileMeta[]): "ok" | "over-limit"`
+  - `function validateBatchOffer(files: readonly FileMeta[]): "ok" | "over-limit"` (accepts the `readonly` array from `ControlFrame`'s `batch-offer` variant)
   - `function sanitizeFileName(name: string): string`
 
 - [ ] **Step 1: Write the failing test**
@@ -462,7 +462,7 @@ export function decodeControl(raw: string): ControlFrame | null {
 }
 
 /** Policy check (limits), separate from `decodeControl`'s shape check. */
-export function validateBatchOffer(files: FileMeta[]): "ok" | "over-limit" {
+export function validateBatchOffer(files: readonly FileMeta[]): "ok" | "over-limit" {
   if (files.length < 1 || files.length > BATCH_MAX_FILES) {
     return "over-limit";
   }
@@ -1044,8 +1044,10 @@ describe("TransferReceiver", () => {
 
   it("writes chunks in order even when the sink is slow", async () => {
     const ch = new FakeChannel();
-    let release: (() => void) | null = null;
-    const gate = new Promise<void>((r) => (release = r));
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
     let firstWrite = true;
     const sink = new MemorySink(async () => {
       if (firstWrite) {
@@ -1062,7 +1064,7 @@ describe("TransferReceiver", () => {
     ch.feed(new Uint8Array([2]).buffer);
     ch.feed(new Uint8Array([3]).buffer);
     await flush();
-    release?.();
+    release();
     await flush();
     expect(sink.bytes).toEqual(new Uint8Array([1, 2, 3]));
   });
@@ -1193,6 +1195,19 @@ export class TransferReceiver {
 
   private readonly onMessage = (event: { data?: unknown }) => {
     const data = event.data;
+    // The pre-transfer `batch-offer` arrives before `accept()`, has nothing to
+    // order against, and its handler reaches no `await` — run it synchronously so
+    // callers can `accept()`/inspect `onBatchOffered` in the same tick. Every
+    // later frame (file-begin, binary, file-end, cancel, batch-complete) stays on
+    // the queue, so an awaited `sink.write()` for chunk N still finishes before
+    // chunk N+1's handler runs.
+    if (typeof data === "string" && !this.batch) {
+      const frame = decodeControl(data);
+      if (frame?.t === "batch-offer") {
+        void this.handleFrame(data);
+        return;
+      }
+    }
     this.queue = this.queue.then(() => this.handleFrame(data)).catch(() => undefined);
   };
 
@@ -1358,7 +1373,9 @@ export class TransferReceiver {
       return data;
     }
     if (ArrayBuffer.isView(data)) {
-      return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+      // TS 5.9 types `.buffer` as `ArrayBufferLike`; an RTCDataChannel message is
+      // never SharedArrayBuffer-backed in the browser or in Node tests.
+      return (data.buffer as ArrayBuffer).slice(data.byteOffset, data.byteOffset + data.byteLength);
     }
     return new ArrayBuffer(0);
   }
