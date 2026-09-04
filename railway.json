@@ -5,7 +5,7 @@
     "buildCommand": "echo 'no build step: the signaling server runs TypeScript directly via tsx'"
   },
   "deploy": {
-    "startCommand": "pnpm --filter @transfergo/signaling-server start",
+    "startCommand": "pnpm --filter @fagulha/signaling-server start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",

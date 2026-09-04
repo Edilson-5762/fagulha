@@ -27,7 +27,7 @@ describe("HomePage", () => {
     render(<HomePage />);
     expect(screen.getByRole("link", { name: "GitHub" })).toHaveAttribute(
       "href",
-      "https://github.com/Edilson-5762/transfergo"
+      "https://github.com/Edilson-5762/fagulha"
     );
   });
 });

@@ -1,4 +1,4 @@
-export const PACKAGE_NAME = "@transfergo/transfer-engine";
+export const PACKAGE_NAME = "@fagulha/transfer-engine";
 
 export * from "./types.js";
 export * from "./protocol.js";

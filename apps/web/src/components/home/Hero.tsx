@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Button } from "@transfergo/ui";
+import { Button } from "@fagulha/ui";
 
 export function Hero() {
   return (
     <section className="flex flex-col items-center px-6 py-24 text-center">
       <span className="mb-4 text-sm font-medium uppercase tracking-widest text-text-muted">
-        TransferGo
+        Fagulha
       </span>
       <h1 className="max-w-2xl text-4xl font-bold leading-tight text-text sm:text-5xl">
         Transfira arquivos com segurança entre seus dispositivos.

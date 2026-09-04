@@ -1,5 +1,5 @@
 import type { AddressInfo } from "node:net";
-import type { ServerMessage } from "@transfergo/shared";
+import type { ServerMessage } from "@fagulha/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { createServer } from "./server.js";

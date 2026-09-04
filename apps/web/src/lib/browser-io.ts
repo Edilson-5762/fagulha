@@ -1,4 +1,4 @@
-import type { ChunkSource, DataChannelLike, FileMeta, FileSink } from "@transfergo/transfer-engine";
+import type { ChunkSource, DataChannelLike, FileMeta, FileSink } from "@fagulha/transfer-engine";
 
 // Minimal local typings for the File System Access API (not in the TS DOM lib).
 interface FsWritable {

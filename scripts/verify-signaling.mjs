@@ -1,6 +1,6 @@
 // Verificacao headless de um relay de sinalizacao IMPLANTADO.
 // Uso: node scripts/verify-signaling.mjs <signaling-base-url> <web-origin>
-//   <signaling-base-url>  ex.: https://transfergo-signaling.up.railway.app
+//   <signaling-base-url>  ex.: https://fagulha-signaling.up.railway.app
 //   <web-origin>          valor EXATO configurado como WEB_ORIGIN no servidor,
 //                         enviado como header Origin do handshake WS
 // Exit 0 = um quadro `signal` do cliente "host" chegou ao cliente "guest".

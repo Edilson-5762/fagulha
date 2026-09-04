@@ -7,14 +7,14 @@ import {
   classifyFileSize,
   type ConnectionRole,
   type FileSizeClass
-} from "@transfergo/shared";
+} from "@fagulha/shared";
 import {
   TransferReceiver,
   TransferSender,
   type FileMeta,
   type TransferError,
   type TransferProgress
-} from "@transfergo/transfer-engine";
+} from "@fagulha/transfer-engine";
 import {
   adaptRtcDataChannel,
   createFileChunkSource,
@@ -157,7 +157,7 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const senderRef = useRef<TransferSender | null>(null);
   const receiverRef = useRef<TransferReceiver | null>(null);
   const openSinkRef = useRef<
-    | ((meta: FileMeta, offset: number) => Promise<import("@transfergo/transfer-engine").FileSink>)
+    | ((meta: FileMeta, offset: number) => Promise<import("@fagulha/transfer-engine").FileSink>)
     | null
   >(null);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ServerMessage } from "@transfergo/shared";
+import type { ServerMessage } from "@fagulha/shared";
 import { createConnectionRegistry, type SignalingSocket } from "./connection-registry.js";
 import { createSessionStore } from "./session-store.js";
 import { createWsHandler } from "./ws-handler.js";

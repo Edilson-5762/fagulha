@@ -1,11 +1,11 @@
 {
-  "name": "@transfergo/signaling-server",
+  "name": "@fagulha/signaling-server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
-    "@transfergo/security": "workspace:*",
-    "@transfergo/shared": "workspace:*",
+    "@fagulha/security": "workspace:*",
+    "@fagulha/shared": "workspace:*",
     "tsx": "^4.19.0",
     "ws": "^8.18.0"
   },

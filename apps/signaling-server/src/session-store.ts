@@ -1,5 +1,5 @@
-import { generateSessionToken } from "@transfergo/security";
-import { SESSION_TTL_MS, type Session, type SessionStatus } from "@transfergo/shared";
+import { generateSessionToken } from "@fagulha/security";
+import { SESSION_TTL_MS, type Session, type SessionStatus } from "@fagulha/shared";
 
 export type ResolveFailureReason = "not_found" | "expired" | "already_resolved";
 

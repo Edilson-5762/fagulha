@@ -1,4 +1,4 @@
-import { Card, Lock, ShieldCheck, Wifi } from "@transfergo/ui";
+import { Card, Lock, ShieldCheck, Wifi } from "@fagulha/ui";
 
 const POINTS = [
   {
@@ -10,7 +10,7 @@ const POINTS = [
   {
     icon: ShieldCheck,
     title: "Zero armazenamento",
-    description: "Nenhum arquivo fica salvo nos servidores do TransferGo."
+    description: "Nenhum arquivo fica salvo nos nossos servidores."
   },
   {
     icon: Lock,

@@ -1,7 +1,7 @@
 "use client";
 
-import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import type { Session } from "@fagulha/shared";
+import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@fagulha/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
 import { SendPanel } from "../../components/transferir/SendPanel.js";
 import { usePeerConnection } from "../../lib/peer-connection.js";

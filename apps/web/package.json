@@ -1,5 +1,5 @@
 {
-  "name": "@transfergo/web",
+  "name": "@fagulha/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@transfergo/shared": "workspace:*",
-    "@transfergo/transfer-engine": "workspace:*",
-    "@transfergo/ui": "workspace:*",
+    "@fagulha/shared": "workspace:*",
+    "@fagulha/transfer-engine": "workspace:*",
+    "@fagulha/ui": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

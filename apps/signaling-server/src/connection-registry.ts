@@ -1,4 +1,4 @@
-import type { ConnectionRole, ServerMessage } from "@transfergo/shared";
+import type { ConnectionRole, ServerMessage } from "@fagulha/shared";
 
 export interface SignalingSocket {
   send(data: string): void;
