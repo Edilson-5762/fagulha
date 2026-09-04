@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: fagulha-signaling
+    env: node
+    plan: free
+    branch: main
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm --filter @fagulha/signaling-server start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: WEB_ORIGIN
+        sync: false

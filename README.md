@@ -39,7 +39,7 @@ pnpm workspaces + Turborepo
 
 - `apps/web` — frontend Next.js (deploy na Vercel)
 - `apps/signaling-server` — servidor Node + WebSocket de sinalização
-  (deploy na Railway)
+  (deploy na Render, plano gratuito — pode "dormir" após 15 min sem uso)
 - `packages/*` — `shared`, `ui`, `transfer-engine`, `security`
 
 ## Desenvolvimento
@@ -61,7 +61,9 @@ pnpm build
 - **Transferência unidirecional** por sessão (quem cria envia; o
   convidado recebe). Bidirecional simultânea fica para depois.
 - **Sem domínio próprio** — a demo sai nas URLs gratuitas
-  `*.vercel.app` / `*.up.railway.app`.
+  `*.vercel.app` / `*.onrender.com`.
+- O servidor de sinalização (Render, plano gratuito) "dorme" após 15 min
+  sem uso; o primeiro acesso depois disso demora ~30s pra acordar.
 - Validação formal cross-browser/mobile ainda pendente.
 
 ## Roadmap
