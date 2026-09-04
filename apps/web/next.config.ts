@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  transpilePackages: ["@transfergo/shared", "@transfergo/ui"],
+  transpilePackages: ["@fagulha/shared", "@fagulha/ui"],
   experimental: {
     extensionAlias: {
       ".js": [".ts", ".tsx", ".js"]

@@ -7,7 +7,7 @@ import type {
   Session,
   ServerMessage,
   SignalPayload
-} from "@transfergo/shared";
+} from "@fagulha/shared";
 
 export type SignalingConnectionState = "connecting" | "open" | "reconnecting";
 

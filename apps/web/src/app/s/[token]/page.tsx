@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
-import type { Session } from "@transfergo/shared";
+import type { Session } from "@fagulha/shared";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -11,7 +11,7 @@ import {
   StateScreen,
   WifiOff,
   XCircle
-} from "@transfergo/ui";
+} from "@fagulha/ui";
 import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useFileTransfer } from "../../../lib/use-file-transfer.js";

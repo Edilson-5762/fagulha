@@ -41,10 +41,10 @@ importers:
 
   apps/signaling-server:
     dependencies:
-      '@transfergo/security':
+      '@fagulha/security':
         specifier: workspace:*
         version: link:../../packages/security
-      '@transfergo/shared':
+      '@fagulha/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       tsx:
@@ -69,13 +69,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@transfergo/shared':
+      '@fagulha/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@transfergo/transfer-engine':
+      '@fagulha/transfer-engine':
         specifier: workspace:*
         version: link:../../packages/transfer-engine
-      '@transfergo/ui':
+      '@fagulha/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       next:
@@ -154,12 +154,12 @@ importers:
 
   packages/transfer-engine:
     dependencies:
+      '@fagulha/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@noble/hashes':
         specifier: 2.4.0
         version: 2.4.0
-      '@transfergo/shared':
-        specifier: workspace:*
-        version: link:../shared
     devDependencies:
       '@types/node':
         specifier: ^22.10.0
@@ -173,6 +173,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@fagulha/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@radix-ui/react-dialog':
         specifier: ^1.1.0
         version: 1.1.23(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -185,9 +188,6 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.1.0
         version: 1.2.16(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@transfergo/shared':
-        specifier: workspace:*
-        version: link:../shared
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.1

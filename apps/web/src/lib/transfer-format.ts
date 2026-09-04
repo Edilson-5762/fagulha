@@ -1,4 +1,4 @@
-import type { FileSizeClass } from "@transfergo/shared";
+import type { FileSizeClass } from "@fagulha/shared";
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) {

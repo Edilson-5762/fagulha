@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Clock, StateScreen } from "@transfergo/ui";
+import { Button, Clock, StateScreen } from "@fagulha/ui";
 
 export interface SessionLinkPanelProps {
   token: string;

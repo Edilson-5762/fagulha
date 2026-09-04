@@ -27,5 +27,19 @@ export default tseslint.config(
     files: ["**/*.tsx"],
     ...jsxA11y.flatConfigs.recommended
   },
+  {
+    // Service worker: runs in a ServiceWorkerGlobalScope, not window.
+    files: ["apps/web/public/**/*.js"],
+    languageOptions: {
+      globals: {
+        self: "readonly",
+        caches: "readonly",
+        fetch: "readonly",
+        Response: "readonly",
+        Request: "readonly",
+        clients: "readonly"
+      }
+    }
+  },
   eslintConfigPrettier
 );

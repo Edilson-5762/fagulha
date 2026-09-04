@@ -10,7 +10,7 @@ import {
   ProgressBar,
   StateScreen,
   XCircle
-} from "@transfergo/ui";
+} from "@fagulha/ui";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { formatBytes, formatDuration, formatSpeed } from "../../lib/transfer-format.js";
 

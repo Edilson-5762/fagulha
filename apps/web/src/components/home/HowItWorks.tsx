@@ -1,4 +1,4 @@
-import { MousePointerClick, Share2, Wifi } from "@transfergo/ui";
+import { MousePointerClick, Share2, Wifi } from "@fagulha/ui";
 
 const STEPS = [
   {

@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SignalPayload } from "@transfergo/shared";
+import type { SignalPayload } from "@fagulha/shared";
 import { usePeerConnection } from "./peer-connection.js";
 
 class FakeDataChannel {
@@ -118,7 +118,7 @@ describe("usePeerConnection", () => {
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
 
-    expect(latestPeerConnection().createdDataChannels).toEqual(["transfergo"]);
+    expect(latestPeerConnection().createdDataChannels).toEqual(["fagulha"]);
     expect(result.current.channelState).toBe("connecting");
 
     await flushAsync();

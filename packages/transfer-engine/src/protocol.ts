@@ -1,4 +1,4 @@
-import { BATCH_MAX_BYTES, BATCH_MAX_FILES } from "@transfergo/shared";
+import { BATCH_MAX_BYTES, BATCH_MAX_FILES } from "@fagulha/shared";
 import type { FileMeta } from "./types.js";
 
 export type ControlFrame =

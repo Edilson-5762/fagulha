@@ -4,7 +4,7 @@ import { Input } from "./Input.js";
 const meta: Meta<typeof Input> = {
   title: "Entrada/Input",
   component: Input,
-  args: { placeholder: "https://transfergo.app/s/..." }
+  args: { placeholder: "https://fagulha.app/s/..." }
 };
 
 export default meta;

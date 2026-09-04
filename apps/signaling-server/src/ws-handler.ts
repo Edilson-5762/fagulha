@@ -1,4 +1,4 @@
-import { parseClientMessage, type ConnectionRole, type ServerMessage } from "@transfergo/shared";
+import { parseClientMessage, type ConnectionRole, type ServerMessage } from "@fagulha/shared";
 import type { ConnectionRegistry, SignalingSocket } from "./connection-registry.js";
 import type { SessionStore } from "./session-store.js";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ConnectionRole, IceCandidateData, SignalPayload } from "@transfergo/shared";
+import type { ConnectionRole, IceCandidateData, SignalPayload } from "@fagulha/shared";
 
 export type PeerChannelState = "idle" | "connecting" | "open" | "failed";
 
@@ -66,7 +66,7 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
     pc.ondatachannel = (event) => bindDataChannel(event.channel);
 
     if (role === "host") {
-      bindDataChannel(pc.createDataChannel("transfergo"));
+      bindDataChannel(pc.createDataChannel("fagulha"));
       pc.createOffer()
         .then((offer) => pc.setLocalDescription(offer).then(() => offer))
         .then((offer) => sendSignalRef.current({ kind: "offer", sdp: offer.sdp ?? "" }))

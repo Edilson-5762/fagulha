@@ -11,7 +11,7 @@ import {
   StateScreen,
   Upload,
   XCircle
-} from "@transfergo/ui";
+} from "@fagulha/ui";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import {
   formatBytes,

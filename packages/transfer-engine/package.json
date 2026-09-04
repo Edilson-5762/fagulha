@@ -1,5 +1,5 @@
 {
-  "name": "@transfergo/transfer-engine",
+  "name": "@fagulha/transfer-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
-    "@transfergo/shared": "workspace:*"
+    "@fagulha/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
