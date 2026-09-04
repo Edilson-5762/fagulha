@@ -17,7 +17,7 @@ if (!baseArg || !originArg) {
 const WS_URL = `${baseArg.replace(/^http/, "ws")}/ws`;
 const ORIGIN = originArg;
 const SDP = "v=0\r\no=- 0 0 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n";
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 15000;
 
 const fail = (msg) => {
   console.error(`FAIL: ${msg}`);
@@ -35,6 +35,11 @@ const open = (label) => {
   );
   ws.on("unexpected-response", (_req, res) =>
     fail(`${label} handshake rejected: HTTP ${res.statusCode} — wrong path or Origin mismatch`)
+  );
+  ws.on("close", (code) =>
+    fail(
+      `${label} socket closed unexpectedly (code ${code}) — connection dropped before the relay completed`
+    )
   );
   return ws;
 };
