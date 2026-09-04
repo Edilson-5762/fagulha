@@ -45,19 +45,19 @@ arquivo recebido bate com o do original.
 
 ## 2. Divisão em unidades
 
-| Unidade | Onde | Responsabilidade | Muda |
-| --- | --- | --- | --- |
-| **Dependência** | `packages/transfer-engine/package.json` + `pnpm-lock.yaml` | `@noble/hashes` como `dependencies` (auditada, zero-dep). Se `apps/web` não resolver transitivamente, adicionar lá também (mesmo padrão da regra do Plano 6 para o próprio `@transfergo/transfer-engine`). | +1 dep |
-| **Hasher** | `packages/transfer-engine/src/hash.ts` (novo) | `interface Hasher`, `type CreateHasher`, e `createSha256Hasher` — o wrapper default de `@noble/hashes`. Uma função pura, sem estado de módulo. | arquivo novo (~15 linhas) |
-| **Protocolo** | `packages/transfer-engine/src/protocol.ts` | `file-end` ganha `sha256: string`; `decodeControl` valida 64 chars `[0-9a-f]`. | ~6 linhas |
-| **Contratos** | `packages/transfer-engine/src/types.ts` | `TransferErrorCode` ganha `"integrity"`. | 1 linha |
-| **Emissor** | `packages/transfer-engine/src/sender.ts` | `createHasher?: CreateHasher` em `SenderOptions` (default `createSha256Hasher`); um `Hasher` por arquivo no `runBatch`; `sha256: hasher.digest()` no `file-end`. | ~8 linhas |
-| **Receptor** | `packages/transfer-engine/src/receiver.ts` | `createHasher?` em `ReceiverOptions`; `currentHash` por arquivo, alimentado em `handleBinary`; comparação no `file-end` **antes** do `close()`; `fail("integrity", …)` na divergência; `currentHash` limpo junto com `currentSink` nos 3 pontos onde ele já é. | ~14 linhas |
-| **Barrel** | `packages/transfer-engine/src/index.ts` | re-exporta `Hasher`/`CreateHasher`/`createSha256Hasher` se o hook precisar; provavelmente não precisa (default embutido). | 0–1 linha |
-| **Loopback** | `packages/transfer-engine/src/loopback.integration.test.ts` | afirma `sha256` real em cada `file-end`; + teste de corrupção → `integrity`. | ~40 linhas |
-| **Hook** | `apps/web/src/lib/use-file-transfer.ts` | `ERROR_MESSAGES.integrity`; campo `integrityVerified: boolean` no resultado (`true` quando `phase === "completed"`). | ~4 linhas |
-| **UI emissor** | `apps/web/src/components/transferir/SendPanel.tsx` | linha "Integridade verificada (SHA-256)" na tela de `completed`. | ~4 linhas |
-| **UI receptor** | `apps/web/src/components/s/ReceivePanel.tsx` | rótulo `completed` → "Verificado" + `CheckCircle2`; linha de integridade na tela de `completed`. | ~8 linhas |
+| Unidade         | Onde                                                        | Responsabilidade                                                                                                                                                                                                                                               | Muda                      |
+| --------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| **Dependência** | `packages/transfer-engine/package.json` + `pnpm-lock.yaml`  | `@noble/hashes` como `dependencies` (auditada, zero-dep). Se `apps/web` não resolver transitivamente, adicionar lá também (mesmo padrão da regra do Plano 6 para o próprio `@transfergo/transfer-engine`).                                                     | +1 dep                    |
+| **Hasher**      | `packages/transfer-engine/src/hash.ts` (novo)               | `interface Hasher`, `type CreateHasher`, e `createSha256Hasher` — o wrapper default de `@noble/hashes`. Uma função pura, sem estado de módulo.                                                                                                                 | arquivo novo (~15 linhas) |
+| **Protocolo**   | `packages/transfer-engine/src/protocol.ts`                  | `file-end` ganha `sha256: string`; `decodeControl` valida 64 chars `[0-9a-f]`.                                                                                                                                                                                 | ~6 linhas                 |
+| **Contratos**   | `packages/transfer-engine/src/types.ts`                     | `TransferErrorCode` ganha `"integrity"`.                                                                                                                                                                                                                       | 1 linha                   |
+| **Emissor**     | `packages/transfer-engine/src/sender.ts`                    | `createHasher?: CreateHasher` em `SenderOptions` (default `createSha256Hasher`); um `Hasher` por arquivo no `runBatch`; `sha256: hasher.digest()` no `file-end`.                                                                                               | ~8 linhas                 |
+| **Receptor**    | `packages/transfer-engine/src/receiver.ts`                  | `createHasher?` em `ReceiverOptions`; `currentHash` por arquivo, alimentado em `handleBinary`; comparação no `file-end` **antes** do `close()`; `fail("integrity", …)` na divergência; `currentHash` limpo junto com `currentSink` nos 3 pontos onde ele já é. | ~14 linhas                |
+| **Barrel**      | `packages/transfer-engine/src/index.ts`                     | re-exporta `Hasher`/`CreateHasher`/`createSha256Hasher` se o hook precisar; provavelmente não precisa (default embutido).                                                                                                                                      | 0–1 linha                 |
+| **Loopback**    | `packages/transfer-engine/src/loopback.integration.test.ts` | afirma `sha256` real em cada `file-end`; + teste de corrupção → `integrity`.                                                                                                                                                                                   | ~40 linhas                |
+| **Hook**        | `apps/web/src/lib/use-file-transfer.ts`                     | `ERROR_MESSAGES.integrity`; campo `integrityVerified: boolean` no resultado (`true` quando `phase === "completed"`).                                                                                                                                           | ~4 linhas                 |
+| **UI emissor**  | `apps/web/src/components/transferir/SendPanel.tsx`          | linha "Integridade verificada (SHA-256)" na tela de `completed`.                                                                                                                                                                                               | ~4 linhas                 |
+| **UI receptor** | `apps/web/src/components/s/ReceivePanel.tsx`                | rótulo `completed` → "Verificado" + `CheckCircle2`; linha de integridade na tela de `completed`.                                                                                                                                                               | ~8 linhas                 |
 
 Um arquivo novo (`hash.ts`). Colocar `@noble/hashes` no pacote do motor deixa a
 garantia autocontida: o loopback em Node puro exercita o hash real sem depender
@@ -181,9 +181,12 @@ while (sent < source.size) {
   const chunk = await source.read(sent, length);
   if (this.cancelled || this.disposed) return;
   if (chunk.byteLength === 0) {
-    throw new TransferError("channel-error", `source.read returned 0 bytes with ${source.size - sent} still to send`);
+    throw new TransferError(
+      "channel-error",
+      `source.read returned 0 bytes with ${source.size - sent} still to send`
+    );
   }
-  hasher.update(new Uint8Array(chunk));   // ← antes do send, depois dos checks de cancel
+  hasher.update(new Uint8Array(chunk)); // ← antes do send, depois dos checks de cancel
   this.channel.send(chunk);
   sent += chunk.byteLength;
   this.maybeEmitProgress({ meta, fileBytes: sent, filesDone: index }, false);
@@ -271,7 +274,7 @@ usa: `abort()` do sink, `send({t:"cancel",scope:"batch"})`, `onError`,
 
 - O SHA-256 aqui é **integridade, não autenticidade**: não há segredo
   compartilhado. Protege contra corrupção de canal, bugs de sink e bit-rot —
-  não contra um adversário que reescreva os chunks *e* o hash do `file-end`. O
+  não contra um adversário que reescreva os chunks _e_ o hash do `file-end`. O
   DTLS do WebRTC já cobre o fio contra adulteração ativa; esta camada cobre
   bugs.
 - O `integrityVerified` só é verdadeiro no **receptor** (`role === "guest"`). O
@@ -340,16 +343,16 @@ para qualquer falha.
 
 ## 8. Casos de borda
 
-| Situação | Tratamento |
-| --- | --- |
-| Arquivo de 0 byte | Emissor e receptor calculam ambos o SHA-256 do vazio; batem. |
-| `sha256` ausente / 63 ou 65 chars / maiúsculo / não-hex no `file-end` | `decodeControl` → `null` → `fail("bad-frame")`. Não chega à comparação. |
-| Divergência de hash | `fail("integrity")` — sink abortado, `cancel` ao emissor, `onError` → `phase: "failed"` nos dois lados. Arquivo corrompido nunca é `close()`d. |
-| Cancelamento no meio de um arquivo | `Hasher` daquele arquivo descartado com o resto do estado; nenhum `file-end`. |
-| `file-begin` novo antes do `file-end` (peer malformado) | Sink abortado + `currentHash` recriado no novo `file-begin`. |
-| Chunk entregue como typed-array view com `byteOffset` ≠ 0 (Firefox) | `toArrayBuffer` já normaliza para um `ArrayBuffer` do tamanho exato antes do `handleBinary`; `new Uint8Array(chunk)` cobre os bytes certos. |
-| Emissor manda `file-end` com hash certo mas o sink de download acumulou errado | Fora de escopo — o sink é confiável por contrato; o hash cobre o **canal**, não bugs do sink local. |
-| `@noble/hashes` ausente num runtime de teste exótico | `createHasher` é injetável; o teste passa um `Hasher` próprio determinístico. |
+| Situação                                                                       | Tratamento                                                                                                                                     |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Arquivo de 0 byte                                                              | Emissor e receptor calculam ambos o SHA-256 do vazio; batem.                                                                                   |
+| `sha256` ausente / 63 ou 65 chars / maiúsculo / não-hex no `file-end`          | `decodeControl` → `null` → `fail("bad-frame")`. Não chega à comparação.                                                                        |
+| Divergência de hash                                                            | `fail("integrity")` — sink abortado, `cancel` ao emissor, `onError` → `phase: "failed"` nos dois lados. Arquivo corrompido nunca é `close()`d. |
+| Cancelamento no meio de um arquivo                                             | `Hasher` daquele arquivo descartado com o resto do estado; nenhum `file-end`.                                                                  |
+| `file-begin` novo antes do `file-end` (peer malformado)                        | Sink abortado + `currentHash` recriado no novo `file-begin`.                                                                                   |
+| Chunk entregue como typed-array view com `byteOffset` ≠ 0 (Firefox)            | `toArrayBuffer` já normaliza para um `ArrayBuffer` do tamanho exato antes do `handleBinary`; `new Uint8Array(chunk)` cobre os bytes certos.    |
+| Emissor manda `file-end` com hash certo mas o sink de download acumulou errado | Fora de escopo — o sink é confiável por contrato; o hash cobre o **canal**, não bugs do sink local.                                            |
+| `@noble/hashes` ausente num runtime de teste exótico                           | `createHasher` é injetável; o teste passa um `Hasher` próprio determinístico.                                                                  |
 
 ---
 
@@ -432,11 +435,11 @@ para qualquer falha.
 
 ## 10. Textos pt-BR (referência única)
 
-| Contexto | Texto |
-| --- | --- |
-| Rótulo de arquivo verificado (receptor) | `Verificado` |
-| Rótulo de arquivo concluído (emissor) | `Concluído` (inalterado) |
-| Linha de integridade nas telas de sucesso | `Integridade verificada (SHA-256)` |
+| Contexto                                         | Texto                                                             |
+| ------------------------------------------------ | ----------------------------------------------------------------- |
+| Rótulo de arquivo verificado (receptor)          | `Verificado`                                                      |
+| Rótulo de arquivo concluído (emissor)            | `Concluído` (inalterado)                                          |
+| Linha de integridade nas telas de sucesso        | `Integridade verificada (SHA-256)`                                |
 | Erro de integridade (`ERROR_MESSAGES.integrity`) | `Um arquivo chegou corrompido. A transferência foi interrompida.` |
 
 ---

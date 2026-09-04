@@ -1,6 +1,12 @@
 import { encodeControl, decodeControl, type ControlFrame } from "./protocol.js";
 import { createSha256Hasher, type CreateHasher } from "./hash.js";
-import { TransferError, type ChunkSource, type DataChannelLike, type FileMeta, type TransferProgress } from "./types.js";
+import {
+  TransferError,
+  type ChunkSource,
+  type DataChannelLike,
+  type FileMeta,
+  type TransferProgress
+} from "./types.js";
 
 export interface SenderInput {
   meta: FileMeta;
@@ -166,7 +172,10 @@ export class TransferSender {
           if (chunk.byteLength === 0) {
             // A 0-byte read while bytes are still owed can never make progress —
             // treat it as a broken source and route through the catch below.
-            throw new TransferError("channel-error", `source.read returned 0 bytes with ${source.size - sent} still to send`);
+            throw new TransferError(
+              "channel-error",
+              `source.read returned 0 bytes with ${source.size - sent} still to send`
+            );
           }
           hasher.update(new Uint8Array(chunk));
           this.channel.send(chunk);

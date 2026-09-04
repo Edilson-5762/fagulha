@@ -25,7 +25,10 @@ const base: UseFileTransferResult = {
   integrityVerified: false,
   cancel: vi.fn()
 };
-const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({ ...base, ...over });
+const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({
+  ...base,
+  ...over
+});
 
 describe("ReceivePanel", () => {
   it("waits for files when there is no incoming batch", () => {
@@ -191,7 +194,12 @@ describe("ReceivePanel", () => {
           phase: "receiving",
           overall: { bytesDone: 10, bytesTotal: 100, filesDone: 0, filesTotal: 1 },
           stats: { speedBytesPerSec: null, etaSeconds: null },
-          incomingBatch: { files: [{ id: "f1", name: "a", size: 100, type: "" }], totalBytes: 100, summary: "", requiresMemoryWarning: false },
+          incomingBatch: {
+            files: [{ id: "f1", name: "a", size: 100, type: "" }],
+            totalBytes: 100,
+            summary: "",
+            requiresMemoryWarning: false
+          },
           perFile: { f1: { bytes: 10, size: 100, pct: 10, state: "receiving" } }
         })}
       />
@@ -200,14 +208,25 @@ describe("ReceivePanel", () => {
   });
 
   it("shows the preparing message", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "preparing", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 2 } })} />);
+    render(
+      <ReceivePanel
+        transfer={withOverrides({
+          phase: "preparing",
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 2 }
+        })}
+      />
+    );
     expect(screen.getByText("Preparando a transferência…")).toBeInTheDocument();
   });
 
   it("shows the partial count on the cancelled screen", () => {
     render(
       <ReceivePanel
-        transfer={withOverrides({ phase: "cancelled", filesSaved: 2, overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 4 } })}
+        transfer={withOverrides({
+          phase: "cancelled",
+          filesSaved: 2,
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 2, filesTotal: 4 }
+        })}
       />
     );
     expect(screen.getByText("2 de 4 arquivos foram salvos neste dispositivo.")).toBeInTheDocument();
@@ -216,7 +235,11 @@ describe("ReceivePanel", () => {
   it("says nothing was saved when filesSaved is 0 on cancel", () => {
     render(
       <ReceivePanel
-        transfer={withOverrides({ phase: "cancelled", filesSaved: 0, overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 4 } })}
+        transfer={withOverrides({
+          phase: "cancelled",
+          filesSaved: 0,
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 4 }
+        })}
       />
     );
     expect(screen.getByText("Nenhum arquivo foi salvo.")).toBeInTheDocument();
@@ -225,7 +248,10 @@ describe("ReceivePanel", () => {
   it("shows the success screen when completed", () => {
     render(
       <ReceivePanel
-        transfer={withOverrides({ phase: "completed", overall: { bytesDone: 0, bytesTotal: 0, filesDone: 3, filesTotal: 3 } })}
+        transfer={withOverrides({
+          phase: "completed",
+          overall: { bytesDone: 0, bytesTotal: 0, filesDone: 3, filesTotal: 3 }
+        })}
       />
     );
     expect(screen.getByText("3 arquivos recebidos com sucesso")).toBeInTheDocument();
@@ -234,7 +260,10 @@ describe("ReceivePanel", () => {
   it("shows the error screen when failed", () => {
     render(
       <ReceivePanel
-        transfer={withOverrides({ phase: "failed", errorMessage: "Um arquivo chegou incompleto. A transferência foi interrompida." })}
+        transfer={withOverrides({
+          phase: "failed",
+          errorMessage: "Um arquivo chegou incompleto. A transferência foi interrompida."
+        })}
       />
     );
     expect(screen.getByText(/chegou incompleto/)).toBeInTheDocument();

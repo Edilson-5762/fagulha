@@ -3,7 +3,15 @@
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  StateScreen,
+  WifiOff,
+  XCircle
+} from "@transfergo/ui";
 import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useFileTransfer } from "../../../lib/use-file-transfer.js";
@@ -11,7 +19,8 @@ import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
   const { token } = useParams<{ token: string }>();
-  const { session, connectionState, role, sendSignal, lastSignal, joinSession, accept, reject } = useSignalingSocket();
+  const { session, connectionState, role, sendSignal, lastSignal, joinSession, accept, reject } =
+    useSignalingSocket();
 
   useEffect(() => {
     joinSession(token);
@@ -28,7 +37,12 @@ export default function SessionInvitePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
-        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="Tentando reconectar..."
+        />
       )}
       {session?.status === "accepted" && channelState === "open" ? (
         <ReceivePanel transfer={transfer} />
@@ -39,9 +53,15 @@ export default function SessionInvitePage() {
   );
 }
 
-function renderContent(session: Session | null | undefined, onAccept: () => void, onReject: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  onAccept: () => void,
+  onReject: () => void
+) {
   if (session === undefined) {
-    return <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />;
+    return (
+      <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />
+    );
   }
 
   if (session === null) {

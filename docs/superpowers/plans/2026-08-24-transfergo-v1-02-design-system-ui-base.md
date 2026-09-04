@@ -28,6 +28,7 @@
 ## Task 1: Design tokens + `cn` utility + `Button` (with `asChild`)
 
 **Files:**
+
 - Create: `packages/ui/src/tokens/theme.css`
 - Create: `packages/ui/src/lib/cn.ts`
 - Create: `packages/ui/src/components/Button.tsx`
@@ -37,6 +38,7 @@
 - Delete: `packages/ui/src/index.test.ts` (superseded by per-component tests)
 
 **Interfaces:**
+
 - Consumes: nothing from other packages.
 - Produces: `cn(...)` from `packages/ui/src/lib/cn.ts` — used by every component in this plan. `Button` (with `variant: "primary"|"secondary"|"ghost"|"danger"`, `size: "sm"|"md"|"lg"`, `isLoading?: boolean`, `asChild?: boolean`) exported from `@transfergo/ui` — used directly by `StateScreen` (Task 6) and the home page `Hero` (Task 8). The Tailwind tokens defined in `theme.css` (`--color-*`, `--font-*`, `--radius-*`) are the only color/font/radius names any later task may reference in class names — never introduce a new ad-hoc color.
 
@@ -232,8 +234,7 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isLoading?: boolean;
 }
@@ -306,6 +307,7 @@ git commit -m "feat(ui): add design tokens, cn utility and Button component"
 ## Task 2: `Input`, `Textarea`, `Card`, `Badge`
 
 **Files:**
+
 - Create: `packages/ui/src/components/Input.tsx`
 - Test: `packages/ui/src/components/Input.test.tsx`
 - Create: `packages/ui/src/components/Textarea.tsx`
@@ -317,6 +319,7 @@ git commit -m "feat(ui): add design tokens, cn utility and Button component"
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `cn` from Task 1.
 - Produces: `Input`, `Textarea` (both with `error?: boolean`), `Card`, `Badge` (with `tone: "neutral"|"success"|"warning"|"danger"|"security-normal"|"security-sensitive"|"security-confidential"`) exported from `@transfergo/ui`. `Badge`'s `tone` values are the exact strings `SecurityLevelCard` (Task 6) maps its `level` prop to.
 
@@ -531,7 +534,8 @@ const badgeVariants = cva(
   }
 );
 
-export interface BadgeProps extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
+export interface BadgeProps
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 export function Badge({ className, tone, ...props }: BadgeProps) {
   return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
@@ -571,6 +575,7 @@ git commit -m "feat(ui): add Input, Textarea, Card and Badge components"
 ## Task 3: `ProgressBar`, `Spinner`
 
 **Files:**
+
 - Create: `packages/ui/src/components/ProgressBar.tsx`
 - Test: `packages/ui/src/components/ProgressBar.test.tsx`
 - Create: `packages/ui/src/components/Spinner.tsx`
@@ -578,6 +583,7 @@ git commit -m "feat(ui): add Input, Textarea, Card and Badge components"
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `cn` from Task 1.
 - Produces: `ProgressBar` (`value: number`, `label?: string`) and `Spinner` (`size?: "sm"|"md"|"lg"`, `label?: string`) exported from `@transfergo/ui`. No later task in this plan consumes these directly, but they satisfy the spec §3.11/§6 "progress" requirement and are demonstrated in Storybook (Task 7).
 
@@ -671,7 +677,10 @@ export function ProgressBar({ value, label, className }: ProgressBarProps) {
         aria-valuemax={100}
         className="h-1.5 w-full overflow-hidden rounded-full bg-bg-elevated"
       >
-        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${clamped}%` }} />
+        <div
+          className="h-full rounded-full bg-accent transition-all"
+          style={{ width: `${clamped}%` }}
+        />
       </div>
     </div>
   );
@@ -688,18 +697,21 @@ export function ProgressBar({ value, label, className }: ProgressBarProps) {
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn.js";
 
-const spinnerVariants = cva("animate-spin rounded-full border-2 border-current border-t-transparent text-accent", {
-  variants: {
-    size: {
-      sm: "size-4",
-      md: "size-6",
-      lg: "size-8"
+const spinnerVariants = cva(
+  "animate-spin rounded-full border-2 border-current border-t-transparent text-accent",
+  {
+    variants: {
+      size: {
+        sm: "size-4",
+        md: "size-6",
+        lg: "size-8"
+      }
+    },
+    defaultVariants: {
+      size: "md"
     }
-  },
-  defaultVariants: {
-    size: "md"
   }
-});
+);
 
 export interface SpinnerProps extends VariantProps<typeof spinnerVariants> {
   className?: string;
@@ -707,7 +719,9 @@ export interface SpinnerProps extends VariantProps<typeof spinnerVariants> {
 }
 
 export function Spinner({ size, className, label = "Carregando" }: SpinnerProps) {
-  return <div role="status" aria-label={label} className={cn(spinnerVariants({ size }), className)} />;
+  return (
+    <div role="status" aria-label={label} className={cn(spinnerVariants({ size }), className)} />
+  );
 }
 ```
 
@@ -742,6 +756,7 @@ git commit -m "feat(ui): add ProgressBar and Spinner components"
 ## Task 4: `Dialog`, `Tooltip` (Radix)
 
 **Files:**
+
 - Create: `packages/ui/src/components/Dialog.tsx`
 - Test: `packages/ui/src/components/Dialog.test.tsx`
 - Create: `packages/ui/src/components/Tooltip.tsx`
@@ -749,6 +764,7 @@ git commit -m "feat(ui): add ProgressBar and Spinner components"
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `cn` from Task 1. `@radix-ui/react-dialog` and `@radix-ui/react-tooltip` (already added to `packages/ui/package.json` in Task 1).
 - Produces: `Dialog`, `DialogTrigger`, `DialogContent`, `DialogTitle`, `DialogDescription`, `DialogClose`; `TooltipProvider`, `Tooltip`, `TooltipTrigger`, `TooltipContent` — all exported from `@transfergo/ui`.
 
@@ -856,15 +872,28 @@ export function DialogContent({
   );
 }
 
-export function DialogTitle({ className, ...props }: ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn("text-lg font-semibold text-text", className)} {...props} />;
+export function DialogTitle({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof DialogPrimitive.Title>) {
+  return (
+    <DialogPrimitive.Title
+      className={cn("text-lg font-semibold text-text", className)}
+      {...props}
+    />
+  );
 }
 
 export function DialogDescription({
   className,
   ...props
 }: ComponentPropsWithoutRef<typeof DialogPrimitive.Description>) {
-  return <DialogPrimitive.Description className={cn("mt-2 text-sm text-text-muted", className)} {...props} />;
+  return (
+    <DialogPrimitive.Description
+      className={cn("mt-2 text-sm text-text-muted", className)}
+      {...props}
+    />
+  );
 }
 ```
 
@@ -934,11 +963,13 @@ git commit -m "feat(ui): add Dialog and Tooltip components on Radix primitives"
 ## Task 5: `Toast` (Radix)
 
 **Files:**
+
 - Create: `packages/ui/src/components/Toast.tsx`
 - Test: `packages/ui/src/components/Toast.test.tsx`
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `cn` from Task 1, `@radix-ui/react-toast` (already in `packages/ui/package.json` from Task 1).
 - Produces: `ToastProvider`, `ToastViewport`, `Toast` (props: `title: string`, `description?: string`, plus everything `@radix-ui/react-toast`'s `Root` accepts, e.g. `open`) exported from `@transfergo/ui`.
 
@@ -955,7 +986,11 @@ describe("Toast", () => {
   it("renders the title and description inside the provider/viewport", () => {
     render(
       <ToastProvider>
-        <Toast open title="Transferência concluída" description="Integridade verificada (SHA-256)." />
+        <Toast
+          open
+          title="Transferência concluída"
+          description="Integridade verificada (SHA-256)."
+        />
         <ToastViewport />
       </ToastProvider>
     );
@@ -995,10 +1030,16 @@ import { cn } from "../lib/cn.js";
 
 export const ToastProvider = ToastPrimitive.Provider;
 
-export function ToastViewport({ className, ...props }: ComponentPropsWithoutRef<typeof ToastPrimitive.Viewport>) {
+export function ToastViewport({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof ToastPrimitive.Viewport>) {
   return (
     <ToastPrimitive.Viewport
-      className={cn("fixed bottom-0 right-0 z-50 flex w-full max-w-sm flex-col gap-2 p-4", className)}
+      className={cn(
+        "fixed bottom-0 right-0 z-50 flex w-full max-w-sm flex-col gap-2 p-4",
+        className
+      )}
       {...props}
     />
   );
@@ -1015,7 +1056,9 @@ export function Toast({ title, description, className, ...props }: ToastProps) {
       className={cn("rounded-lg border border-border bg-bg-elevated p-4 shadow-xl", className)}
       {...props}
     >
-      <ToastPrimitive.Title className="text-sm font-semibold text-text">{title}</ToastPrimitive.Title>
+      <ToastPrimitive.Title className="text-sm font-semibold text-text">
+        {title}
+      </ToastPrimitive.Title>
       {description ? (
         <ToastPrimitive.Description className="mt-1 text-sm text-text-muted">
           {description}
@@ -1056,6 +1099,7 @@ git commit -m "feat(ui): add Toast component on Radix primitives"
 ## Task 6: Icons module, `StateScreen`, `SecurityLevelCard`
 
 **Files:**
+
 - Create: `packages/ui/src/icons/index.ts`
 - Create: `packages/ui/src/components/StateScreen.tsx`
 - Test: `packages/ui/src/components/StateScreen.test.tsx`
@@ -1064,6 +1108,7 @@ git commit -m "feat(ui): add Toast component on Radix primitives"
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `Button` and `cn` from Task 1. `lucide-react` (already in `packages/ui/package.json` from Task 1).
 - Produces: a curated set of icons re-exported from `@transfergo/ui` (used by later tasks — never import `lucide-react` directly outside `packages/ui`). `StateScreen` (`icon: LucideIcon`, `tone?: "neutral"|"success"|"warning"|"danger"|"security-normal"|"security-sensitive"|"security-confidential"`, `title: string`, `description: string`, `action?: { label: string; onClick: () => void }`) — the single component every one of the spec's 17 required UI states is built from. `SecurityLevelCard` (`level: "normal"|"sensitive"|"confidential"`, `action?: StateScreenAction`) wraps `StateScreen`. Both exported from `@transfergo/ui`. `apps/web`'s `/transferir` placeholder (Task 9) consumes `StateScreen` directly.
 
@@ -1213,7 +1258,14 @@ export interface StateScreenProps extends VariantProps<typeof iconWrapperVariant
   className?: string;
 }
 
-export function StateScreen({ icon: Icon, tone, title, description, action, className }: StateScreenProps) {
+export function StateScreen({
+  icon: Icon,
+  tone,
+  title,
+  description,
+  action,
+  className
+}: StateScreenProps) {
   return (
     <div className={cn("flex flex-col items-center px-6 py-12 text-center", className)}>
       <div className={cn(iconWrapperVariants({ tone }))}>
@@ -1270,7 +1322,13 @@ export interface SecurityLevelCardProps {
 export function SecurityLevelCard({ level, action }: SecurityLevelCardProps) {
   const config = LEVEL_CONFIG[level];
   return (
-    <StateScreen icon={config.icon} tone={config.tone} title={config.title} description={config.description} action={action} />
+    <StateScreen
+      icon={config.icon}
+      tone={config.tone}
+      title={config.title}
+      description={config.description}
+      action={action}
+    />
   );
 }
 ```
@@ -1307,6 +1365,7 @@ git commit -m "feat(ui): add icons module, StateScreen and SecurityLevelCard"
 ## Task 7: Storybook showcase
 
 **Files:**
+
 - Create: `packages/ui/.storybook/main.ts`
 - Create: `packages/ui/.storybook/preview.ts`
 - Create: `packages/ui/.storybook/preview.css`
@@ -1328,6 +1387,7 @@ git commit -m "feat(ui): add icons module, StateScreen and SecurityLevelCard"
 - Modify: `.gitignore`, `.prettierignore` (ignore `storybook-static`)
 
 **Interfaces:**
+
 - Consumes: every component exported from `packages/ui/src/index.ts` (Tasks 1–6).
 - Produces: nothing later tasks import — this is a demonstration/verification surface, not a code dependency.
 
@@ -1501,7 +1561,9 @@ export const Success: Story = { args: { tone: "success", children: "Concluído" 
 export const Warning: Story = { args: { tone: "warning", children: "Atenção" } };
 export const Danger: Story = { args: { tone: "danger", children: "Falha" } };
 export const SecurityNormal: Story = { args: { tone: "security-normal", children: "Normal" } };
-export const SecuritySensitive: Story = { args: { tone: "security-sensitive", children: "Sensível" } };
+export const SecuritySensitive: Story = {
+  args: { tone: "security-sensitive", children: "Sensível" }
+};
 export const SecurityConfidential: Story = {
   args: { tone: "security-confidential", children: "Confidencial" }
 };
@@ -1570,7 +1632,9 @@ export const InviteConfirmation: Story = {
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Convite para transferência</DialogTitle>
-        <DialogDescription>Um dispositivo deseja estabelecer uma sessão de compartilhamento.</DialogDescription>
+        <DialogDescription>
+          Um dispositivo deseja estabelecer uma sessão de compartilhamento.
+        </DialogDescription>
       </DialogContent>
     </Dialog>
   )
@@ -1731,13 +1795,13 @@ Edit `turbo.json` — add a `build-storybook` entry to `tasks` (alongside the ex
 Edit `.github/workflows/ci.yml` — change the last step from:
 
 ```yaml
-      - run: pnpm turbo run lint typecheck test build
+- run: pnpm turbo run lint typecheck test build
 ```
 
 to:
 
 ```yaml
-      - run: pnpm turbo run lint typecheck test build build-storybook
+- run: pnpm turbo run lint typecheck test build build-storybook
 ```
 
 - [ ] **Step 8: Ignore the Storybook build output**
@@ -1761,6 +1825,7 @@ git commit -m "feat(ui): add Storybook showcase for the full component library"
 ## Task 8: `apps/web` — Tailwind wiring, self-hosted Inter, premium home page
 
 **Files:**
+
 - Create: `apps/web/src/app/globals.css`
 - Create: `apps/web/postcss.config.mjs`
 - Modify: `apps/web/next.config.ts` (add `@transfergo/ui` to `transpilePackages`)
@@ -1775,12 +1840,14 @@ git commit -m "feat(ui): add Storybook showcase for the full component library"
 - Modify: `apps/web/src/app/page.test.tsx` (replace the Plan 1 assertions)
 
 **Interfaces:**
+
 - Consumes: `Button` and the icons re-exported from `@transfergo/ui` (Tasks 1 and 6).
 - Produces: `Hero`, `HowItWorks`, `TrustSection`, `Footer` — consumed only by `apps/web/src/app/page.tsx` in this same task. `HomePage` default export at `apps/web/src/app/page.tsx` is consumed by Plan 4 when the real "Nova transferência" flow replaces the `/transferir` placeholder link.
 
 - [ ] **Step 1: Add `@transfergo/ui` and Tailwind dependencies to `apps/web`**
 
 Edit `apps/web/package.json`:
+
 - In `dependencies`, add `"@transfergo/ui": "workspace:*",` (alphabetically before `"next"`).
 - In `devDependencies`, add:
 
@@ -1875,7 +1942,9 @@ describe("Hero", () => {
   it("renders the headline and a primary CTA linking to /transferir", () => {
     render(<Hero />);
     expect(
-      screen.getByRole("heading", { name: "Transfira arquivos com segurança entre seus dispositivos." })
+      screen.getByRole("heading", {
+        name: "Transfira arquivos com segurança entre seus dispositivos."
+      })
     ).toBeInTheDocument();
 
     const cta = screen.getByRole("link", { name: "Nova transferência" });
@@ -1900,7 +1969,9 @@ import { Button } from "@transfergo/ui";
 export function Hero() {
   return (
     <section className="flex flex-col items-center px-6 py-24 text-center">
-      <span className="mb-4 text-sm font-medium uppercase tracking-widest text-text-muted">TransferGo</span>
+      <span className="mb-4 text-sm font-medium uppercase tracking-widest text-text-muted">
+        TransferGo
+      </span>
       <h1 className="max-w-2xl text-4xl font-bold leading-tight text-text sm:text-5xl">
         Transfira arquivos com segurança entre seus dispositivos.
       </h1>
@@ -1910,7 +1981,9 @@ export function Hero() {
       <Button asChild size="lg" className="mt-8">
         <Link href="/transferir">Nova transferência</Link>
       </Button>
-      <p className="mt-4 text-xs uppercase tracking-widest text-text-muted">Rápido • Seguro • Direto</p>
+      <p className="mt-4 text-xs uppercase tracking-widest text-text-muted">
+        Rápido • Seguro • Direto
+      </p>
     </section>
   );
 }
@@ -1929,9 +2002,21 @@ Expected: PASS.
 import { MousePointerClick, Share2, Wifi } from "@transfergo/ui";
 
 const STEPS = [
-  { icon: MousePointerClick, title: "Selecionar", description: "Escolha um ou mais arquivos no seu dispositivo." },
-  { icon: Wifi, title: "Conectar", description: "Compartilhe o link seguro com o outro dispositivo." },
-  { icon: Share2, title: "Transferir", description: "Os arquivos vão direto de um dispositivo para o outro." }
+  {
+    icon: MousePointerClick,
+    title: "Selecionar",
+    description: "Escolha um ou mais arquivos no seu dispositivo."
+  },
+  {
+    icon: Wifi,
+    title: "Conectar",
+    description: "Compartilhe o link seguro com o outro dispositivo."
+  },
+  {
+    icon: Share2,
+    title: "Transferir",
+    description: "Os arquivos vão direto de um dispositivo para o outro."
+  }
 ];
 
 export function HowItWorks() {
@@ -1965,7 +2050,8 @@ const POINTS = [
   {
     icon: Wifi,
     title: "P2P direto",
-    description: "Os arquivos trafegam direto entre os dispositivos, sem passar pelo nosso servidor."
+    description:
+      "Os arquivos trafegam direto entre os dispositivos, sem passar pelo nosso servidor."
   },
   {
     icon: ShieldCheck,
@@ -2051,9 +2137,14 @@ describe("HomePage", () => {
   it("renders the hero headline and primary call to action", () => {
     render(<HomePage />);
     expect(
-      screen.getByRole("heading", { name: "Transfira arquivos com segurança entre seus dispositivos." })
+      screen.getByRole("heading", {
+        name: "Transfira arquivos com segurança entre seus dispositivos."
+      })
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Nova transferência" })).toHaveAttribute("href", "/transferir");
+    expect(screen.getByRole("link", { name: "Nova transferência" })).toHaveAttribute(
+      "href",
+      "/transferir"
+    );
   });
 
   it("renders the three how-it-works steps in order", () => {
@@ -2105,10 +2196,12 @@ git commit -m "feat(web): wire Tailwind v4 + Inter and rebuild the home page on 
 ## Task 9: `/transferir` placeholder route + final verification
 
 **Files:**
+
 - Create: `apps/web/src/app/transferir/page.tsx`
 - Test: `apps/web/src/app/transferir/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `StateScreen` and `Construction` from `@transfergo/ui` (Task 6). The `Hero` CTA (Task 8) already links to `/transferir`; this task makes that route exist.
 - Produces: nothing later tasks in this plan depend on. Plan 4 ("Sessões") replaces this file's contents with the real session-creation flow but keeps the route path.
 

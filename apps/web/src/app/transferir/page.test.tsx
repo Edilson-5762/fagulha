@@ -15,29 +15,27 @@ vi.mock("../../lib/peer-connection.js", () => ({
 }));
 
 vi.mock("../../lib/use-file-transfer.js", () => ({
-  useFileTransfer: vi.fn(
-    (): UseFileTransferResult => ({
-      ready: false,
-      selectedFiles: [],
-      totalBytes: 0,
-      limitError: null,
-      addFiles: vi.fn(),
-      removeFile: vi.fn(),
-      clearSelection: vi.fn(),
-      startSend: vi.fn(),
-      incomingBatch: null,
-      acceptBatch: vi.fn(),
-      rejectBatch: vi.fn(),
-      phase: "idle",
-      perFile: {},
-      overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
-      stats: { speedBytesPerSec: null, etaSeconds: null },
-      filesSaved: 0,
-      errorMessage: null,
-      integrityVerified: false,
-      cancel: vi.fn()
-    })
-  )
+  useFileTransfer: vi.fn((): UseFileTransferResult => ({
+    ready: false,
+    selectedFiles: [],
+    totalBytes: 0,
+    limitError: null,
+    addFiles: vi.fn(),
+    removeFile: vi.fn(),
+    clearSelection: vi.fn(),
+    startSend: vi.fn(),
+    incomingBatch: null,
+    acceptBatch: vi.fn(),
+    rejectBatch: vi.fn(),
+    phase: "idle",
+    perFile: {},
+    overall: { bytesDone: 0, bytesTotal: 0, filesDone: 0, filesTotal: 0 },
+    stats: { speedBytesPerSec: null, etaSeconds: null },
+    filesSaved: 0,
+    errorMessage: null,
+    integrityVerified: false,
+    cancel: vi.fn()
+  }))
 }));
 
 const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
@@ -86,7 +84,12 @@ describe("TransferPage", () => {
   });
 
   it("shows the shareable link and peer presence while waiting", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, peerOnline: true }));
     render(<TransferPage />);
 
@@ -96,38 +99,70 @@ describe("TransferPage", () => {
   });
 
   it("shows the accepted screen", () => {
-    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<TransferPage />);
     expect(screen.getByRole("heading", { name: "Convite aceito" })).toBeInTheDocument();
   });
 
   it("shows the send panel once the data channel is open", () => {
-    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
-    mockedUsePeerConnection.mockReturnValue({ dataChannel: {} as RTCDataChannel, channelState: "open" });
+    mockedUsePeerConnection.mockReturnValue({
+      dataChannel: {} as RTCDataChannel,
+      channelState: "open"
+    });
     render(<TransferPage />);
     expect(screen.getByRole("button", { name: "Escolher arquivos" })).toBeInTheDocument();
   });
 
   it("starts the peer connection once the session is accepted", () => {
-    const session = { token: "abc123", status: "accepted" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
     render(<TransferPage />);
 
-    expect(mockedUsePeerConnection).toHaveBeenCalledWith(expect.objectContaining({ role: "host", accepted: true }));
+    expect(mockedUsePeerConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "host", accepted: true })
+    );
   });
 
   it("does not mark the peer connection as accepted while still waiting", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
     render(<TransferPage />);
 
-    expect(mockedUsePeerConnection).toHaveBeenCalledWith(expect.objectContaining({ accepted: false }));
+    expect(mockedUsePeerConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ accepted: false })
+    );
   });
 
   it("shows the rejected screen with a retry action", async () => {
-    const session = { token: "abc123", status: "rejected" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "rejected" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     const createSession = vi.fn();
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, createSession }));
     const user = userEvent.setup();
@@ -139,15 +174,27 @@ describe("TransferPage", () => {
   });
 
   it("shows the expired screen", () => {
-    const session = { token: "abc123", status: "expired" as const, createdAt: "t0", expiresAt: "t1" };
+    const session = {
+      token: "abc123",
+      status: "expired" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
     render(<TransferPage />);
     expect(screen.getByRole("heading", { name: "Link expirado" })).toBeInTheDocument();
   });
 
   it("shows a reconnecting banner when the connection drops", () => {
-    const session = { token: "abc123", status: "waiting" as const, createdAt: "t0", expiresAt: "t1" };
-    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, connectionState: "reconnecting" }));
+    const session = {
+      token: "abc123",
+      status: "waiting" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(
+      makeResult({ session, connectionState: "reconnecting" })
+    );
     render(<TransferPage />);
     expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
   });

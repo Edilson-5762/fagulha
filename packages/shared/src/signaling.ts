@@ -53,7 +53,11 @@ function isSignalPayload(value: unknown): value is SignalPayload {
   }
   const payload = value as Record<string, unknown>;
   if (payload.kind === "offer" || payload.kind === "answer") {
-    return typeof payload.sdp === "string" && payload.sdp.length > 0 && payload.sdp.length <= MAX_SDP_LENGTH;
+    return (
+      typeof payload.sdp === "string" &&
+      payload.sdp.length > 0 &&
+      payload.sdp.length <= MAX_SDP_LENGTH
+    );
   }
   if (payload.kind === "candidate") {
     return isIceCandidateData(payload.candidate);

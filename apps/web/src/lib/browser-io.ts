@@ -57,7 +57,9 @@ export interface SaveTarget {
 
 export async function pickSaveTarget(): Promise<SaveTarget> {
   if (isFileSystemAccessSupported()) {
-    const dir = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({ mode: "readwrite" });
+    const dir = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({
+      mode: "readwrite"
+    });
     return { kind: "directory", openSink: (meta) => createDirectorySink(dir, meta) };
   }
   return { kind: "download", openSink: (meta) => Promise.resolve(createDownloadSink(meta)) };
@@ -127,8 +129,7 @@ export function adaptRtcDataChannel(channel: RTCDataChannel): DataChannelLike {
     set bufferedAmountLowThreshold(value: number) {
       channel.bufferedAmountLowThreshold = value;
     },
-    addEventListener: (type, listener) =>
-      channel.addEventListener(type, listener as EventListener),
+    addEventListener: (type, listener) => channel.addEventListener(type, listener as EventListener),
     removeEventListener: (type, listener) =>
       channel.removeEventListener(type, listener as EventListener)
   };

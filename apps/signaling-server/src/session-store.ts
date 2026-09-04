@@ -3,7 +3,8 @@ import { SESSION_TTL_MS, type Session, type SessionStatus } from "@transfergo/sh
 
 export type ResolveFailureReason = "not_found" | "expired" | "already_resolved";
 
-export type ResolveResult = { ok: true; session: Session } | { ok: false; reason: ResolveFailureReason };
+export type ResolveResult =
+  { ok: true; session: Session } | { ok: false; reason: ResolveFailureReason };
 
 export interface SessionStoreOptions {
   ttlMs?: number;

@@ -61,14 +61,14 @@ packages/ui/
 
 Decisões de tooling (spec §7.1 delega bibliotecas específicas para esta fase):
 
-| Camada | Escolha | Motivo |
-| --- | --- | --- |
-| Estilo | Tailwind CSS v4 (`@theme`) | Tokens como CSS nativo, produtividade alta, integra bem com Next.js/React 19 |
-| Comportamento acessível (Dialog/Toast/Dropdown/Tooltip) | Radix UI Primitives | Foco/teclado/ARIA prontos e testados — evita reimplementar a11y do zero, exigida pela spec §6 |
-| Variantes tipadas (size/variant/state) | class-variance-authority (CVA) | Padrão atual de mercado para variantes de componente, tipagem forte |
-| Ícones | lucide-react | Padrão de mercado em produtos SaaS modernos, tree-shakeable, combina com a estética escolhida |
-| Fonte | Inter via `next/font` | Self-hosted (Privacy by Default — sem chamada a serviço externo de fontes) |
-| Showcase de componentes | Storybook | Padrão de mercado para design systems; entra como task própria no `turbo.json` |
+| Camada                                                  | Escolha                        | Motivo                                                                                        |
+| ------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------- |
+| Estilo                                                  | Tailwind CSS v4 (`@theme`)     | Tokens como CSS nativo, produtividade alta, integra bem com Next.js/React 19                  |
+| Comportamento acessível (Dialog/Toast/Dropdown/Tooltip) | Radix UI Primitives            | Foco/teclado/ARIA prontos e testados — evita reimplementar a11y do zero, exigida pela spec §6 |
+| Variantes tipadas (size/variant/state)                  | class-variance-authority (CVA) | Padrão atual de mercado para variantes de componente, tipagem forte                           |
+| Ícones                                                  | lucide-react                   | Padrão de mercado em produtos SaaS modernos, tree-shakeable, combina com a estética escolhida |
+| Fonte                                                   | Inter via `next/font`          | Self-hosted (Privacy by Default — sem chamada a serviço externo de fontes)                    |
+| Showcase de componentes                                 | Storybook                      | Padrão de mercado para design systems; entra como task própria no `turbo.json`                |
 
 `apps/web` consome `@transfergo/ui` da mesma forma que já consome
 `@transfergo/shared` (workspace, sem build step, via `transpilePackages`).
@@ -83,15 +83,15 @@ definidos por este projeto.
 Cobertura completa exigida pela spec §6, cada um com story no Storybook
 mostrando todas as variantes/estados:
 
-| Categoria | Componentes |
-| --- | --- |
-| Ações | `Button` (variants: primary/secondary/ghost/danger; sizes sm/md/lg; loading state) |
-| Entrada | `Input`, `Textarea` (estados: default/focus/error/disabled) |
-| Conteúdo | `Card`, `Badge` (inclui as 3 variantes de segurança) |
-| Progresso | `ProgressBar` (determinado, com % e velocidade), `Spinner` |
-| Overlays | `Dialog` (Radix), `Toast`/`Notification` (Radix), `Tooltip` (Radix) |
+| Categoria          | Componentes                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Ações              | `Button` (variants: primary/secondary/ghost/danger; sizes sm/md/lg; loading state)                                     |
+| Entrada            | `Input`, `Textarea` (estados: default/focus/error/disabled)                                                            |
+| Conteúdo           | `Card`, `Badge` (inclui as 3 variantes de segurança)                                                                   |
+| Progresso          | `ProgressBar` (determinado, com % e velocidade), `Spinner`                                                             |
+| Overlays           | `Dialog` (Radix), `Toast`/`Notification` (Radix), `Tooltip` (Radix)                                                    |
 | Feedback de estado | `StateScreen` — componente genérico parametrizável (ícone + título + descrição + ação) para os 17 estados obrigatórios |
-| Segurança | `SecurityLevelCard` (Normal/Sensível/Confidencial) — usa `StateScreen` internamente com a escada de cor da seção 2 |
+| Segurança          | `SecurityLevelCard` (Normal/Sensível/Confidencial) — usa `StateScreen` internamente com a escada de cor da seção 2     |
 
 ### 4.1 Estados de interface cobertos pelo `StateScreen`
 

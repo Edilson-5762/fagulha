@@ -1,9 +1,24 @@
 "use client";
 
 import { useRef } from "react";
-import { AlertTriangle, Badge, Button, CheckCircle2, FileText, ProgressBar, StateScreen, Upload, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  Badge,
+  Button,
+  CheckCircle2,
+  FileText,
+  ProgressBar,
+  StateScreen,
+  Upload,
+  XCircle
+} from "@transfergo/ui";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
-import { formatBytes, formatDuration, formatSpeed, SIZE_CLASS_LABELS } from "../../lib/transfer-format.js";
+import {
+  formatBytes,
+  formatDuration,
+  formatSpeed,
+  SIZE_CLASS_LABELS
+} from "../../lib/transfer-format.js";
 
 const SIZE_BADGE_TONE = { small: "neutral", medium: "warning", large: "danger" } as const;
 
@@ -17,7 +32,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
       <StateScreen
         icon={CheckCircle2}
         tone="success"
-        title={n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`}
+        title={
+          n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`
+        }
         description="Os arquivos chegaram ao outro dispositivo."
         actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
       />
@@ -44,7 +61,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
         icon={AlertTriangle}
         tone="warning"
         title="Transferência cancelada"
-        description={saved === 0 ? "Nenhum arquivo chegou." : `${saved} de ${total} arquivos chegaram.`}
+        description={
+          saved === 0 ? "Nenhum arquivo chegou." : `${saved} de ${total} arquivos chegaram.`
+        }
         actions={[{ label: "Nova transferência", onClick: transfer.clearSelection }]}
       />
     );
@@ -57,7 +76,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
     const activeName = transfer.selectedFiles[overall.filesDone]?.name ?? "";
     const bytesPct = overall.bytesTotal > 0 ? (overall.bytesDone / overall.bytesTotal) * 100 : 0;
 
-    const statusParts: string[] = [`${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`];
+    const statusParts: string[] = [
+      `${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`
+    ];
     if (stats.speedBytesPerSec === 0) {
       statusParts.push("parado");
     } else if (stats.speedBytesPerSec != null) {
@@ -148,14 +169,19 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
         <>
           <ul className="mt-4 flex flex-col gap-2">
             {transfer.selectedFiles.map((file) => (
-              <li key={file.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+              <li
+                key={file.id}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+              >
                 <span className="flex min-w-0 items-center gap-2">
                   <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
                   <span className="truncate">{file.name}</span>
                 </span>
                 <span className="ml-3 flex shrink-0 items-center gap-2">
                   <span className="text-text-muted">{formatBytes(file.size)}</span>
-                  <Badge tone={SIZE_BADGE_TONE[file.sizeClass]}>{SIZE_CLASS_LABELS[file.sizeClass]}</Badge>
+                  <Badge tone={SIZE_BADGE_TONE[file.sizeClass]}>
+                    {SIZE_CLASS_LABELS[file.sizeClass]}
+                  </Badge>
                   <button
                     type="button"
                     className="text-text-muted hover:text-text"
@@ -169,7 +195,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
             ))}
           </ul>
           <p className="mt-3 text-center text-xs text-text-muted">
-            {transfer.selectedFiles.length} {transfer.selectedFiles.length === 1 ? "arquivo" : "arquivos"} · {formatBytes(transfer.totalBytes)}
+            {transfer.selectedFiles.length}{" "}
+            {transfer.selectedFiles.length === 1 ? "arquivo" : "arquivos"} ·{" "}
+            {formatBytes(transfer.totalBytes)}
           </p>
         </>
       )}
@@ -182,7 +210,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
 
       <Button
         className="mt-4 w-full"
-        disabled={!transfer.ready || transfer.selectedFiles.length === 0 || transfer.limitError !== null}
+        disabled={
+          !transfer.ready || transfer.selectedFiles.length === 0 || transfer.limitError !== null
+        }
         onClick={transfer.startSend}
       >
         Enviar

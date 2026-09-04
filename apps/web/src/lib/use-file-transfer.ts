@@ -41,7 +41,8 @@ export type TransferPhase =
   | "cancelled"
   | "failed";
 
-export type PerFileState = "queued" | "preparing" | "sending" | "receiving" | "completed" | "failed";
+export type PerFileState =
+  "queued" | "preparing" | "sending" | "receiving" | "completed" | "failed";
 
 export interface PerFileStatus {
   bytes: number;
@@ -117,10 +118,13 @@ const ETA_MIN_ELAPSED_MS = 3000;
 const STATS_TICK_MS = 1000;
 
 const monotonicNow = (): number =>
-  typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 
 let batchCounter = 0;
-const nextId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(batchCounter++).toString(36)}`;
+const nextId = (prefix: string) =>
+  `${prefix}-${Date.now().toString(36)}-${(batchCounter++).toString(36)}`;
 
 export function useFileTransfer(params: UseFileTransferParams): UseFileTransferResult {
   const { role, dataChannel, channelState } = params;
@@ -152,9 +156,10 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const fileMapRef = useRef<Map<string, File>>(new Map());
   const senderRef = useRef<TransferSender | null>(null);
   const receiverRef = useRef<TransferReceiver | null>(null);
-  const openSinkRef = useRef<((meta: FileMeta, offset: number) => Promise<import("@transfergo/transfer-engine").FileSink>) | null>(
-    null
-  );
+  const openSinkRef = useRef<
+    | ((meta: FileMeta, offset: number) => Promise<import("@transfergo/transfer-engine").FileSink>)
+    | null
+  >(null);
 
   const recomputeStats = useCallback(() => {
     const buf = samplesRef.current;
@@ -246,7 +251,10 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       onFileComplete: (fileId: string) => {
         filesCompletedRef.current += 1;
         setFilesSaved(filesCompletedRef.current);
-        setPerFile((prev) => ({ ...prev, [fileId]: { ...prev[fileId]!, pct: 100, state: "completed" } }));
+        setPerFile((prev) => ({
+          ...prev,
+          [fileId]: { ...prev[fileId]!, pct: 100, state: "completed" }
+        }));
       },
       onBatchComplete: () => {
         setFilesSaved(batchFilesRef.current.length);
@@ -311,7 +319,8 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
             totalBytes: offer.totalBytes,
             summary: summarizeBatch(offer.files),
             requiresMemoryWarning:
-              !isFileSystemAccessSupported() && offer.files.some((f) => classifyFileSize(f.size) === "large")
+              !isFileSystemAccessSupported() &&
+              offer.files.some((f) => classifyFileSize(f.size) === "large")
           });
         }
       }
@@ -343,7 +352,10 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     return () => clearInterval(id);
   }, [phase, recomputeStats]);
 
-  const totalBytes = useMemo(() => selectedFiles.reduce((sum, f) => sum + f.size, 0), [selectedFiles]);
+  const totalBytes = useMemo(
+    () => selectedFiles.reduce((sum, f) => sum + f.size, 0),
+    [selectedFiles]
+  );
 
   const limitError = useMemo(() => {
     if (selectedFiles.length > BATCH_MAX_FILES) {
@@ -398,9 +410,19 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     });
     resetBatchProgress();
     setPerFile(
-      Object.fromEntries(selectedFiles.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }]))
+      Object.fromEntries(
+        selectedFiles.map((f) => [
+          f.id,
+          { bytes: 0, size: f.size, pct: 0, state: "queued" as const }
+        ])
+      )
     );
-    setOverall({ bytesDone: 0, bytesTotal: totalBytes, filesDone: 0, filesTotal: selectedFiles.length });
+    setOverall({
+      bytesDone: 0,
+      bytesTotal: totalBytes,
+      filesDone: 0,
+      filesTotal: selectedFiles.length
+    });
     batchFilesRef.current = selectedFiles.map((f) => ({ id: f.id, size: f.size }));
     batchBytesTotalRef.current = totalBytes;
     const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
@@ -410,7 +432,16 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     senderRef.current = sender;
     setPhase("offering");
     sender.start();
-  }, [ready, dataChannel, role, limitError, selectedFiles, totalBytes, wireCommon, resetBatchProgress]);
+  }, [
+    ready,
+    dataChannel,
+    role,
+    limitError,
+    selectedFiles,
+    totalBytes,
+    wireCommon,
+    resetBatchProgress
+  ]);
 
   const acceptBatch = useCallback(async () => {
     if (!receiverRef.current || !incomingBatch) {
@@ -427,9 +458,19 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     openSinkRef.current = target.openSink;
     resetBatchProgress();
     setPerFile(
-      Object.fromEntries(incomingBatch.files.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }]))
+      Object.fromEntries(
+        incomingBatch.files.map((f) => [
+          f.id,
+          { bytes: 0, size: f.size, pct: 0, state: "queued" as const }
+        ])
+      )
     );
-    setOverall({ bytesDone: 0, bytesTotal: incomingBatch.totalBytes, filesDone: 0, filesTotal: incomingBatch.files.length });
+    setOverall({
+      bytesDone: 0,
+      bytesTotal: incomingBatch.totalBytes,
+      filesDone: 0,
+      filesTotal: incomingBatch.files.length
+    });
     batchFilesRef.current = incomingBatch.files.map((f) => ({ id: f.id, size: f.size }));
     batchBytesTotalRef.current = incomingBatch.totalBytes;
     setPhase("preparing");

@@ -36,7 +36,14 @@ export interface StateScreenProps extends VariantProps<typeof iconWrapperVariant
   className?: string;
 }
 
-export function StateScreen({ icon: Icon, tone, title, description, actions, className }: StateScreenProps) {
+export function StateScreen({
+  icon: Icon,
+  tone,
+  title,
+  description,
+  actions,
+  className
+}: StateScreenProps) {
   return (
     <div className={cn("flex flex-col items-center px-6 py-12 text-center", className)}>
       <div className={cn(iconWrapperVariants({ tone }))}>
@@ -47,7 +54,11 @@ export function StateScreen({ icon: Icon, tone, title, description, actions, cla
       {actions && actions.length > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           {actions.map((action) => (
-            <Button key={action.label} variant={action.variant ?? "primary"} onClick={action.onClick}>
+            <Button
+              key={action.label}
+              variant={action.variant ?? "primary"}
+              onClick={action.onClick}
+            >
               {action.label}
             </Button>
           ))}

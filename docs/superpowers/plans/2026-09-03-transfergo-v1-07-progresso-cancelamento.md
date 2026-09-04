@@ -26,22 +26,22 @@
 
 ## Estrutura de arquivos
 
-| Arquivo | Papel | Tarefa |
-| --- | --- | --- |
-| `apps/web/src/lib/transfer-format.ts` | +`formatSpeed`, +`formatDuration` (puras) | 1 |
-| `apps/web/src/lib/transfer-format.test.ts` | testes das duas funções novas | 1 |
-| `packages/transfer-engine/src/receiver.ts` | `onCancelled?: (filesDone) => void` + passar `this.filesDone` | 2 |
-| `packages/transfer-engine/src/sender.ts` | `onCancelled?: (filesDone) => void` + contador `filesDone` | 2 |
-| `packages/transfer-engine/src/receiver.test.ts` | teste: `onCancelled` recebe a contagem | 2 |
-| `packages/transfer-engine/src/sender.test.ts` | teste: `onCancelled` recebe a contagem | 2 |
-| `apps/web/src/lib/use-file-transfer.ts` | reshape da API + progresso por bytes + `filesSaved` + fases; depois velocidade/ETA/ticker | 3, 4 |
-| `apps/web/src/lib/use-file-transfer.test.ts` | testes do progresso por bytes / cancelamento parcial / fases; depois velocidade/ETA com timers falsos | 3, 4 |
-| `apps/web/src/components/transferir/SendPanel.tsx` | update mecânico; depois barra por bytes, linha de status, mini-barra, tela `cancelled` parcial | 3, 5 |
-| `apps/web/src/components/transferir/SendPanel.test.tsx` | fixtures + testes de progresso/cancelamento | 3, 5 |
-| `apps/web/src/components/s/ReceivePanel.tsx` | espelho do `SendPanel` | 3, 6 |
-| `apps/web/src/components/s/ReceivePanel.test.tsx` | fixtures + testes | 3, 6 |
-| `apps/web/src/app/transferir/page.test.tsx` | stub do mock de `useFileTransfer` com a nova forma | 3 |
-| `apps/web/src/app/s/[token]/page.test.tsx` | idem | 3 |
+| Arquivo                                                 | Papel                                                                                                 | Tarefa |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------ |
+| `apps/web/src/lib/transfer-format.ts`                   | +`formatSpeed`, +`formatDuration` (puras)                                                             | 1      |
+| `apps/web/src/lib/transfer-format.test.ts`              | testes das duas funções novas                                                                         | 1      |
+| `packages/transfer-engine/src/receiver.ts`              | `onCancelled?: (filesDone) => void` + passar `this.filesDone`                                         | 2      |
+| `packages/transfer-engine/src/sender.ts`                | `onCancelled?: (filesDone) => void` + contador `filesDone`                                            | 2      |
+| `packages/transfer-engine/src/receiver.test.ts`         | teste: `onCancelled` recebe a contagem                                                                | 2      |
+| `packages/transfer-engine/src/sender.test.ts`           | teste: `onCancelled` recebe a contagem                                                                | 2      |
+| `apps/web/src/lib/use-file-transfer.ts`                 | reshape da API + progresso por bytes + `filesSaved` + fases; depois velocidade/ETA/ticker             | 3, 4   |
+| `apps/web/src/lib/use-file-transfer.test.ts`            | testes do progresso por bytes / cancelamento parcial / fases; depois velocidade/ETA com timers falsos | 3, 4   |
+| `apps/web/src/components/transferir/SendPanel.tsx`      | update mecânico; depois barra por bytes, linha de status, mini-barra, tela `cancelled` parcial        | 3, 5   |
+| `apps/web/src/components/transferir/SendPanel.test.tsx` | fixtures + testes de progresso/cancelamento                                                           | 3, 5   |
+| `apps/web/src/components/s/ReceivePanel.tsx`            | espelho do `SendPanel`                                                                                | 3, 6   |
+| `apps/web/src/components/s/ReceivePanel.test.tsx`       | fixtures + testes                                                                                     | 3, 6   |
+| `apps/web/src/app/transferir/page.test.tsx`             | stub do mock de `useFileTransfer` com a nova forma                                                    | 3      |
+| `apps/web/src/app/s/[token]/page.test.tsx`              | idem                                                                                                  | 3      |
 
 Sem arquivos novos.
 
@@ -50,10 +50,12 @@ Sem arquivos novos.
 ## Task 1: `formatSpeed` e `formatDuration` em `transfer-format.ts`
 
 **Files:**
+
 - Modify: `apps/web/src/lib/transfer-format.ts`
 - Test: `apps/web/src/lib/transfer-format.test.ts`
 
 **Interfaces:**
+
 - Consumes: `formatBytes` (já existe no mesmo arquivo).
 - Produces:
   - `export function formatSpeed(bytesPerSec: number): string` — `formatBytes(arredondado)` + `"/s"`. Ex.: `0 → "0 B/s"`, `820*1024 → "820 KB/s"`, `12.3*1024*1024 → "12,3 MB/s"`.
@@ -64,7 +66,13 @@ Sem arquivos novos.
 Adicione ao fim de `apps/web/src/lib/transfer-format.test.ts` (o `import` no topo já traz de `./transfer-format.js` — inclua as duas funções novas nele):
 
 ```ts
-import { formatBytes, formatDuration, formatSpeed, SIZE_CLASS_LABELS, summarizeBatch } from "./transfer-format.js";
+import {
+  formatBytes,
+  formatDuration,
+  formatSpeed,
+  SIZE_CLASS_LABELS,
+  summarizeBatch
+} from "./transfer-format.js";
 ```
 
 ```ts
@@ -149,11 +157,13 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 2: `onCancelled(filesDone)` no motor
 
 **Files:**
+
 - Modify: `packages/transfer-engine/src/receiver.ts` (interface `ReceiverCallbacks`; duas chamadas de `onCancelled`)
 - Modify: `packages/transfer-engine/src/sender.ts` (interface `SenderCallbacks`; novo campo `filesDone`; duas chamadas de `onCancelled`)
 - Test: `packages/transfer-engine/src/receiver.test.ts`, `packages/transfer-engine/src/sender.test.ts`
 
 **Interfaces:**
+
 - Consumes: nada novo.
 - Produces:
   - `ReceiverCallbacks.onCancelled?: (filesDone: number) => void` — `filesDone` = arquivos fechados com `close()` antes do corte (o arquivo com sink aberto **não** conta; seu sink é abortado).
@@ -168,8 +178,12 @@ Em `packages/transfer-engine/src/receiver.test.ts`, adicione dentro do `describe
 it("reports the count of fully-received files when cancelled mid-batch", async () => {
   const ch = new FakeChannel();
   const onCancelled = vi.fn();
-  const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onCancelled });
-  ch.feed(offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 }), meta({ id: "f3", size: 2 })]));
+  const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), {
+    onCancelled
+  });
+  ch.feed(
+    offer([meta({ id: "f1", size: 2 }), meta({ id: "f2", size: 2 }), meta({ id: "f3", size: 2 })])
+  );
   receiver.accept();
   ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
   await flush();
@@ -186,7 +200,9 @@ it("reports the count of fully-received files when cancelled mid-batch", async (
 it("reports 0 fully-received files when cancelled before any file-end", async () => {
   const ch = new FakeChannel();
   const onCancelled = vi.fn();
-  const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onCancelled });
+  const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), {
+    onCancelled
+  });
   ch.feed(offer([meta({ id: "f1", size: 2 })]));
   receiver.accept();
   ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
@@ -206,7 +222,10 @@ it("reports the count of finished files when cancelled mid-batch", async () => {
   let resolveRead: (buf: ArrayBuffer) => void = () => {};
   const gated = {
     size: 4,
-    read: () => new Promise<ArrayBuffer>((resolve) => { resolveRead = resolve; })
+    read: () =>
+      new Promise<ArrayBuffer>((resolve) => {
+        resolveRead = resolve;
+      })
   };
   const sender = new TransferSender(
     ch,
@@ -231,8 +250,20 @@ it("reports 0 finished files when cancelled before the first file-end", async ()
   const ch = new FakeChannel();
   const onCancelled = vi.fn();
   let resolveRead: (buf: ArrayBuffer) => void = () => {};
-  const gated = { size: 4, read: () => new Promise<ArrayBuffer>((resolve) => { resolveRead = resolve; }) };
-  const sender = new TransferSender(ch, "b1", [{ meta: meta({ id: "f1", size: 4 }), source: gated }], { onCancelled }, { chunkSize: 4 });
+  const gated = {
+    size: 4,
+    read: () =>
+      new Promise<ArrayBuffer>((resolve) => {
+        resolveRead = resolve;
+      })
+  };
+  const sender = new TransferSender(
+    ch,
+    "b1",
+    [{ meta: meta({ id: "f1", size: 4 }), source: gated }],
+    { onCancelled },
+    { chunkSize: 4 }
+  );
   sender.start();
   ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
   await flush();
@@ -261,7 +292,7 @@ Na interface `ReceiverCallbacks`, troque a linha do `onCancelled`:
 No método `cancel()`, a linha `void this.currentSink?.abort().catch(() => undefined);` é seguida de `this.cb.onCancelled?.();` — troque para:
 
 ```ts
-    this.cb.onCancelled?.(this.filesDone);
+this.cb.onCancelled?.(this.filesDone);
 ```
 
 No `handleControl`, `case "cancel":`, a única chamada `this.cb.onCancelled?.();` vira `this.cb.onCancelled?.(this.filesDone);`. O bloco fica:
@@ -296,20 +327,20 @@ Adicione um contador de instância junto dos outros campos privados (perto de `p
 No `runBatch`, logo depois de `this.cb.onFileComplete?.(meta.id);`, incremente:
 
 ```ts
-        this.cb.onFileComplete?.(meta.id);
-        this.filesDone += 1;
+this.cb.onFileComplete?.(meta.id);
+this.filesDone += 1;
 ```
 
 No `cancel()`, troque `this.cb.onCancelled?.();` por:
 
 ```ts
-    this.cb.onCancelled?.(this.filesDone);
+this.cb.onCancelled?.(this.filesDone);
 ```
 
 No `handleControl`, ramo `else if (frame.t === "cancel")`, troque `this.cb.onCancelled?.();` por:
 
 ```ts
-      this.cb.onCancelled?.(this.filesDone);
+this.cb.onCancelled?.(this.filesDone);
 ```
 
 - [ ] **Step 5: Rodar e ver passar**
@@ -333,6 +364,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 Sem velocidade/ETA ainda (`stats` fica constante `{ speedBytesPerSec: null, etaSeconds: null }`). Esta tarefa muda a **forma** do `UseFileTransferResult` e propaga a mudança para painéis e stubs de teste, mantendo `typecheck` e `test` verdes.
 
 **Files:**
+
 - Modify: `apps/web/src/lib/use-file-transfer.ts`
 - Modify: `apps/web/src/components/transferir/SendPanel.tsx` (update mecânico)
 - Modify: `apps/web/src/components/s/ReceivePanel.tsx` (update mecânico)
@@ -343,6 +375,7 @@ Sem velocidade/ETA ainda (`stats` fica constante `{ speedBytesPerSec: null, etaS
 - Test: `apps/web/src/lib/use-file-transfer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `TransferProgress { batchId, fileId, fileBytes, fileSize, filesDone, filesTotal }` (motor, inalterado); `ReceiverCallbacks.onCancelled(filesDone)` / `SenderCallbacks.onCancelled(filesDone)` (Task 2).
 - Produces — `UseFileTransferResult` passa a ter:
   - `phase: "idle" | "offering" | "preparing" | "sending" | "receiving" | "completed" | "cancelled" | "failed"`
@@ -367,10 +400,15 @@ const makeSink = () => ({
 });
 
 vi.mock("./browser-io.js", () => ({
-  createFileChunkSource: (file: File) => ({ size: file.size, read: () => Promise.resolve(new ArrayBuffer(0)) }),
+  createFileChunkSource: (file: File) => ({
+    size: file.size,
+    read: () => Promise.resolve(new ArrayBuffer(0))
+  }),
   adaptRtcDataChannel: (c: unknown) => c,
   isFileSystemAccessSupported: vi.fn(() => false),
-  pickSaveTarget: vi.fn(() => Promise.resolve({ kind: "download", openSink: vi.fn(() => Promise.resolve(makeSink())) }))
+  pickSaveTarget: vi.fn(() =>
+    Promise.resolve({ kind: "download", openSink: vi.fn(() => Promise.resolve(makeSink())) })
+  )
 }));
 
 import { isFileSystemAccessSupported } from "./browser-io.js";
@@ -412,7 +450,13 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 const renderTransfer = (role: "host" | "guest") =>
-  renderHook(() => useFileTransfer({ role, dataChannel: channel as unknown as RTCDataChannel, channelState: "open" }));
+  renderHook(() =>
+    useFileTransfer({
+      role,
+      dataChannel: channel as unknown as RTCDataChannel,
+      channelState: "open"
+    })
+  );
 
 const enc = (frame: unknown) => JSON.stringify(frame);
 const offer = (files: { id: string; name: string; size: number; type: string }[], id = "b1") =>
@@ -420,7 +464,10 @@ const offer = (files: { id: string; name: string; size: number; type: string }[]
 
 // Drives the guest receiver through a real frame sequence. Returns after each
 // caller-inserted `act`.
-async function acceptAsGuest(result: { current: ReturnType<typeof useFileTransfer> }, files: { id: string; name: string; size: number; type: string }[]) {
+async function acceptAsGuest(
+  result: { current: ReturnType<typeof useFileTransfer> },
+  files: { id: string; name: string; size: number; type: string }[]
+) {
   act(() => channel.feed(offer(files)));
   await act(async () => {
     await result.current.acceptBatch();
@@ -470,7 +517,12 @@ describe("useFileTransfer — guest progress by bytes", () => {
     const { result } = renderTransfer("guest");
     await acceptAsGuest(result, files);
     expect(result.current.phase).toBe("preparing");
-    expect(result.current.overall).toMatchObject({ bytesDone: 0, bytesTotal: 5, filesDone: 0, filesTotal: 2 });
+    expect(result.current.overall).toMatchObject({
+      bytesDone: 0,
+      bytesTotal: 5,
+      filesDone: 0,
+      filesTotal: 2
+    });
 
     act(() => channel.feed(enc({ t: "file-begin", id: "f1", offset: 0 })));
     await flush();
@@ -478,7 +530,12 @@ describe("useFileTransfer — guest progress by bytes", () => {
     await flush();
     expect(result.current.phase).toBe("receiving");
     expect(result.current.overall.bytesDone).toBe(2);
-    expect(result.current.perFile.f1).toMatchObject({ bytes: 2, size: 3, pct: 67, state: "receiving" });
+    expect(result.current.perFile.f1).toMatchObject({
+      bytes: 2,
+      size: 3,
+      pct: 67,
+      state: "receiving"
+    });
 
     act(() => channel.feed(new Uint8Array([3]).buffer));
     act(() => channel.feed(enc({ t: "file-end", id: "f1", bytesSent: 3 })));
@@ -556,7 +613,8 @@ export type TransferPhase =
   | "cancelled"
   | "failed";
 
-export type PerFileState = "queued" | "preparing" | "sending" | "receiving" | "completed" | "failed";
+export type PerFileState =
+  "queued" | "preparing" | "sending" | "receiving" | "completed" | "failed";
 
 export interface PerFileStatus {
   bytes: number;
@@ -581,11 +639,11 @@ export interface TransferStats {
 No `UseFileTransferResult`, troque as três linhas e adicione duas:
 
 ```ts
-  phase: TransferPhase;
-  perFile: Record<string, PerFileStatus>;
-  overall: TransferOverall;
-  stats: TransferStats;
-  filesSaved: number;
+phase: TransferPhase;
+perFile: Record<string, PerFileStatus>;
+overall: TransferOverall;
+stats: TransferStats;
+filesSaved: number;
 ```
 
 Adicione, perto do topo do arquivo (depois de `ERROR_MESSAGES`):
@@ -602,77 +660,80 @@ Ainda em `use-file-transfer.ts`, dentro de `useFileTransfer`:
 Troque a declaração de `overall` e adicione `stats`/`filesSaved` e os refs do lote:
 
 ```ts
-  const [overall, setOverall] = useState<TransferOverall>(EMPTY_OVERALL);
-  const [stats] = useState<TransferStats>(EMPTY_STATS); // Task 4 troca por useState + setter
-  const [filesSaved, setFilesSaved] = useState(0);
+const [overall, setOverall] = useState<TransferOverall>(EMPTY_OVERALL);
+const [stats] = useState<TransferStats>(EMPTY_STATS); // Task 4 troca por useState + setter
+const [filesSaved, setFilesSaved] = useState(0);
 ```
 
 ```ts
-  // Ordem e tamanhos do lote em andamento — base do cálculo de bytes acumulados.
-  const batchFilesRef = useRef<{ id: string; size: number }[]>([]);
-  const batchBytesTotalRef = useRef(0);
-  // Arquivos concluídos (onFileComplete) no lote atual — usado para filesSaved.
-  const filesCompletedRef = useRef(0);
+// Ordem e tamanhos do lote em andamento — base do cálculo de bytes acumulados.
+const batchFilesRef = useRef<{ id: string; size: number }[]>([]);
+const batchBytesTotalRef = useRef(0);
+// Arquivos concluídos (onFileComplete) no lote atual — usado para filesSaved.
+const filesCompletedRef = useRef(0);
 ```
 
 Troque `applyProgress`:
 
 ```ts
-  const applyProgress = useCallback(
-    (p: TransferProgress) => {
-      const files = batchFilesRef.current;
-      const bytesInCompleted = files.slice(0, p.filesDone).reduce((s, f) => s + f.size, 0);
-      const currentId = files[p.filesDone]?.id;
-      const bytesDone = bytesInCompleted + (p.fileId === currentId ? p.fileBytes : 0);
-      setOverall({
-        bytesDone,
-        bytesTotal: batchBytesTotalRef.current,
-        filesDone: p.filesDone,
-        filesTotal: p.filesTotal
-      });
-      const activeState: PerFileState = role === "host" ? "sending" : "receiving";
-      setPerFile((prev) => ({
-        ...prev,
-        [p.fileId]: {
-          bytes: p.fileBytes,
-          size: p.fileSize,
-          pct: p.fileSize === 0 ? 100 : Math.min(100, Math.round((p.fileBytes / p.fileSize) * 100)),
-          state: p.fileBytes >= p.fileSize ? "completed" : activeState
-        }
-      }));
-      setPhase((cur) => (cur === "preparing" ? activeState : cur));
-    },
-    [role]
-  );
+const applyProgress = useCallback(
+  (p: TransferProgress) => {
+    const files = batchFilesRef.current;
+    const bytesInCompleted = files.slice(0, p.filesDone).reduce((s, f) => s + f.size, 0);
+    const currentId = files[p.filesDone]?.id;
+    const bytesDone = bytesInCompleted + (p.fileId === currentId ? p.fileBytes : 0);
+    setOverall({
+      bytesDone,
+      bytesTotal: batchBytesTotalRef.current,
+      filesDone: p.filesDone,
+      filesTotal: p.filesTotal
+    });
+    const activeState: PerFileState = role === "host" ? "sending" : "receiving";
+    setPerFile((prev) => ({
+      ...prev,
+      [p.fileId]: {
+        bytes: p.fileBytes,
+        size: p.fileSize,
+        pct: p.fileSize === 0 ? 100 : Math.min(100, Math.round((p.fileBytes / p.fileSize) * 100)),
+        state: p.fileBytes >= p.fileSize ? "completed" : activeState
+      }
+    }));
+    setPhase((cur) => (cur === "preparing" ? activeState : cur));
+  },
+  [role]
+);
 ```
 
 Troque `wireCommon` (o `onFileComplete` agora conta; `onBatchComplete`/`onError`/`onCancelled` gravam `filesSaved`):
 
 ```ts
-  const wireCommon = useMemo(
-    () => ({
-      onProgress: applyProgress,
-      onFileComplete: (fileId: string) => {
-        filesCompletedRef.current += 1;
-        setFilesSaved(filesCompletedRef.current);
-        setPerFile((prev) => ({ ...prev, [fileId]: { ...prev[fileId]!, pct: 100, state: "completed" } }));
-      },
-      onBatchComplete: () => {
-        setFilesSaved(batchFilesRef.current.length);
-        setPhase("completed");
-      },
-      onError: (e: TransferError) => {
-        setFilesSaved(filesCompletedRef.current);
-        setPhase("failed");
-        setErrorMessage(ERROR_MESSAGES[e.code] ?? "A transferência falhou.");
-      },
-      onCancelled: (filesDone: number) => {
-        setFilesSaved(Math.min(filesDone, filesCompletedRef.current));
-        setPhase((current) => (current === "completed" ? current : "cancelled"));
-      }
-    }),
-    [applyProgress]
-  );
+const wireCommon = useMemo(
+  () => ({
+    onProgress: applyProgress,
+    onFileComplete: (fileId: string) => {
+      filesCompletedRef.current += 1;
+      setFilesSaved(filesCompletedRef.current);
+      setPerFile((prev) => ({
+        ...prev,
+        [fileId]: { ...prev[fileId]!, pct: 100, state: "completed" }
+      }));
+    },
+    onBatchComplete: () => {
+      setFilesSaved(batchFilesRef.current.length);
+      setPhase("completed");
+    },
+    onError: (e: TransferError) => {
+      setFilesSaved(filesCompletedRef.current);
+      setPhase("failed");
+      setErrorMessage(ERROR_MESSAGES[e.code] ?? "A transferência falhou.");
+    },
+    onCancelled: (filesDone: number) => {
+      setFilesSaved(Math.min(filesDone, filesCompletedRef.current));
+      setPhase((current) => (current === "completed" ? current : "cancelled"));
+    }
+  }),
+  [applyProgress]
+);
 ```
 
 No efeito do convidado (guest), o wrapper de `onCancelled` precisa repassar o argumento; e o `onBatchOffered` zera o estado do lote anterior antes de aceitar o próximo:
@@ -685,57 +746,65 @@ No efeito do convidado (guest), o wrapper de `onCancelled` precisa repassar o ar
 ```
 
 ```ts
-        onBatchOffered: (offer) => {
-          setErrorMessage(null);
-          setFilesSaved(0);
-          filesCompletedRef.current = 0;
-          setPerFile({});
-          setOverall(EMPTY_OVERALL);
-          setPhase("idle");
-          setIncomingBatch({
-            files: offer.files,
-            totalBytes: offer.totalBytes,
-            summary: summarizeBatch(offer.files),
-            requiresMemoryWarning:
-              !isFileSystemAccessSupported() && offer.files.some((f) => classifyFileSize(f.size) === "large")
-          });
-        }
+onBatchOffered: (offer) => {
+  setErrorMessage(null);
+  setFilesSaved(0);
+  filesCompletedRef.current = 0;
+  setPerFile({});
+  setOverall(EMPTY_OVERALL);
+  setPhase("idle");
+  setIncomingBatch({
+    files: offer.files,
+    totalBytes: offer.totalBytes,
+    summary: summarizeBatch(offer.files),
+    requiresMemoryWarning:
+      !isFileSystemAccessSupported() &&
+      offer.files.some((f) => classifyFileSize(f.size) === "large")
+  });
+};
 ```
 
 Em `clearSelection`, troque o reset de `overall` e some `filesSaved`/contador:
 
 ```ts
-  const clearSelection = useCallback(() => {
-    fileMapRef.current.clear();
-    setSelectedFiles([]);
-    setPerFile({});
-    setOverall(EMPTY_OVERALL);
-    setFilesSaved(0);
-    filesCompletedRef.current = 0;
-    setErrorMessage(null);
-    setPhase("idle");
-  }, []);
+const clearSelection = useCallback(() => {
+  fileMapRef.current.clear();
+  setSelectedFiles([]);
+  setPerFile({});
+  setOverall(EMPTY_OVERALL);
+  setFilesSaved(0);
+  filesCompletedRef.current = 0;
+  setErrorMessage(null);
+  setPhase("idle");
+}, []);
 ```
 
 Em `startSend`, prepare os refs do lote, o `overall` por bytes, e mude a fase de aceite para `preparing`:
 
 ```ts
-    setPerFile(
-      Object.fromEntries(selectedFiles.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }]))
-    );
-    batchFilesRef.current = selectedFiles.map((f) => ({ id: f.id, size: f.size }));
-    batchBytesTotalRef.current = totalBytes;
-    filesCompletedRef.current = 0;
-    setFilesSaved(0);
-    setOverall({ bytesDone: 0, bytesTotal: totalBytes, filesDone: 0, filesTotal: selectedFiles.length });
-    setErrorMessage(null);
-    const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
-      ...wireCommon,
-      onAccepted: () => setPhase("preparing")
-    });
-    senderRef.current = sender;
-    setPhase("offering");
-    sender.start();
+setPerFile(
+  Object.fromEntries(
+    selectedFiles.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }])
+  )
+);
+batchFilesRef.current = selectedFiles.map((f) => ({ id: f.id, size: f.size }));
+batchBytesTotalRef.current = totalBytes;
+filesCompletedRef.current = 0;
+setFilesSaved(0);
+setOverall({
+  bytesDone: 0,
+  bytesTotal: totalBytes,
+  filesDone: 0,
+  filesTotal: selectedFiles.length
+});
+setErrorMessage(null);
+const sender = new TransferSender(adaptRtcDataChannel(dataChannel), nextId("batch"), inputs, {
+  ...wireCommon,
+  onAccepted: () => setPhase("preparing")
+});
+senderRef.current = sender;
+setPhase("offering");
+sender.start();
 ```
 
 (`startSend` já depende de `selectedFiles`; adicione `totalBytes` à lista de deps do `useCallback`.)
@@ -743,29 +812,33 @@ Em `startSend`, prepare os refs do lote, o `overall` por bytes, e mude a fase de
 Em `acceptBatch`, idem, depois de `openSinkRef.current = target.openSink;`:
 
 ```ts
-    openSinkRef.current = target.openSink;
-    setPerFile(
-      Object.fromEntries(incomingBatch.files.map((f) => [f.id, { bytes: 0, size: f.size, pct: 0, state: "queued" as const }]))
-    );
-    batchFilesRef.current = incomingBatch.files.map((f) => ({ id: f.id, size: f.size }));
-    batchBytesTotalRef.current = incomingBatch.totalBytes;
-    filesCompletedRef.current = 0;
-    setFilesSaved(0);
-    setOverall({ bytesDone: 0, bytesTotal: incomingBatch.totalBytes, filesDone: 0, filesTotal: incomingBatch.files.length });
-    setPhase("preparing");
-    receiverRef.current.accept();
+openSinkRef.current = target.openSink;
+setPerFile(
+  Object.fromEntries(
+    incomingBatch.files.map((f) => [
+      f.id,
+      { bytes: 0, size: f.size, pct: 0, state: "queued" as const }
+    ])
+  )
+);
+batchFilesRef.current = incomingBatch.files.map((f) => ({ id: f.id, size: f.size }));
+batchBytesTotalRef.current = incomingBatch.totalBytes;
+filesCompletedRef.current = 0;
+setFilesSaved(0);
+setOverall({
+  bytesDone: 0,
+  bytesTotal: incomingBatch.totalBytes,
+  filesDone: 0,
+  filesTotal: incomingBatch.files.length
+});
+setPhase("preparing");
+receiverRef.current.accept();
 ```
 
 No `return` do hook, adicione `stats` e `filesSaved`:
 
 ```ts
-    phase,
-    perFile,
-    overall,
-    stats,
-    filesSaved,
-    errorMessage,
-    cancel
+(phase, perFile, overall, stats, filesSaved, errorMessage, cancel);
 ```
 
 - [ ] **Step 5: Update mecânico dos painéis**
@@ -777,13 +850,13 @@ No `return` do hook, adicione `stats` e `filesSaved`:
 - O cabeçalho dentro dela: troque o `<p>` do topo por:
 
 ```tsx
-        <p className="mb-4 text-center text-sm font-medium text-text">
-          {phase === "offering"
-            ? "Aguardando o outro lado aceitar…"
-            : phase === "preparing"
-              ? "Preparando a transferência…"
-              : `Enviando ${transfer.overall.filesDone} de ${transfer.overall.filesTotal}…`}
-        </p>
+<p className="mb-4 text-center text-sm font-medium text-text">
+  {phase === "offering"
+    ? "Aguardando o outro lado aceitar…"
+    : phase === "preparing"
+      ? "Preparando a transferência…"
+      : `Enviando ${transfer.overall.filesDone} de ${transfer.overall.filesTotal}…`}
+</p>
 ```
 
 - A `ProgressBar` e seu guard: troque `transfer.overall.total > 0` por `transfer.overall.filesTotal > 0` e
@@ -799,11 +872,11 @@ No `return` do hook, adicione `stats` e `filesSaved`:
 - Cabeçalho:
 
 ```tsx
-        <p className="mb-4 text-center text-sm font-medium text-text">
-          {phase === "preparing"
-            ? "Preparando a transferência…"
-            : `Recebendo ${transfer.overall.filesDone} de ${transfer.overall.filesTotal}…`}
-        </p>
+<p className="mb-4 text-center text-sm font-medium text-text">
+  {phase === "preparing"
+    ? "Preparando a transferência…"
+    : `Recebendo ${transfer.overall.filesDone} de ${transfer.overall.filesTotal}…`}
+</p>
 ```
 
 - `ProgressBar`: `transfer.overall.total > 0` → `transfer.overall.filesTotal > 0`;
@@ -889,10 +962,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 4: Velocidade e tempo restante no hook
 
 **Files:**
+
 - Modify: `apps/web/src/lib/use-file-transfer.ts`
 - Test: `apps/web/src/lib/use-file-transfer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `overall.bytesDone`/`bytesTotal` e os refs `batchBytesTotalRef` (Task 3); o `phase` `"sending"`/`"receiving"`.
 - Produces: `stats.speedBytesPerSec` e `stats.etaSeconds` deixam de ser sempre `null` — passam a refletir a medição descrita na spec §4. `null` continua significando "ainda não dá para dizer".
 
@@ -1008,72 +1083,74 @@ const ETA_MIN_ELAPSED_MS = 3000;
 const STATS_TICK_MS = 1000;
 
 const monotonicNow = (): number =>
-  typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 ```
 
 Troque `const [stats] = useState<TransferStats>(EMPTY_STATS);` por:
 
 ```ts
-  const [stats, setStats] = useState<TransferStats>(EMPTY_STATS);
+const [stats, setStats] = useState<TransferStats>(EMPTY_STATS);
 ```
 
 Adicione os refs de amostragem junto de `batchFilesRef` etc.:
 
 ```ts
-  const samplesRef = useRef<{ t: number; bytes: number }[]>([]);
-  const startedAtRef = useRef<number | null>(null);
+const samplesRef = useRef<{ t: number; bytes: number }[]>([]);
+const startedAtRef = useRef<number | null>(null);
 ```
 
 Adicione `recomputeStats` e `resetStats` (antes de `applyProgress`):
 
 ```ts
-  const recomputeStats = useCallback(() => {
-    const buf = samplesRef.current;
-    const nowT = monotonicNow();
-    // Descarta amostras fora da janela, sempre deixando pelo menos 2.
-    while (buf.length > 2 && nowT - buf[1]!.t > SPEED_WINDOW_MS) {
-      buf.shift();
-    }
-    if (buf.length < 2 || startedAtRef.current == null) {
-      setStats(EMPTY_STATS);
-      return;
-    }
-    const oldest = buf[0]!;
-    const newest = buf[buf.length - 1]!;
-    // Span medido contra AGORA (não contra a última amostra): numa travada,
-    // "agora" cresce, o span cresce e a velocidade decai sozinha.
-    const span = nowT - oldest.t;
-    let speed: number | null;
-    if (span < SPEED_MIN_SPAN_MS) {
-      speed = null;
-    } else {
-      speed = (Math.max(0, newest.bytes - oldest.bytes) / span) * 1000;
-    }
-    const elapsed = nowT - startedAtRef.current;
-    const remaining = Math.max(0, batchBytesTotalRef.current - newest.bytes);
-    let eta: number | null;
-    if (speed == null || speed <= 0 || elapsed < ETA_MIN_ELAPSED_MS || buf.length < 3) {
-      eta = null;
-    } else {
-      eta = remaining / speed;
-    }
-    setStats({ speedBytesPerSec: speed, etaSeconds: eta });
-  }, []);
-
-  const resetStats = useCallback(() => {
-    samplesRef.current = [];
-    startedAtRef.current = null;
+const recomputeStats = useCallback(() => {
+  const buf = samplesRef.current;
+  const nowT = monotonicNow();
+  // Descarta amostras fora da janela, sempre deixando pelo menos 2.
+  while (buf.length > 2 && nowT - buf[1]!.t > SPEED_WINDOW_MS) {
+    buf.shift();
+  }
+  if (buf.length < 2 || startedAtRef.current == null) {
     setStats(EMPTY_STATS);
-  }, []);
+    return;
+  }
+  const oldest = buf[0]!;
+  const newest = buf[buf.length - 1]!;
+  // Span medido contra AGORA (não contra a última amostra): numa travada,
+  // "agora" cresce, o span cresce e a velocidade decai sozinha.
+  const span = nowT - oldest.t;
+  let speed: number | null;
+  if (span < SPEED_MIN_SPAN_MS) {
+    speed = null;
+  } else {
+    speed = (Math.max(0, newest.bytes - oldest.bytes) / span) * 1000;
+  }
+  const elapsed = nowT - startedAtRef.current;
+  const remaining = Math.max(0, batchBytesTotalRef.current - newest.bytes);
+  let eta: number | null;
+  if (speed == null || speed <= 0 || elapsed < ETA_MIN_ELAPSED_MS || buf.length < 3) {
+    eta = null;
+  } else {
+    eta = remaining / speed;
+  }
+  setStats({ speedBytesPerSec: speed, etaSeconds: eta });
+}, []);
+
+const resetStats = useCallback(() => {
+  samplesRef.current = [];
+  startedAtRef.current = null;
+  setStats(EMPTY_STATS);
+}, []);
 ```
 
 Em `applyProgress`, depois de `setOverall({ ... })`, registre a amostra e recalcule:
 
 ```ts
-      const sampleT = monotonicNow();
-      startedAtRef.current ??= sampleT;
-      samplesRef.current.push({ t: sampleT, bytes: bytesDone });
-      recomputeStats();
+const sampleT = monotonicNow();
+startedAtRef.current ??= sampleT;
+samplesRef.current.push({ t: sampleT, bytes: bytesDone });
+recomputeStats();
 ```
 
 (adicione `recomputeStats` às deps do `useCallback` de `applyProgress`.)
@@ -1081,15 +1158,15 @@ Em `applyProgress`, depois de `setOverall({ ... })`, registre a amostra e recalc
 Adicione o ticker de decaimento (depois do efeito de unmount):
 
 ```ts
-  // Enquanto os bytes andam, recalcula 1x/s mesmo sem evento novo — assim uma
-  // travada de canal faz a velocidade cair para ~0 em vez de congelar.
-  useEffect(() => {
-    if (phase !== "sending" && phase !== "receiving") {
-      return;
-    }
-    const id = setInterval(recomputeStats, STATS_TICK_MS);
-    return () => clearInterval(id);
-  }, [phase, recomputeStats]);
+// Enquanto os bytes andam, recalcula 1x/s mesmo sem evento novo — assim uma
+// travada de canal faz a velocidade cair para ~0 em vez de congelar.
+useEffect(() => {
+  if (phase !== "sending" && phase !== "receiving") {
+    return;
+  }
+  const id = setInterval(recomputeStats, STATS_TICK_MS);
+  return () => clearInterval(id);
+}, [phase, recomputeStats]);
 ```
 
 Em `startSend`, `acceptBatch`, `clearSelection` e no `onBatchOffered` do efeito guest, chame `resetStats()` no mesmo ponto em que já se zera `filesSaved`/`filesCompletedRef`. Exemplos:
@@ -1122,10 +1199,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 5: `SendPanel` — barra por bytes, linha de status, mini-barra, cancelamento parcial
 
 **Files:**
+
 - Modify: `apps/web/src/components/transferir/SendPanel.tsx`
 - Test: `apps/web/src/components/transferir/SendPanel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `transfer.overall` (`bytesDone`/`bytesTotal`/`filesDone`/`filesTotal`), `transfer.stats`, `transfer.filesSaved`, `transfer.perFile[id].{pct,state}`, `formatBytes`/`formatSpeed`/`formatDuration`.
 - Produces: nada para outras tarefas (folha da árvore).
 
@@ -1237,107 +1316,117 @@ Expected: FAIL — sem linha de status, sem "arquivo N de M", sem "calculando…
 Atualize o import de `transfer-format`:
 
 ```tsx
-import { formatBytes, formatDuration, formatSpeed, SIZE_CLASS_LABELS } from "../../lib/transfer-format.js";
+import {
+  formatBytes,
+  formatDuration,
+  formatSpeed,
+  SIZE_CLASS_LABELS
+} from "../../lib/transfer-format.js";
 ```
 
 Troque a tela `phase === "cancelled"`:
 
 ```tsx
-  if (phase === "cancelled") {
-    const saved = transfer.filesSaved;
-    const total = transfer.overall.filesTotal;
-    return (
-      <StateScreen
-        icon={AlertTriangle}
-        tone="warning"
-        title="Transferência cancelada"
-        description={saved === 0 ? "Nenhum arquivo chegou." : `${saved} de ${total} arquivos chegaram.`}
-        actions={[{ label: "Nova transferência", onClick: transfer.clearSelection }]}
-      />
-    );
-  }
+if (phase === "cancelled") {
+  const saved = transfer.filesSaved;
+  const total = transfer.overall.filesTotal;
+  return (
+    <StateScreen
+      icon={AlertTriangle}
+      tone="warning"
+      title="Transferência cancelada"
+      description={
+        saved === 0 ? "Nenhum arquivo chegou." : `${saved} de ${total} arquivos chegaram.`
+      }
+      actions={[{ label: "Nova transferência", onClick: transfer.clearSelection }]}
+    />
+  );
+}
 ```
 
 Troque todo o bloco `if (phase === "offering" || phase === "preparing" || phase === "sending") { ... }` por:
 
 ```tsx
-  if (phase === "offering" || phase === "preparing" || phase === "sending") {
-    const { overall, stats } = transfer;
-    const multi = overall.filesTotal > 1;
-    const currentIndex = Math.min(overall.filesDone + 1, overall.filesTotal);
-    const activeName = transfer.selectedFiles[overall.filesDone]?.name ?? "";
-    const bytesPct = overall.bytesTotal > 0 ? (overall.bytesDone / overall.bytesTotal) * 100 : 0;
+if (phase === "offering" || phase === "preparing" || phase === "sending") {
+  const { overall, stats } = transfer;
+  const multi = overall.filesTotal > 1;
+  const currentIndex = Math.min(overall.filesDone + 1, overall.filesTotal);
+  const activeName = transfer.selectedFiles[overall.filesDone]?.name ?? "";
+  const bytesPct = overall.bytesTotal > 0 ? (overall.bytesDone / overall.bytesTotal) * 100 : 0;
 
-    const statusParts: string[] = [`${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`];
-    if (stats.speedBytesPerSec === 0) {
-      statusParts.push("parado");
-    } else if (stats.speedBytesPerSec != null) {
-      statusParts.push(formatSpeed(stats.speedBytesPerSec));
-    }
-    if (stats.etaSeconds != null) {
-      statusParts.push(formatDuration(stats.etaSeconds));
-    }
-    if (stats.speedBytesPerSec == null && stats.etaSeconds == null) {
-      statusParts.push("calculando…");
-    }
-
-    return (
-      <div className="w-full max-w-md">
-        <p className="mb-2 text-center text-sm font-medium text-text">
-          {phase === "offering"
-            ? "Aguardando o outro lado aceitar…"
-            : phase === "preparing"
-              ? "Preparando a transferência…"
-              : multi
-                ? `Enviando arquivo ${currentIndex} de ${overall.filesTotal}`
-                : `Enviando ${activeName}`}
-        </p>
-
-        {phase === "sending" && (
-          <>
-            <ProgressBar className="mb-1" value={bytesPct} label="Progresso" />
-            <p className="mb-4 text-center text-xs text-text-muted">{statusParts.join(" · ")}</p>
-          </>
-        )}
-
-        <ul className="flex flex-col gap-2">
-          {transfer.selectedFiles.map((file) => {
-            const pf = transfer.perFile[file.id];
-            const state = pf?.state ?? "queued";
-            const label =
-              state === "completed"
-                ? "Concluído"
-                : state === "sending"
-                  ? "Enviando"
-                  : state === "failed"
-                    ? "Falhou"
-                    : "Na fila";
-            return (
-              <li key={file.id} className="rounded-lg border border-border px-3 py-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 truncate">
-                    <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
-                    <span className="truncate">{file.name}</span>
-                  </span>
-                  <span className="ml-3 shrink-0 text-text-muted">{label}</span>
-                </div>
-                {multi && state === "sending" && pf && (
-                  <ProgressBar className="mt-2" value={pf.pct} label={file.name} />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
-        <Button className="mt-4 w-full" variant="secondary" onClick={transfer.cancel}>
-          Cancelar
-        </Button>
-      </div>
-    );
+  const statusParts: string[] = [
+    `${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`
+  ];
+  if (stats.speedBytesPerSec === 0) {
+    statusParts.push("parado");
+  } else if (stats.speedBytesPerSec != null) {
+    statusParts.push(formatSpeed(stats.speedBytesPerSec));
   }
+  if (stats.etaSeconds != null) {
+    statusParts.push(formatDuration(stats.etaSeconds));
+  }
+  if (stats.speedBytesPerSec == null && stats.etaSeconds == null) {
+    statusParts.push("calculando…");
+  }
+
+  return (
+    <div className="w-full max-w-md">
+      <p className="mb-2 text-center text-sm font-medium text-text">
+        {phase === "offering"
+          ? "Aguardando o outro lado aceitar…"
+          : phase === "preparing"
+            ? "Preparando a transferência…"
+            : multi
+              ? `Enviando arquivo ${currentIndex} de ${overall.filesTotal}`
+              : `Enviando ${activeName}`}
+      </p>
+
+      {phase === "sending" && (
+        <>
+          <ProgressBar className="mb-1" value={bytesPct} label="Progresso" />
+          <p className="mb-4 text-center text-xs text-text-muted">{statusParts.join(" · ")}</p>
+        </>
+      )}
+
+      <ul className="flex flex-col gap-2">
+        {transfer.selectedFiles.map((file) => {
+          const pf = transfer.perFile[file.id];
+          const state = pf?.state ?? "queued";
+          const label =
+            state === "completed"
+              ? "Concluído"
+              : state === "sending"
+                ? "Enviando"
+                : state === "failed"
+                  ? "Falhou"
+                  : "Na fila";
+          return (
+            <li key={file.id} className="rounded-lg border border-border px-3 py-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 truncate">
+                  <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+                  <span className="truncate">{file.name}</span>
+                </span>
+                <span className="ml-3 shrink-0 text-text-muted">{label}</span>
+              </div>
+              {multi && state === "sending" && pf && (
+                <ProgressBar className="mt-2" value={pf.pct} label={file.name} />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <Button className="mt-4 w-full" variant="secondary" onClick={transfer.cancel}>
+        Cancelar
+      </Button>
+    </div>
+  );
+}
 ```
 
 Observações:
+
 - A `ProgressBar` com `label` renderiza `label` à esquerda e `<n>%` à direita — é o que faz `screen.getByText("60%")` passar para a mini-barra (a `pct` do arquivo ativo) e `screen.getByText("50%")` **não** existir quando `multi` é `false`.
 - A barra geral usa `label="Progresso"`, então mostra a % dos bytes. Se algum teste do Plano 6 dependia de "Progresso" ausente, não há — o Plano 6 já usava `label="Progresso"`.
 
@@ -1360,10 +1449,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 6: `ReceivePanel` — espelho, e portão completo
 
 **Files:**
+
 - Modify: `apps/web/src/components/s/ReceivePanel.tsx`
 - Test: `apps/web/src/components/s/ReceivePanel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: igual à Task 5.
 - Produces: nada.
 
@@ -1460,99 +1551,101 @@ import { formatBytes, formatDuration, formatSpeed } from "../../lib/transfer-for
 Troque a tela `phase === "cancelled"`:
 
 ```tsx
-  if (phase === "cancelled") {
-    const saved = transfer.filesSaved;
-    const total = transfer.overall.filesTotal;
-    return (
-      <StateScreen
-        icon={AlertTriangle}
-        tone="warning"
-        title="Transferência cancelada"
-        description={
-          saved === 0
-            ? "Nenhum arquivo foi salvo."
-            : `${saved} de ${total} arquivos foram salvos neste dispositivo.`
-        }
-      />
-    );
-  }
+if (phase === "cancelled") {
+  const saved = transfer.filesSaved;
+  const total = transfer.overall.filesTotal;
+  return (
+    <StateScreen
+      icon={AlertTriangle}
+      tone="warning"
+      title="Transferência cancelada"
+      description={
+        saved === 0
+          ? "Nenhum arquivo foi salvo."
+          : `${saved} de ${total} arquivos foram salvos neste dispositivo.`
+      }
+    />
+  );
+}
 ```
 
 Troque o bloco `if (phase === "preparing" || phase === "receiving") { ... }` por:
 
 ```tsx
-  if (phase === "preparing" || phase === "receiving") {
-    const { overall, stats } = transfer;
-    const multi = overall.filesTotal > 1;
-    const currentIndex = Math.min(overall.filesDone + 1, overall.filesTotal);
-    const activeName = incomingBatch?.files[overall.filesDone]?.name ?? "";
-    const bytesPct = overall.bytesTotal > 0 ? (overall.bytesDone / overall.bytesTotal) * 100 : 0;
+if (phase === "preparing" || phase === "receiving") {
+  const { overall, stats } = transfer;
+  const multi = overall.filesTotal > 1;
+  const currentIndex = Math.min(overall.filesDone + 1, overall.filesTotal);
+  const activeName = incomingBatch?.files[overall.filesDone]?.name ?? "";
+  const bytesPct = overall.bytesTotal > 0 ? (overall.bytesDone / overall.bytesTotal) * 100 : 0;
 
-    const statusParts: string[] = [`${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`];
-    if (stats.speedBytesPerSec === 0) {
-      statusParts.push("parado");
-    } else if (stats.speedBytesPerSec != null) {
-      statusParts.push(formatSpeed(stats.speedBytesPerSec));
-    }
-    if (stats.etaSeconds != null) {
-      statusParts.push(formatDuration(stats.etaSeconds));
-    }
-    if (stats.speedBytesPerSec == null && stats.etaSeconds == null) {
-      statusParts.push("calculando…");
-    }
-
-    return (
-      <div className="w-full max-w-md">
-        <p className="mb-2 text-center text-sm font-medium text-text">
-          {phase === "preparing"
-            ? "Preparando a transferência…"
-            : multi
-              ? `Recebendo arquivo ${currentIndex} de ${overall.filesTotal}`
-              : `Recebendo ${activeName}`}
-        </p>
-
-        {phase === "receiving" && (
-          <>
-            <ProgressBar className="mb-1" value={bytesPct} label="Progresso" />
-            <p className="mb-4 text-center text-xs text-text-muted">{statusParts.join(" · ")}</p>
-          </>
-        )}
-
-        <ul className="flex flex-col gap-2">
-          {(incomingBatch?.files ?? []).map((file) => {
-            const pf = transfer.perFile[file.id];
-            const state = pf?.state ?? "queued";
-            const label =
-              state === "completed"
-                ? "Concluído"
-                : state === "receiving"
-                  ? "Recebendo"
-                  : state === "failed"
-                    ? "Falhou"
-                    : "Na fila";
-            return (
-              <li key={file.id} className="rounded-lg border border-border px-3 py-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
-                    <span className="truncate">{file.name}</span>
-                  </span>
-                  <span className="ml-3 shrink-0 text-text-muted">{label}</span>
-                </div>
-                {multi && state === "receiving" && pf && (
-                  <ProgressBar className="mt-2" value={pf.pct} label={file.name} />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
-        <Button className="mt-4 w-full" variant="secondary" onClick={transfer.cancel}>
-          Cancelar
-        </Button>
-      </div>
-    );
+  const statusParts: string[] = [
+    `${formatBytes(overall.bytesDone)} de ${formatBytes(overall.bytesTotal)}`
+  ];
+  if (stats.speedBytesPerSec === 0) {
+    statusParts.push("parado");
+  } else if (stats.speedBytesPerSec != null) {
+    statusParts.push(formatSpeed(stats.speedBytesPerSec));
   }
+  if (stats.etaSeconds != null) {
+    statusParts.push(formatDuration(stats.etaSeconds));
+  }
+  if (stats.speedBytesPerSec == null && stats.etaSeconds == null) {
+    statusParts.push("calculando…");
+  }
+
+  return (
+    <div className="w-full max-w-md">
+      <p className="mb-2 text-center text-sm font-medium text-text">
+        {phase === "preparing"
+          ? "Preparando a transferência…"
+          : multi
+            ? `Recebendo arquivo ${currentIndex} de ${overall.filesTotal}`
+            : `Recebendo ${activeName}`}
+      </p>
+
+      {phase === "receiving" && (
+        <>
+          <ProgressBar className="mb-1" value={bytesPct} label="Progresso" />
+          <p className="mb-4 text-center text-xs text-text-muted">{statusParts.join(" · ")}</p>
+        </>
+      )}
+
+      <ul className="flex flex-col gap-2">
+        {(incomingBatch?.files ?? []).map((file) => {
+          const pf = transfer.perFile[file.id];
+          const state = pf?.state ?? "queued";
+          const label =
+            state === "completed"
+              ? "Concluído"
+              : state === "receiving"
+                ? "Recebendo"
+                : state === "failed"
+                  ? "Falhou"
+                  : "Na fila";
+          return (
+            <li key={file.id} className="rounded-lg border border-border px-3 py-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="flex min-w-0 items-center gap-2">
+                  <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
+                  <span className="truncate">{file.name}</span>
+                </span>
+                <span className="ml-3 shrink-0 text-text-muted">{label}</span>
+              </div>
+              {multi && state === "receiving" && pf && (
+                <ProgressBar className="mt-2" value={pf.pct} label={file.name} />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <Button className="mt-4 w-full" variant="secondary" onClick={transfer.cancel}>
+        Cancelar
+      </Button>
+    </div>
+  );
+}
 ```
 
 - [ ] **Step 4: Rodar os testes do pacote web**
@@ -1580,28 +1673,28 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Cobertura da spec:**
 
-| Seção da spec | Tarefa |
-| --- | --- |
-| §3.1 bytes acumulados (fórmula anti-dupla-contagem) | 3 (Step 4 `applyProgress`) |
-| §3.2 barra geral por bytes | 5 (`bytesPct`), 6 |
-| §3.3 `pct` por arquivo + mini-barra só no ativo + esconder com 1 arquivo | 3 (`pct`), 5/6 (`multi && state === active`) |
-| §4.1 constantes num lugar | 4 (Step 3) |
-| §4.2 amostragem + evicção mantendo ≥2 | 4 (`recomputeStats`, `applyProgress`) |
-| §4.3 velocidade + `null` abaixo de 1s | 4 + testes |
-| §4.4 ETA com portão de 3s / ≥3 amostras | 4 + testes |
-| §4.5 ticker de decaimento | 4 (`useEffect` do `setInterval`) + teste "decays…" |
-| §4.6 `formatSpeed`/`formatDuration` pt-BR em faixas | 1 |
-| §4.7 reset em startSend/acceptBatch/rearm | 3 (estado), 4 (`resetStats`) |
-| §5.1 vocabulário de fases + `preparing` + `sending`/`receiving` por papel | 3 |
-| §5.2 forma nova do `UseFileTransferResult` | 3 |
-| §5.3 quebra dos consumidores do P6 atualizada junto | 3 (Steps 5–6) |
-| §6 `onCancelled(filesDone)` no motor + reconciliação `min` no hook | 2 (motor), 3 (`Math.min` no `onCancelled`) |
-| §7.1 linha de status (bytes · velocidade · eta / "calculando…" / "parado") | 5/6 (`statusParts`) |
-| §7.2 `preparing` sem barra | 5/6 |
-| §7.3 telas finais (`completed` inalterada, `cancelled` parcial, `failed` inalterada) | 3 (completed), 5/6 (cancelled) |
+| Seção da spec                                                                                      | Tarefa                                                                                 |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| §3.1 bytes acumulados (fórmula anti-dupla-contagem)                                                | 3 (Step 4 `applyProgress`)                                                             |
+| §3.2 barra geral por bytes                                                                         | 5 (`bytesPct`), 6                                                                      |
+| §3.3 `pct` por arquivo + mini-barra só no ativo + esconder com 1 arquivo                           | 3 (`pct`), 5/6 (`multi && state === active`)                                           |
+| §4.1 constantes num lugar                                                                          | 4 (Step 3)                                                                             |
+| §4.2 amostragem + evicção mantendo ≥2                                                              | 4 (`recomputeStats`, `applyProgress`)                                                  |
+| §4.3 velocidade + `null` abaixo de 1s                                                              | 4 + testes                                                                             |
+| §4.4 ETA com portão de 3s / ≥3 amostras                                                            | 4 + testes                                                                             |
+| §4.5 ticker de decaimento                                                                          | 4 (`useEffect` do `setInterval`) + teste "decays…"                                     |
+| §4.6 `formatSpeed`/`formatDuration` pt-BR em faixas                                                | 1                                                                                      |
+| §4.7 reset em startSend/acceptBatch/rearm                                                          | 3 (estado), 4 (`resetStats`)                                                           |
+| §5.1 vocabulário de fases + `preparing` + `sending`/`receiving` por papel                          | 3                                                                                      |
+| §5.2 forma nova do `UseFileTransferResult`                                                         | 3                                                                                      |
+| §5.3 quebra dos consumidores do P6 atualizada junto                                                | 3 (Steps 5–6)                                                                          |
+| §6 `onCancelled(filesDone)` no motor + reconciliação `min` no hook                                 | 2 (motor), 3 (`Math.min` no `onCancelled`)                                             |
+| §7.1 linha de status (bytes · velocidade · eta / "calculando…" / "parado")                         | 5/6 (`statusParts`)                                                                    |
+| §7.2 `preparing` sem barra                                                                         | 5/6                                                                                    |
+| §7.3 telas finais (`completed` inalterada, `cancelled` parcial, `failed` inalterada)               | 3 (completed), 5/6 (cancelled)                                                         |
 | §8 casos de borda (1 arquivo, 0 byte, overrun, ETA gigante, travada, cancelar em preparing, rearm) | 3 (0 byte, rearm), 4 (travada), 5/6 (1 arquivo, teto de `formatDuration` já na Task 1) |
-| §9 testes | todas as tarefas |
-| §10 textos pt-BR | 5/6 (strings verbatim) |
+| §9 testes                                                                                          | todas as tarefas                                                                       |
+| §10 textos pt-BR                                                                                   | 5/6 (strings verbatim)                                                                 |
 
 **Scan de placeholders:** sem "TBD/TODO/etc." — todo passo tem código real. A nota da Task 6 "confirme `formatBytes(512*1024)` → `512 KB`" é uma checagem de sanidade (ambos os valores são inteiros → sem vírgula), não um placeholder: o assert já traz o literal.
 

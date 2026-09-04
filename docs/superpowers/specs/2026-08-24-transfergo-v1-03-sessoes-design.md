@@ -55,12 +55,12 @@ export interface Session {
 `apps/signaling-server` hoje só expõe `GET /health` (`server.ts`). Este plano
 adiciona, no mesmo `createServer()` de Node `http` puro (sem framework novo):
 
-| Rota | Efeito |
-| --- | --- |
-| `POST /sessions` | Cria sessão, responde `201` com `{ token, status: "waiting", expiresAt }` |
-| `GET /sessions/:token` | Responde `200` com a sessão atual; se `now > expiresAt`, responde com `status: "expired"` calculado na hora (não depende só da faxina periódica); `404` genérico se o token não existe **ou** tem formato inválido — nunca diferencia as duas mensagens (evita enumeração de tokens) |
-| `POST /sessions/:token/accept` | `waiting → accepted`. `404` se token inexistente/malformado, `410` se encontrado porém expirado, `409` se já resolvida (`accepted`/`rejected`) |
-| `POST /sessions/:token/reject` | `waiting → rejected`. Mesmas regras de erro do `accept` |
+| Rota                           | Efeito                                                                                                                                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /sessions`               | Cria sessão, responde `201` com `{ token, status: "waiting", expiresAt }`                                                                                                                                                                                                            |
+| `GET /sessions/:token`         | Responde `200` com a sessão atual; se `now > expiresAt`, responde com `status: "expired"` calculado na hora (não depende só da faxina periódica); `404` genérico se o token não existe **ou** tem formato inválido — nunca diferencia as duas mensagens (evita enumeração de tokens) |
+| `POST /sessions/:token/accept` | `waiting → accepted`. `404` se token inexistente/malformado, `410` se encontrado porém expirado, `409` se já resolvida (`accepted`/`rejected`)                                                                                                                                       |
+| `POST /sessions/:token/reject` | `waiting → rejected`. Mesmas regras de erro do `accept`                                                                                                                                                                                                                              |
 
 **Armazenamento:** `Map<string, Session>` em memória no processo do
 signaling-server — sem banco, conforme spec §7.4 (V1 não usa banco). Um
@@ -126,10 +126,11 @@ real de toasts em outro fluxo.
 
 A spec (§6) exige que todo estado de interface tenha "tela dedicada, nunca
 improvisada", sempre no mesmo vocabulário visual (ícone + título + descrição
-+ ação). O convite de aceitar/recusar é, conceitualmente, mais um desses
-estados — só que com duas ações em vez de uma. Em vez de criar um componente
-paralelo só para esse caso (fragmentando o vocabulário visual), o
-`StateScreen` existente é estendido:
+
+- ação). O convite de aceitar/recusar é, conceitualmente, mais um desses
+  estados — só que com duas ações em vez de uma. Em vez de criar um componente
+  paralelo só para esse caso (fragmentando o vocabulário visual), o
+  `StateScreen` existente é estendido:
 
 ```ts
 export interface StateScreenAction {

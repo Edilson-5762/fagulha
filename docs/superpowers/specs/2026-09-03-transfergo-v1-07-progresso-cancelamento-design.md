@@ -53,15 +53,15 @@ encerra os dois com a contagem parcial correta.
 
 ## 2. Divisão em unidades
 
-| Unidade | Onde | Responsabilidade | Muda quanto |
-| --- | --- | --- | --- |
-| **Motor — receptor** | `packages/transfer-engine/src/receiver.ts` | Passar `filesDone` no callback de cancelamento. | 1 linha + assinatura |
-| **Motor — emissor** | `packages/transfer-engine/src/sender.ts` | Idem: passar quantos arquivos completaram ao cancelar. | 1 linha + assinatura |
-| **Contratos** | `packages/transfer-engine/src/types.ts` | `onCancelled?: (filesDone: number) => void` em `ReceiverCallbacks` e `SenderCallbacks`. | assinatura |
-| **Formatação** | `apps/web/src/lib/transfer-format.ts` | `formatSpeed(bytesPerSec): string` e `formatDuration(seconds): string`, ambas puras, em pt-BR. | +2 funções |
-| **Hook de transferência** | `apps/web/src/lib/use-file-transfer.ts` | **Coração do plano.** Amostragem com timestamp, janela deslizante de 5 s, velocidade, ETA com portão de estabilização, ticker de decaimento, bytes acumulados do lote, `%` geral, `perFile` enriquecido com `pct`/estado, `filesSaved`. API do resultado cresce (ver §5). | grande |
-| **UI do emissor** | `apps/web/src/components/transferir/SendPanel.tsx` | Barra geral por bytes com %/bytes/velocidade/ETA; barrinha só no arquivo ativo; telas finais com parcial. | médio |
-| **UI do receptor** | `apps/web/src/components/s/ReceivePanel.tsx` | Espelho do `SendPanel`, lado "Recebendo". | médio |
+| Unidade                   | Onde                                               | Responsabilidade                                                                                                                                                                                                                                                          | Muda quanto          |
+| ------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| **Motor — receptor**      | `packages/transfer-engine/src/receiver.ts`         | Passar `filesDone` no callback de cancelamento.                                                                                                                                                                                                                           | 1 linha + assinatura |
+| **Motor — emissor**       | `packages/transfer-engine/src/sender.ts`           | Idem: passar quantos arquivos completaram ao cancelar.                                                                                                                                                                                                                    | 1 linha + assinatura |
+| **Contratos**             | `packages/transfer-engine/src/types.ts`            | `onCancelled?: (filesDone: number) => void` em `ReceiverCallbacks` e `SenderCallbacks`.                                                                                                                                                                                   | assinatura           |
+| **Formatação**            | `apps/web/src/lib/transfer-format.ts`              | `formatSpeed(bytesPerSec): string` e `formatDuration(seconds): string`, ambas puras, em pt-BR.                                                                                                                                                                            | +2 funções           |
+| **Hook de transferência** | `apps/web/src/lib/use-file-transfer.ts`            | **Coração do plano.** Amostragem com timestamp, janela deslizante de 5 s, velocidade, ETA com portão de estabilização, ticker de decaimento, bytes acumulados do lote, `%` geral, `perFile` enriquecido com `pct`/estado, `filesSaved`. API do resultado cresce (ver §5). | grande               |
+| **UI do emissor**         | `apps/web/src/components/transferir/SendPanel.tsx` | Barra geral por bytes com %/bytes/velocidade/ETA; barrinha só no arquivo ativo; telas finais com parcial.                                                                                                                                                                 | médio                |
+| **UI do receptor**        | `apps/web/src/components/s/ReceivePanel.tsx`       | Espelho do `SendPanel`, lado "Recebendo".                                                                                                                                                                                                                                 | médio                |
 
 Sem arquivos novos. `packages/transfer-engine` é quase intocado; o grosso do
 trabalho é hook + formatação + os dois painéis.
@@ -168,8 +168,8 @@ velocidade cai para ~0 e o ETA volta a `null`. O intervalo é limpo ao sair de
 - `formatSpeed(bps)`: reaproveita a escala de `formatBytes` + "/s" — `"0 B/s"`,
   `"820 KB/s"`, `"12,3 MB/s"`. `null` não chega aqui (a UI decide antes).
 - `formatDuration(seconds)` em faixas, para não tremer:
-  - `< 10`  → "menos de 10 s"
-  - `< 60`  → "cerca de " + (arredonda para 10 s) + " s"  (ex.: "cerca de 40 s")
+  - `< 10` → "menos de 10 s"
+  - `< 60` → "cerca de " + (arredonda para 10 s) + " s" (ex.: "cerca de 40 s")
   - `< 3600` → "cerca de " + (arredonda para 1 min, mínimo 1) + " min"
   - `>= 3600` → "mais de 1 h"
 
@@ -191,16 +191,16 @@ Vocabulário do §3.11, com `sending`/`receiving` resolvidos por `role`:
 idle → offering → preparing → (sending | receiving) → completed | cancelled | failed
 ```
 
-| Valor | Quando | Lado |
-| --- | --- | --- |
-| `idle` | sem lote em andamento | ambos |
-| `offering` | `startSend` disparado, aguardando `batch-accept` | só emissor |
-| `preparing` | aceito; montando (receptor: `pickSaveTarget` resolveu e abrindo o 1º sink; emissor: abrindo o 1º `ChunkSource`) — até o 1º byte | ambos |
-| `sending` | bytes saindo | só emissor |
-| `receiving` | bytes entrando | só receptor |
-| `completed` | `batch-complete` | ambos |
-| `cancelled` | `cancel` local ou remoto | ambos |
-| `failed` | `TransferError` | ambos |
+| Valor       | Quando                                                                                                                          | Lado        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `idle`      | sem lote em andamento                                                                                                           | ambos       |
+| `offering`  | `startSend` disparado, aguardando `batch-accept`                                                                                | só emissor  |
+| `preparing` | aceito; montando (receptor: `pickSaveTarget` resolveu e abrindo o 1º sink; emissor: abrindo o 1º `ChunkSource`) — até o 1º byte | ambos       |
+| `sending`   | bytes saindo                                                                                                                    | só emissor  |
+| `receiving` | bytes entrando                                                                                                                  | só receptor |
+| `completed` | `batch-complete`                                                                                                                | ambos       |
+| `cancelled` | `cancel` local ou remoto                                                                                                        | ambos       |
+| `failed`    | `TransferError`                                                                                                                 | ambos       |
 
 Internamente o hook continua com uma transição única "está transferindo"; expõe
 `"sending"` se `role === "host"`, `"receiving"` se `role === "guest"`.
@@ -213,13 +213,13 @@ primeiro `onProgress`.
 
 ### 5.2 `UseFileTransferResult` — diferença em relação ao Plano 6
 
-| Campo | Plano 6 | Plano 7 |
-| --- | --- | --- |
-| `phase` | `idle\|offering\|transferring\|completed\|cancelled\|failed` | `idle\|offering\|preparing\|sending\|receiving\|completed\|cancelled\|failed` |
-| `overall` | `{ done: number; total: number }` (contagem) | `{ bytesDone: number; bytesTotal: number; filesDone: number; filesTotal: number }` |
+| Campo         | Plano 6                                                             | Plano 7                                                                                                     |
+| ------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `phase`       | `idle\|offering\|transferring\|completed\|cancelled\|failed`        | `idle\|offering\|preparing\|sending\|receiving\|completed\|cancelled\|failed`                               |
+| `overall`     | `{ done: number; total: number }` (contagem)                        | `{ bytesDone: number; bytesTotal: number; filesDone: number; filesTotal: number }`                          |
 | `perFile[id]` | `{ bytes; size; state: "queued"\|"active"\|"completed"\|"failed" }` | `{ bytes; size; pct: number; state: "queued"\|"preparing"\|"sending"\|"receiving"\|"completed"\|"failed" }` |
-| `stats` | — | `{ speedBytesPerSec: number \| null; etaSeconds: number \| null }` |
-| `filesSaved` | — | `number` |
+| `stats`       | —                                                                   | `{ speedBytesPerSec: number \| null; etaSeconds: number \| null }`                                          |
+| `filesSaved`  | —                                                                   | `number`                                                                                                    |
 
 Demais campos inalterados: `ready`, `selectedFiles`, `totalBytes`, `limitError`,
 `addFiles`, `removeFile`, `clearSelection`, `startSend`, `incomingBatch`,
@@ -298,7 +298,7 @@ texto simples que os painéis já usam para `offering`.)
 ### 7.3 Telas finais
 
 - `completed` — inalterado do Plano 6: `n === 1 ? "Arquivo … com sucesso" :
-  "${n} arquivos … com sucesso"` (n = `overall.filesTotal`), "Enviar mais
+"${n} arquivos … com sucesso"` (n = `overall.filesTotal`), "Enviar mais
   arquivos" no emissor.
 - `cancelled` — usa `filesSaved` e `overall.filesTotal`:
   - `filesSaved === 0` → título "Transferência cancelada", descrição
@@ -310,24 +310,24 @@ texto simples que os painéis já usam para `offering`.)
   - Ação: "Nova transferência" (emissor, → `clearSelection`); receptor sem ação
     (como no Plano 6).
 - `failed` — inalterado: `errorMessage ?? "Algo deu errado durante a
-  transferência."`.
+transferência."`.
 
 ---
 
 ## 8. Casos de borda
 
-| Situação | Tratamento |
-| --- | --- |
-| Lote de 1 arquivo | Sem barrinha individual; texto "Enviando `<nome>`". |
-| Arquivo de 0 byte | `pct = 100` assim que `file-end` chega; não gera amostra de velocidade útil (delta 0), o que é ok. |
-| `bytes > size` na exibição | UI trava em `size`/`bytesTotal` (o motor já barra overrun no Plano 6; a UI não confia). |
-| ETA gigante (velocidade minúscula) | `formatDuration` tem teto "mais de 1 h". |
-| Canal trava sem erro | Ticker (§4.5) derruba velocidade → 0 e ETA → `null`; barra congela na posição. |
-| Canal falha com `channel-error` | `phase = failed`, `filesSaved` = contador do hook. |
-| Cancelar em `preparing` | `onCancelled(0)` → `filesSaved = 0` → "Nenhum arquivo …". |
-| Cancelar com o seletor de pasta aberto | Já tratado no Plano 6: volta pra tela de convite, sem erro, sem `cancelled`. |
+| Situação                                     | Tratamento                                                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Lote de 1 arquivo                            | Sem barrinha individual; texto "Enviando `<nome>`".                                                      |
+| Arquivo de 0 byte                            | `pct = 100` assim que `file-end` chega; não gera amostra de velocidade útil (delta 0), o que é ok.       |
+| `bytes > size` na exibição                   | UI trava em `size`/`bytesTotal` (o motor já barra overrun no Plano 6; a UI não confia).                  |
+| ETA gigante (velocidade minúscula)           | `formatDuration` tem teto "mais de 1 h".                                                                 |
+| Canal trava sem erro                         | Ticker (§4.5) derruba velocidade → 0 e ETA → `null`; barra congela na posição.                           |
+| Canal falha com `channel-error`              | `phase = failed`, `filesSaved` = contador do hook.                                                       |
+| Cancelar em `preparing`                      | `onCancelled(0)` → `filesSaved = 0` → "Nenhum arquivo …".                                                |
+| Cancelar com o seletor de pasta aberto       | Já tratado no Plano 6: volta pra tela de convite, sem erro, sem `cancelled`.                             |
 | Segundo lote na mesma sessão (`rearm` do P6) | `startSend`/`acceptBatch`/`rearm` zeram buffer, `transferStartedAt`, `stats`, contador `filesCompleted`. |
-| `performance.now` indisponível | Fallback para `Date.now()` (só afeta testes/ambientes exóticos). |
+| `performance.now` indisponível               | Fallback para `Date.now()` (só afeta testes/ambientes exóticos).                                         |
 
 ---
 
@@ -336,7 +336,7 @@ texto simples que os painéis já usam para `offering`.)
 ### 9.1 `apps/web/src/lib/transfer-format.test.ts`
 
 - `formatSpeed`: `0 → "0 B/s"`, `820*1024 → "820 KB/s"`, `12.3*1024*1024 →
-  "12,3 MB/s"` (vírgula pt-BR).
+"12,3 MB/s"` (vírgula pt-BR).
 - `formatDuration`: `5 → "menos de 10 s"`, `44 → "cerca de 40 s"`,
   `95 → "cerca de 2 min"`, `4000 → "mais de 1 h"`, e as bordas 10 / 60 / 3600.
 
@@ -381,27 +381,27 @@ texto simples que os painéis já usam para `offering`.)
 
 ## 10. Textos pt-BR (referência única)
 
-| Contexto | Texto |
-| --- | --- |
-| Fase ativa, >1 arquivo, emissor | `Enviando arquivo ${n} de ${total}` |
-| Fase ativa, >1 arquivo, receptor | `Recebendo arquivo ${n} de ${total}` |
-| Fase ativa, 1 arquivo, emissor | `Enviando ${nome}` |
-| Fase ativa, 1 arquivo, receptor | `Recebendo ${nome}` |
-| Linha de status | `${bytesDone} de ${bytesTotal}` · `${velocidade}` · `${eta}` |
-| Velocidade indisponível / ETA indisponível | `calculando…` |
-| Velocidade zero | `parado` |
-| ETA | `cerca de 40 s` / `cerca de 2 min` / `menos de 10 s` / `mais de 1 h` |
-| `preparing` | `Preparando a transferência…` |
-| Rótulo de arquivo — `queued` | `Na fila` |
-| Rótulo de arquivo — ativo, emissor | `Enviando` |
-| Rótulo de arquivo — ativo, receptor | `Recebendo` |
-| Rótulo de arquivo — `completed` | `Concluído` |
-| Rótulo de arquivo — `failed` | `Falhou` |
-| `cancelled`, receptor, parcial | `${k} de ${total} arquivos foram salvos neste dispositivo.` |
-| `cancelled`, receptor, zero | `Nenhum arquivo foi salvo.` |
-| `cancelled`, emissor, parcial | `${k} de ${total} arquivos chegaram.` |
-| `cancelled`, emissor, zero | `Nenhum arquivo chegou.` |
-| `cancelled`, título (ambos) | `Transferência cancelada` |
+| Contexto                                   | Texto                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------- |
+| Fase ativa, >1 arquivo, emissor            | `Enviando arquivo ${n} de ${total}`                                  |
+| Fase ativa, >1 arquivo, receptor           | `Recebendo arquivo ${n} de ${total}`                                 |
+| Fase ativa, 1 arquivo, emissor             | `Enviando ${nome}`                                                   |
+| Fase ativa, 1 arquivo, receptor            | `Recebendo ${nome}`                                                  |
+| Linha de status                            | `${bytesDone} de ${bytesTotal}` · `${velocidade}` · `${eta}`         |
+| Velocidade indisponível / ETA indisponível | `calculando…`                                                        |
+| Velocidade zero                            | `parado`                                                             |
+| ETA                                        | `cerca de 40 s` / `cerca de 2 min` / `menos de 10 s` / `mais de 1 h` |
+| `preparing`                                | `Preparando a transferência…`                                        |
+| Rótulo de arquivo — `queued`               | `Na fila`                                                            |
+| Rótulo de arquivo — ativo, emissor         | `Enviando`                                                           |
+| Rótulo de arquivo — ativo, receptor        | `Recebendo`                                                          |
+| Rótulo de arquivo — `completed`            | `Concluído`                                                          |
+| Rótulo de arquivo — `failed`               | `Falhou`                                                             |
+| `cancelled`, receptor, parcial             | `${k} de ${total} arquivos foram salvos neste dispositivo.`          |
+| `cancelled`, receptor, zero                | `Nenhum arquivo foi salvo.`                                          |
+| `cancelled`, emissor, parcial              | `${k} de ${total} arquivos chegaram.`                                |
+| `cancelled`, emissor, zero                 | `Nenhum arquivo chegou.`                                             |
+| `cancelled`, título (ambos)                | `Transferência cancelada`                                            |
 
 ---
 

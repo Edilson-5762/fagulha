@@ -13,7 +13,8 @@ export default tseslint.config(
       "**/dist/**",
       "**/coverage/**",
       "**/storybook-static/**",
-      "**/next-env.d.ts"
+      "**/next-env.d.ts",
+      "scripts/**"
     ]
   },
   js.configs.recommended,

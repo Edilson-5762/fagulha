@@ -54,7 +54,11 @@ describe("parseClientMessage", () => {
   it("parses a signal message with a candidate payload", () => {
     const payload = {
       kind: "candidate",
-      candidate: { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: "0", sdpMLineIndex: 0 }
+      candidate: {
+        candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+        sdpMid: "0",
+        sdpMLineIndex: 0
+      }
     };
     const raw = JSON.stringify({ type: "signal", payload });
     expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });
@@ -63,7 +67,11 @@ describe("parseClientMessage", () => {
   it("parses a signal candidate payload with null sdpMid/sdpMLineIndex", () => {
     const payload = {
       kind: "candidate",
-      candidate: { candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host", sdpMid: null, sdpMLineIndex: null }
+      candidate: {
+        candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
+        sdpMid: null,
+        sdpMLineIndex: null
+      }
     };
     const raw = JSON.stringify({ type: "signal", payload });
     expect(parseClientMessage(raw)).toEqual({ type: "signal", payload });

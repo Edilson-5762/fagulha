@@ -16,7 +16,11 @@ function fakeSocket() {
   return { socket, received, state };
 }
 
-function send(handler: ReturnType<typeof createWsHandler>, socket: SignalingSocket, message: unknown) {
+function send(
+  handler: ReturnType<typeof createWsHandler>,
+  socket: SignalingSocket,
+  message: unknown
+) {
   handler.handleMessage(socket, JSON.stringify(message));
 }
 
@@ -28,7 +32,10 @@ describe("createWsHandler", () => {
     send(handler, host.socket, { type: "create" });
 
     expect(host.received).toHaveLength(1);
-    expect(host.received[0]).toMatchObject({ type: "session_state", session: { status: "waiting" } });
+    expect(host.received[0]).toMatchObject({
+      type: "session_state",
+      session: { status: "waiting" }
+    });
   });
 
   it("rejects a join for a token that does not exist", () => {
@@ -162,7 +169,10 @@ describe("createWsHandler", () => {
     send(handler, guest.socket, { type: "join", token, role: "guest" });
 
     const receivedBefore = guest.received.length;
-    send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } });
+    send(handler, host.socket, {
+      type: "signal",
+      payload: { kind: "offer", sdp: "v=0 offer-sdp" }
+    });
 
     expect(guest.received.length).toBe(receivedBefore);
   });
@@ -172,7 +182,10 @@ describe("createWsHandler", () => {
     const stray = fakeSocket();
 
     expect(() =>
-      send(handler, stray.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
+      send(handler, stray.socket, {
+        type: "signal",
+        payload: { kind: "offer", sdp: "v=0 offer-sdp" }
+      })
     ).not.toThrow();
     expect(stray.received).toEqual([]);
   });
@@ -188,7 +201,10 @@ describe("createWsHandler", () => {
     handler.handleClose(guest.socket);
 
     expect(() =>
-      send(handler, host.socket, { type: "signal", payload: { kind: "offer", sdp: "v=0 offer-sdp" } })
+      send(handler, host.socket, {
+        type: "signal",
+        payload: { kind: "offer", sdp: "v=0 offer-sdp" }
+      })
     ).not.toThrow();
   });
 
@@ -205,8 +221,14 @@ describe("createWsHandler", () => {
 
       vi.advanceTimersByTime(1050); // ttlMs (1000) + the scheduling buffer (50)
 
-      expect(host.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
-      expect(guest.received.at(-1)).toMatchObject({ type: "session_state", session: { status: "expired" } });
+      expect(host.received.at(-1)).toMatchObject({
+        type: "session_state",
+        session: { status: "expired" }
+      });
+      expect(guest.received.at(-1)).toMatchObject({
+        type: "session_state",
+        session: { status: "expired" }
+      });
     } finally {
       vi.useRealTimers();
     }

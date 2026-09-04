@@ -111,7 +111,8 @@ export function createWsHandler(store: SessionStore, registry: ConnectionRegistr
       return;
     }
 
-    const result = message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
+    const result =
+      message.type === "accept" ? store.accept(binding.token) : store.reject(binding.token);
     if (!result.ok) {
       send(socket, { type: "error", code: result.reason });
       return;

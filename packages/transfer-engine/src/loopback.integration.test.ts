@@ -40,11 +40,13 @@ function makeLoopbackPair(
         this._outbox.push(data);
       },
       addEventListener(type, listener) {
-        if (type === "message") this._messageListeners.push(listener as (e: { data?: unknown }) => void);
+        if (type === "message")
+          this._messageListeners.push(listener as (e: { data?: unknown }) => void);
         else this._lowListeners.push(listener as () => void);
       },
       removeEventListener(type, listener) {
-        if (type === "message") this._messageListeners = this._messageListeners.filter((l) => l !== listener);
+        if (type === "message")
+          this._messageListeners = this._messageListeners.filter((l) => l !== listener);
         else this._lowListeners = this._lowListeners.filter((l) => l !== listener);
       }
     };
@@ -87,7 +89,8 @@ function makeLoopbackPair(
 
 const sourceOf = (bytes: Uint8Array): ChunkSource => ({
   size: bytes.byteLength,
-  read: (offset, length) => Promise.resolve(bytes.slice(offset, offset + length).buffer as ArrayBuffer)
+  read: (offset, length) =>
+    Promise.resolve(bytes.slice(offset, offset + length).buffer as ArrayBuffer)
 });
 
 class MemorySink implements FileSink {
@@ -113,9 +116,18 @@ describe("transfer-engine loopback", () => {
     const [hostCh, guestCh] = makeLoopbackPair(2 * 1024);
 
     const files: { meta: FileMeta; bytes: Uint8Array }[] = [
-      { meta: { id: "a", name: "small.bin", size: 300, type: "" }, bytes: new Uint8Array(300).map((_, i) => i % 256) },
-      { meta: { id: "b", name: "big.bin", size: 40 * 1024, type: "" }, bytes: new Uint8Array(40 * 1024).map((_, i) => (i * 7) % 256) },
-      { meta: { id: "c", name: "mid.bin", size: 5 * 1024, type: "" }, bytes: new Uint8Array(5 * 1024).map((_, i) => (i * 13) % 256) }
+      {
+        meta: { id: "a", name: "small.bin", size: 300, type: "" },
+        bytes: new Uint8Array(300).map((_, i) => i % 256)
+      },
+      {
+        meta: { id: "b", name: "big.bin", size: 40 * 1024, type: "" },
+        bytes: new Uint8Array(40 * 1024).map((_, i) => (i * 7) % 256)
+      },
+      {
+        meta: { id: "c", name: "mid.bin", size: 5 * 1024, type: "" },
+        bytes: new Uint8Array(5 * 1024).map((_, i) => (i * 13) % 256)
+      }
     ];
 
     const sinkMap = new Map<string, MemorySink>();
@@ -128,7 +140,7 @@ describe("transfer-engine loopback", () => {
 
     const observedEnds: { id: string; sha256: string }[] = [];
     guestCh.addEventListener("message", (event) => {
-      if (typeof event.data === "string" && event.data.includes("\"file-end\"")) {
+      if (typeof event.data === "string" && event.data.includes('"file-end"')) {
         const f = JSON.parse(event.data) as { t: string; id: string; sha256: string };
         if (f.t === "file-end") observedEnds.push({ id: f.id, sha256: f.sha256 });
       }
@@ -183,8 +195,14 @@ describe("transfer-engine loopback", () => {
     });
 
     const files: { meta: FileMeta; bytes: Uint8Array }[] = [
-      { meta: { id: "a", name: "a.bin", size: 200, type: "" }, bytes: new Uint8Array(200).map((_, i) => i % 256) },
-      { meta: { id: "b", name: "b.bin", size: 4 * 1024, type: "" }, bytes: new Uint8Array(4 * 1024).map((_, i) => (i * 7) % 256) }
+      {
+        meta: { id: "a", name: "a.bin", size: 200, type: "" },
+        bytes: new Uint8Array(200).map((_, i) => i % 256)
+      },
+      {
+        meta: { id: "b", name: "b.bin", size: 4 * 1024, type: "" },
+        bytes: new Uint8Array(4 * 1024).map((_, i) => (i * 7) % 256)
+      }
     ];
 
     const sinkMap = new Map<string, MemorySink>();

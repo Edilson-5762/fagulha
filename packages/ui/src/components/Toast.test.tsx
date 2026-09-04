@@ -6,7 +6,11 @@ describe("Toast", () => {
   it("renders the title and description inside the provider/viewport", () => {
     render(
       <ToastProvider>
-        <Toast open title="Transferência concluída" description="Integridade verificada (SHA-256)." />
+        <Toast
+          open
+          title="Transferência concluída"
+          description="Integridade verificada (SHA-256)."
+        />
         <ToastViewport />
       </ToastProvider>
     );

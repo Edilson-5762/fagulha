@@ -30,11 +30,13 @@
 ## File Structure
 
 **`packages/shared/`**
+
 - Create `src/file-size.ts` — `FileSizeClass`, `classifyFileSize`, `SIZE_CLASS_SMALL_MAX`, `SIZE_CLASS_MEDIUM_MAX`, `BATCH_MAX_FILES`, `BATCH_MAX_BYTES`.
 - Create `src/file-size.test.ts`.
 - Modify `src/index.ts` — re-export `./file-size.js`.
 
 **`packages/transfer-engine/` (first real content — currently only a `PACKAGE_NAME` placeholder)**
+
 - Create `src/types.ts` — `FileMeta`, `DataChannelLike`, `ChunkSource`, `FileSink`, `TransferProgress`, `TransferErrorCode`, `TransferError`.
 - Create `src/protocol.ts` — `ControlFrame` union, `MAX_CONTROL_FRAME_BYTES`, `MAX_BINARY_FRAME_BYTES`, `encodeControl`, `decodeControl`, `sanitizeFileName`, `validateBatchOffer`.
 - Create `src/protocol.test.ts`.
@@ -46,6 +48,7 @@
 - Modify `src/index.ts` — keep `PACKAGE_NAME`, add `export * from "./types.js"` / `./protocol.js` / `./sender.js` / `./receiver.js`.
 
 **`apps/web/`**
+
 - Create `src/lib/browser-io.ts` — `createFileChunkSource`, `isFileSystemAccessSupported`, `pickSaveTarget`, `createDirectorySink`, `createDownloadSink`, `adaptRtcDataChannel`.
 - Create `src/lib/browser-io.test.ts`.
 - Create `src/lib/transfer-format.ts` — `formatBytes`, `summarizeBatch`, `SIZE_CLASS_LABELS`, `SIZE_CLASS_HINTS`.
@@ -63,11 +66,13 @@
 ## Task 1: `classifyFileSize` + batch limits (`packages/shared`)
 
 **Files:**
+
 - Create: `packages/shared/src/file-size.ts`
 - Test: `packages/shared/src/file-size.test.ts`
 - Modify: `packages/shared/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
   - `type FileSizeClass = "small" | "medium" | "large"`
@@ -174,11 +179,13 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 Pure functions and type-only seams. No state, no channel.
 
 **Files:**
+
 - Create: `packages/transfer-engine/src/types.ts`
 - Create: `packages/transfer-engine/src/protocol.ts`
 - Test: `packages/transfer-engine/src/protocol.test.ts`
 
 **Interfaces:**
+
 - Consumes: `BATCH_MAX_FILES`, `BATCH_MAX_BYTES` from `@transfergo/shared`.
 - Produces (from `types.ts`):
   - `interface FileMeta { id: string; name: string; size: number; type: string }`
@@ -246,12 +253,21 @@ describe("encodeControl / decodeControl", () => {
   });
 
   it("rejects a batch-offer whose file metas are the wrong shape", () => {
-    expect(decodeControl(JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: [{ id: "f1" }] } }))).toBeNull();
-    expect(decodeControl(JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: "x" } }))).toBeNull();
+    expect(
+      decodeControl(
+        JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: [{ id: "f1" }] } })
+      )
+    ).toBeNull();
+    expect(
+      decodeControl(JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: "x" } }))
+    ).toBeNull();
   });
 
   it("rejects a control frame larger than the cap", () => {
-    const huge = JSON.stringify({ t: "batch-offer", batch: { id: "b1", files: [meta({ name: "x".repeat(MAX_CONTROL_FRAME_BYTES) })] } });
+    const huge = JSON.stringify({
+      t: "batch-offer",
+      batch: { id: "b1", files: [meta({ name: "x".repeat(MAX_CONTROL_FRAME_BYTES) })] }
+    });
     expect(huge.length).toBeGreaterThan(MAX_CONTROL_FRAME_BYTES);
     expect(decodeControl(huge)).toBeNull();
   });
@@ -264,7 +280,9 @@ describe("validateBatchOffer", () => {
 
   it("rejects an empty batch, > 50 files, or > 5 GiB total", () => {
     expect(validateBatchOffer([])).toBe("over-limit");
-    expect(validateBatchOffer(Array.from({ length: 51 }, (_, i) => meta({ id: `f${i}`, size: 1 })))).toBe("over-limit");
+    expect(
+      validateBatchOffer(Array.from({ length: 51 }, (_, i) => meta({ id: `f${i}`, size: 1 })))
+    ).toBe("over-limit");
     expect(validateBatchOffer([meta({ size: 5 * 1024 * 1024 * 1024 + 1 })])).toBe("over-limit");
   });
 });
@@ -274,7 +292,7 @@ describe("sanitizeFileName", () => {
     expect(sanitizeFileName("../../etc/passwd")).not.toMatch(/[/\\]/);
     expect(sanitizeFileName("../../etc/passwd")).not.toContain("..");
     expect(sanitizeFileName("...hidden")).not.toMatch(/^\./);
-    expect(sanitizeFileName("a b.txt")).toBe("ab.txt");
+    expect(sanitizeFileName("a�b.txt")).toBe("ab.txt");
   });
 
   it("keeps a normal name unchanged and falls back to 'arquivo' when nothing survives", () => {
@@ -447,11 +465,17 @@ export function decodeControl(raw: string): ControlFrame | null {
         ? { t: "batch-reject", reason: f.reason }
         : null;
     case "file-begin":
-      return typeof f.id === "string" && f.id.length > 0 && typeof f.offset === "number" && f.offset >= 0
+      return typeof f.id === "string" &&
+        f.id.length > 0 &&
+        typeof f.offset === "number" &&
+        f.offset >= 0
         ? { t: "file-begin", id: f.id, offset: f.offset }
         : null;
     case "file-end":
-      return typeof f.id === "string" && f.id.length > 0 && typeof f.bytesSent === "number" && f.bytesSent >= 0
+      return typeof f.id === "string" &&
+        f.id.length > 0 &&
+        typeof f.bytesSent === "number" &&
+        f.bytesSent >= 0
         ? { t: "file-end", id: f.id, bytesSent: f.bytesSent }
         : null;
     case "batch-offer":
@@ -474,7 +498,7 @@ export function sanitizeFileName(name: string): string {
   const cleaned = name
     .replace(/[/\\]/g, "_")
     .replace(/\.{2,}/g, "_")
-    .replace(/[ -]/g, "")
+    .replace(/[�-]/g, "")
     .replace(/^\.+/, "")
     .trim()
     .slice(0, 255);
@@ -501,10 +525,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 3: `TransferSender` (`packages/transfer-engine`)
 
 **Files:**
+
 - Create: `packages/transfer-engine/src/sender.ts`
 - Test: `packages/transfer-engine/src/sender.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DataChannelLike`, `ChunkSource`, `FileMeta`, `TransferProgress`, `TransferError` (`./types.js`); `ControlFrame`, `encodeControl`, `decodeControl` (`./protocol.js`).
 - Produces:
   - `interface SenderInput { meta: FileMeta; source: ChunkSource }`
@@ -532,10 +558,16 @@ class FakeChannel implements DataChannelLike {
   send(data: string | ArrayBuffer): void {
     this.sent.push(data);
   }
-  addEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  addEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     (this.listeners[type] ??= []).push(listener);
   }
-  removeEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  removeEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     this.listeners[type] = (this.listeners[type] ?? []).filter((l) => l !== listener);
   }
   emitMessage(data: unknown): void {
@@ -571,9 +603,14 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 describe("TransferSender", () => {
   it("sends a batch-offer on start()", () => {
     const ch = new FakeChannel();
-    const input: SenderInput = { meta: meta({ size: 4 }), source: bytesSource(new Uint8Array([1, 2, 3, 4])) };
+    const input: SenderInput = {
+      meta: meta({ size: 4 }),
+      source: bytesSource(new Uint8Array([1, 2, 3, 4]))
+    };
     new TransferSender(ch, "b1", [input]).start();
-    expect(ch.controlFrames).toEqual([{ t: "batch-offer", batch: { id: "b1", files: [meta({ size: 4 })] } }]);
+    expect(ch.controlFrames).toEqual([
+      { t: "batch-offer", batch: { id: "b1", files: [meta({ size: 4 })] } }
+    ]);
   });
 
   it("after batch-accept: file-begin, ordered chunks that reassemble, file-end, batch-complete", async () => {
@@ -632,7 +669,12 @@ describe("TransferSender", () => {
   it("maps a peer batch-reject to onError('rejected')", async () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }], { onError }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }],
+      { onError }
+    ).start();
     ch.emitMessage(JSON.stringify({ t: "batch-reject", reason: "declined" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "rejected" }));
@@ -641,7 +683,12 @@ describe("TransferSender", () => {
   it("fires onAccepted once when the peer accepts, before any chunk", () => {
     const ch = new FakeChannel();
     const onAccepted = vi.fn();
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 4 }), source: bytesSource(new Uint8Array(4)) }], { onAccepted }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 4 }), source: bytesSource(new Uint8Array(4)) }],
+      { onAccepted }
+    ).start();
     expect(onAccepted).not.toHaveBeenCalled();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     expect(onAccepted).toHaveBeenCalledOnce();
@@ -650,7 +697,12 @@ describe("TransferSender", () => {
   it("cancel() sends a cancel frame and fires onCancelled", () => {
     const ch = new FakeChannel();
     const onCancelled = vi.fn();
-    const sender = new TransferSender(ch, "b1", [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }], { onCancelled });
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }],
+      { onCancelled }
+    );
     sender.start();
     sender.cancel();
     expect(ch.controlFrames).toContainEqual({ t: "cancel", scope: "batch" });
@@ -661,7 +713,13 @@ describe("TransferSender", () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
     const failing = { size: 10, read: () => Promise.reject(new Error("disk gone")) };
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 10 }), source: failing }], { onError }, { chunkSize: 4 }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 10 }), source: failing }],
+      { onError },
+      { chunkSize: 4 }
+    ).start();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "channel-error" }));
@@ -681,7 +739,13 @@ Create `packages/transfer-engine/src/sender.ts`:
 
 ```ts
 import { encodeControl, decodeControl, type ControlFrame } from "./protocol.js";
-import { TransferError, type ChunkSource, type DataChannelLike, type FileMeta, type TransferProgress } from "./types.js";
+import {
+  TransferError,
+  type ChunkSource,
+  type DataChannelLike,
+  type FileMeta,
+  type TransferProgress
+} from "./types.js";
 
 export interface SenderInput {
   meta: FileMeta;
@@ -919,10 +983,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 4: `TransferReceiver` (`packages/transfer-engine`)
 
 **Files:**
+
 - Create: `packages/transfer-engine/src/receiver.ts`
 - Test: `packages/transfer-engine/src/receiver.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DataChannelLike`, `FileSink`, `FileMeta`, `TransferProgress`, `TransferError` (`./types.js`); `ControlFrame`, `encodeControl`, `decodeControl`, `validateBatchOffer`, `sanitizeFileName`, `MAX_BINARY_FRAME_BYTES` (`./protocol.js`).
 - Produces:
   - `interface ReceiverBatchOffer { batchId: string; files: FileMeta[]; totalBytes: number }` — `files` have **sanitized** names.
@@ -950,10 +1016,16 @@ class FakeChannel implements DataChannelLike {
   send(data: string | ArrayBuffer): void {
     this.sent.push(data);
   }
-  addEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  addEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     if (type === "message") this.listeners.push(listener);
   }
-  removeEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  removeEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     this.listeners = this.listeners.filter((l) => l !== listener);
   }
   feed(data: unknown): void {
@@ -992,7 +1064,8 @@ const meta = (over: Partial<FileMeta> = {}): FileMeta => ({
   ...over
 });
 const flush = () => new Promise((r) => setTimeout(r, 0));
-const offer = (files: FileMeta[], id = "b1") => encodeControl({ t: "batch-offer", batch: { id, files } });
+const offer = (files: FileMeta[], id = "b1") =>
+  encodeControl({ t: "batch-offer", batch: { id, files } });
 
 describe("TransferReceiver", () => {
   it("validates limits and emits a sanitized batch offer", () => {
@@ -1088,7 +1161,12 @@ describe("TransferReceiver", () => {
   it("rejects an oversized binary frame as bad-frame", async () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
-    const receiver = new TransferReceiver(ch, () => Promise.resolve(new MemorySink()), { onError }, { maxBinaryFrameBytes: 8 });
+    const receiver = new TransferReceiver(
+      ch,
+      () => Promise.resolve(new MemorySink()),
+      { onError },
+      { maxBinaryFrameBytes: 8 }
+    );
     ch.feed(offer([meta({ id: "f1", size: 100 })]));
     receiver.accept();
     ch.feed(encodeControl({ t: "file-begin", id: "f1", offset: 0 }));
@@ -1211,7 +1289,12 @@ export class TransferReceiver {
     this.queue = this.queue.then(() => this.handleFrame(data)).catch(() => undefined);
   };
 
-  constructor(channel: DataChannelLike, openSink: OpenSink, callbacks: ReceiverCallbacks = {}, options: ReceiverOptions = {}) {
+  constructor(
+    channel: DataChannelLike,
+    openSink: OpenSink,
+    callbacks: ReceiverCallbacks = {},
+    options: ReceiverOptions = {}
+  ) {
     this.channel = channel;
     this.openSink = openSink;
     this.cb = callbacks;
@@ -1281,7 +1364,11 @@ export class TransferReceiver {
           return;
         }
         const files = frame.batch.files.map((f) => ({ ...f, name: sanitizeFileName(f.name) }));
-        this.batch = { batchId: frame.batch.id, files, totalBytes: files.reduce((s, f) => s + f.size, 0) };
+        this.batch = {
+          batchId: frame.batch.id,
+          files,
+          totalBytes: files.reduce((s, f) => s + f.size, 0)
+        };
         this.cb.onBatchOffered?.(this.batch);
         return;
       }
@@ -1304,7 +1391,10 @@ export class TransferReceiver {
         }
         await this.currentSink.close();
         if (this.currentBytes !== this.currentMeta.size) {
-          return this.fail("size-mismatch", `expected ${this.currentMeta.size} bytes, got ${this.currentBytes}`);
+          return this.fail(
+            "size-mismatch",
+            `expected ${this.currentMeta.size} bytes, got ${this.currentBytes}`
+          );
         }
         this.filesDone += 1;
         this.cb.onFileComplete?.(this.currentMeta.id);
@@ -1412,10 +1502,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 The automated stand-in for "two real browsers": two engine instances wired by a channel pair that models `bufferedAmount` build-up and drain, transferring a real multi-file batch including one file big enough to trip backpressure.
 
 **Files:**
+
 - Create: `packages/transfer-engine/src/loopback.integration.test.ts`
 - Modify: `packages/transfer-engine/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: `TransferSender`, `TransferReceiver`, `ChunkSource`, `FileSink`, `DataChannelLike`.
 - Produces: `packages/transfer-engine/src/index.ts` now re-exports `./types.js`, `./protocol.js`, `./sender.js`, `./receiver.js` (keeps `PACKAGE_NAME`).
 
@@ -1471,11 +1563,13 @@ function makeLoopbackPair(drainRate: number): [DataChannelLike, DataChannelLike]
         this._outbox.push(data);
       },
       addEventListener(type, listener) {
-        if (type === "message") this._messageListeners.push(listener as (e: { data?: unknown }) => void);
+        if (type === "message")
+          this._messageListeners.push(listener as (e: { data?: unknown }) => void);
         else this._lowListeners.push(listener as () => void);
       },
       removeEventListener(type, listener) {
-        if (type === "message") this._messageListeners = this._messageListeners.filter((l) => l !== listener);
+        if (type === "message")
+          this._messageListeners = this._messageListeners.filter((l) => l !== listener);
         else this._lowListeners = this._lowListeners.filter((l) => l !== listener);
       }
     };
@@ -1513,7 +1607,8 @@ function makeLoopbackPair(drainRate: number): [DataChannelLike, DataChannelLike]
 
 const sourceOf = (bytes: Uint8Array): ChunkSource => ({
   size: bytes.byteLength,
-  read: (offset, length) => Promise.resolve(bytes.slice(offset, offset + length).buffer as ArrayBuffer)
+  read: (offset, length) =>
+    Promise.resolve(bytes.slice(offset, offset + length).buffer as ArrayBuffer)
 });
 
 class MemorySink implements FileSink {
@@ -1533,9 +1628,18 @@ describe("transfer-engine loopback", () => {
     const [hostCh, guestCh] = makeLoopbackPair(2 * 1024);
 
     const files: { meta: FileMeta; bytes: Uint8Array }[] = [
-      { meta: { id: "a", name: "small.bin", size: 300, type: "" }, bytes: new Uint8Array(300).map((_, i) => i % 256) },
-      { meta: { id: "b", name: "big.bin", size: 40 * 1024, type: "" }, bytes: new Uint8Array(40 * 1024).map((_, i) => (i * 7) % 256) },
-      { meta: { id: "c", name: "mid.bin", size: 5 * 1024, type: "" }, bytes: new Uint8Array(5 * 1024).map((_, i) => (i * 13) % 256) }
+      {
+        meta: { id: "a", name: "small.bin", size: 300, type: "" },
+        bytes: new Uint8Array(300).map((_, i) => i % 256)
+      },
+      {
+        meta: { id: "b", name: "big.bin", size: 40 * 1024, type: "" },
+        bytes: new Uint8Array(40 * 1024).map((_, i) => (i * 7) % 256)
+      },
+      {
+        meta: { id: "c", name: "mid.bin", size: 5 * 1024, type: "" },
+        bytes: new Uint8Array(5 * 1024).map((_, i) => (i * 13) % 256)
+      }
     ];
 
     const sinkMap = new Map<string, MemorySink>();
@@ -1606,10 +1710,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 6: Browser I/O adapters (`apps/web`)
 
 **Files:**
+
 - Create: `apps/web/src/lib/browser-io.ts`
 - Test: `apps/web/src/lib/browser-io.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ChunkSource`, `FileSink`, `FileMeta`, `DataChannelLike` from `@transfergo/transfer-engine`.
 - Produces:
   - `function createFileChunkSource(file: File): ChunkSource`
@@ -1683,8 +1789,14 @@ describe("pickSaveTarget", () => {
 
 describe("createDownloadSink", () => {
   it("accumulates chunks and triggers a download on close", async () => {
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    vi.stubGlobal("URL", { ...URL, createObjectURL: vi.fn(() => "blob:x"), revokeObjectURL: vi.fn() });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:x"),
+      revokeObjectURL: vi.fn()
+    });
 
     const sink = createDownloadSink({ id: "f1", name: "out.bin", size: 4, type: "text/plain" });
     await sink.write(new Uint8Array([1, 2]).buffer);
@@ -1708,7 +1820,7 @@ describe("adaptRtcDataChannel", () => {
       send: vi.fn(),
       bufferedAmount: 42,
       bufferedAmountLowThreshold: 0,
-      addEventListener: (t: string, l: (e: unknown) => void) => ((listeners[t] ??= []).push(l)),
+      addEventListener: (t: string, l: (e: unknown) => void) => (listeners[t] ??= []).push(l),
       removeEventListener: vi.fn()
     } as unknown as RTCDataChannel;
 
@@ -1778,7 +1890,9 @@ export interface SaveTarget {
 
 export async function pickSaveTarget(): Promise<SaveTarget> {
   if (isFileSystemAccessSupported()) {
-    const dir = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({ mode: "readwrite" });
+    const dir = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({
+      mode: "readwrite"
+    });
     return { kind: "directory", openSink: (meta) => createDirectorySink(dir, meta) };
   }
   return { kind: "download", openSink: (meta) => Promise.resolve(createDownloadSink(meta)) };
@@ -1840,8 +1954,7 @@ export function adaptRtcDataChannel(channel: RTCDataChannel): DataChannelLike {
     set bufferedAmountLowThreshold(value: number) {
       channel.bufferedAmountLowThreshold = value;
     },
-    addEventListener: (type, listener) =>
-      channel.addEventListener(type, listener as EventListener),
+    addEventListener: (type, listener) => channel.addEventListener(type, listener as EventListener),
     removeEventListener: (type, listener) =>
       channel.removeEventListener(type, listener as EventListener)
   };
@@ -1874,10 +1987,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 7: pt-BR formatting helpers (`apps/web`)
 
 **Files:**
+
 - Create: `apps/web/src/lib/transfer-format.ts`
 - Test: `apps/web/src/lib/transfer-format.test.ts`
 
 **Interfaces:**
+
 - Consumes: `FileSizeClass` from `@transfergo/shared`.
 - Produces:
   - `function formatBytes(bytes: number): string` — `"512 B"`, `"1.5 KB"`, `"320 MB"`, `"5 GB"`
@@ -1917,13 +2032,18 @@ describe("summarizeBatch", () => {
   });
 
   it("uses singular forms for a single file", () => {
-    expect(summarizeBatch([{ type: "image/jpeg", size: 10 * 1024 }])).toBe("1 arquivo — 1 foto — 10 KB");
+    expect(summarizeBatch([{ type: "image/jpeg", size: 10 * 1024 }])).toBe(
+      "1 arquivo — 1 foto — 10 KB"
+    );
   });
 
   it("labels unknown types as 'arquivo(s)'", () => {
-    expect(summarizeBatch([{ type: "", size: 2048 }, { type: "application/zip", size: 0 }])).toBe(
-      "2 arquivos — 2 arquivos — 2 KB"
-    );
+    expect(
+      summarizeBatch([
+        { type: "", size: 2048 },
+        { type: "application/zip", size: 0 }
+      ])
+    ).toBe("2 arquivos — 2 arquivos — 2 KB");
   });
 });
 
@@ -1966,7 +2086,7 @@ type Category = "foto" | "vídeo" | "PDF" | "arquivo";
 const CATEGORY_ORDER: Category[] = ["foto", "vídeo", "PDF", "arquivo"];
 const PLURAL: Record<Category, string> = {
   foto: "fotos",
-  "vídeo": "vídeos",
+  vídeo: "vídeos",
   PDF: "PDFs",
   arquivo: "arquivos"
 };
@@ -2034,10 +2154,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 Wires the engine to the real channel, real `File`s, and the browser adapters. Owns all transfer UI state.
 
 **Files:**
+
 - Create: `apps/web/src/lib/use-file-transfer.ts`
 - Test: `apps/web/src/lib/use-file-transfer.test.ts`
 
 **Interfaces:**
+
 - Consumes: `usePeerConnection`'s result shape (`dataChannel: RTCDataChannel | null`, `channelState: "idle" | "connecting" | "open" | "failed"`); `ConnectionRole` from `@transfergo/shared`; `classifyFileSize`, `BATCH_MAX_FILES`, `BATCH_MAX_BYTES`, `FileSizeClass` from `@transfergo/shared`; `TransferSender`, `TransferReceiver`, `TransferError`, `FileMeta`, `TransferProgress` from `@transfergo/transfer-engine`; `createFileChunkSource`, `pickSaveTarget`, `isFileSystemAccessSupported`, `adaptRtcDataChannel` from `./browser-io.js`; `summarizeBatch` from `./transfer-format.js`.
 - Produces:
   - `interface SelectedFile { id: string; name: string; size: number; type: string; sizeClass: FileSizeClass }`
@@ -2057,7 +2179,10 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./browser-io.js", () => ({
-  createFileChunkSource: (file: File) => ({ size: file.size, read: () => Promise.resolve(new ArrayBuffer(0)) }),
+  createFileChunkSource: (file: File) => ({
+    size: file.size,
+    read: () => Promise.resolve(new ArrayBuffer(0))
+  }),
   adaptRtcDataChannel: (c: unknown) => c,
   isFileSystemAccessSupported: vi.fn(() => false),
   pickSaveTarget: vi.fn(() => Promise.resolve({ kind: "download", openSink: vi.fn() }))
@@ -2101,7 +2226,11 @@ afterEach(() => vi.clearAllMocks());
 
 const renderTransfer = (role: "host" | "guest") =>
   renderHook(() =>
-    useFileTransfer({ role, dataChannel: channel as unknown as RTCDataChannel, channelState: "open" })
+    useFileTransfer({
+      role,
+      dataChannel: channel as unknown as RTCDataChannel,
+      channelState: "open"
+    })
   );
 
 describe("useFileTransfer — host", () => {
@@ -2151,7 +2280,10 @@ describe("useFileTransfer — guest", () => {
       channel.feed(
         JSON.stringify({
           t: "batch-offer",
-          batch: { id: "b1", files: [{ id: "f1", name: "a.jpg", size: 10 * 1024, type: "image/jpeg" }] }
+          batch: {
+            id: "b1",
+            files: [{ id: "f1", name: "a.jpg", size: 10 * 1024, type: "image/jpeg" }]
+          }
         })
       )
     );
@@ -2164,7 +2296,10 @@ describe("useFileTransfer — guest", () => {
       channel.feed(
         JSON.stringify({
           t: "batch-offer",
-          batch: { id: "b1", files: [{ id: "f1", name: "big.mp4", size: 800 * 1024 * 1024, type: "video/mp4" }] }
+          batch: {
+            id: "b1",
+            files: [{ id: "f1", name: "big.mp4", size: 800 * 1024 * 1024, type: "video/mp4" }]
+          }
         })
       )
     );
@@ -2216,7 +2351,8 @@ export interface SelectedFile {
   sizeClass: FileSizeClass;
 }
 
-export type TransferPhase = "idle" | "offering" | "transferring" | "completed" | "cancelled" | "failed";
+export type TransferPhase =
+  "idle" | "offering" | "transferring" | "completed" | "cancelled" | "failed";
 
 export interface PerFileStatus {
   bytes: number;
@@ -2267,7 +2403,8 @@ const ERROR_MESSAGES: Record<TransferError["code"], string | null> = {
 };
 
 let batchCounter = 0;
-const nextId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${(batchCounter++).toString(36)}`;
+const nextId = (prefix: string) =>
+  `${prefix}-${Date.now().toString(36)}-${(batchCounter++).toString(36)}`;
 
 export function useFileTransfer(params: UseFileTransferParams): UseFileTransferResult {
   const { role, dataChannel, channelState } = params;
@@ -2283,14 +2420,19 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
   const fileMapRef = useRef<Map<string, File>>(new Map());
   const senderRef = useRef<TransferSender | null>(null);
   const receiverRef = useRef<TransferReceiver | null>(null);
-  const openSinkRef = useRef<((meta: FileMeta, offset: number) => Promise<import("@transfergo/transfer-engine").FileSink>) | null>(
-    null
-  );
+  const openSinkRef = useRef<
+    | ((meta: FileMeta, offset: number) => Promise<import("@transfergo/transfer-engine").FileSink>)
+    | null
+  >(null);
 
   const applyProgress = useCallback((p: TransferProgress) => {
     setPerFile((prev) => ({
       ...prev,
-      [p.fileId]: { bytes: p.fileBytes, size: p.fileSize, state: p.fileBytes >= p.fileSize ? "completed" : "active" }
+      [p.fileId]: {
+        bytes: p.fileBytes,
+        size: p.fileSize,
+        state: p.fileBytes >= p.fileSize ? "completed" : "active"
+      }
     }));
     setOverall({ done: p.filesDone, total: p.filesTotal });
   }, []);
@@ -2333,7 +2475,8 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
             totalBytes: offer.totalBytes,
             summary: summarizeBatch(offer.files),
             requiresMemoryWarning:
-              !isFileSystemAccessSupported() && offer.files.some((f) => classifyFileSize(f.size) === "large")
+              !isFileSystemAccessSupported() &&
+              offer.files.some((f) => classifyFileSize(f.size) === "large")
           });
         }
       }
@@ -2345,7 +2488,10 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     };
   }, [ready, role, dataChannel, wireCommon]);
 
-  const totalBytes = useMemo(() => selectedFiles.reduce((sum, f) => sum + f.size, 0), [selectedFiles]);
+  const totalBytes = useMemo(
+    () => selectedFiles.reduce((sum, f) => sum + f.size, 0),
+    [selectedFiles]
+  );
 
   const limitError = useMemo(() => {
     if (selectedFiles.length > BATCH_MAX_FILES) {
@@ -2401,7 +2547,9 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
       };
     });
     setPerFile(
-      Object.fromEntries(selectedFiles.map((f) => [f.id, { bytes: 0, size: f.size, state: "queued" as const }]))
+      Object.fromEntries(
+        selectedFiles.map((f) => [f.id, { bytes: 0, size: f.size, state: "queued" as const }])
+      )
     );
     setOverall({ done: 0, total: selectedFiles.length });
     setErrorMessage(null);
@@ -2421,7 +2569,9 @@ export function useFileTransfer(params: UseFileTransferParams): UseFileTransferR
     const target = await pickSaveTarget();
     openSinkRef.current = target.openSink;
     setPerFile(
-      Object.fromEntries(incomingBatch.files.map((f) => [f.id, { bytes: 0, size: f.size, state: "queued" as const }]))
+      Object.fromEntries(
+        incomingBatch.files.map((f) => [f.id, { bytes: 0, size: f.size, state: "queued" as const }])
+      )
     );
     setOverall({ done: 0, total: incomingBatch.files.length });
     setPhase("transferring");
@@ -2486,11 +2636,13 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 9: `SendPanel` component + icons (`apps/web`)
 
 **Files:**
+
 - Create: `apps/web/src/components/transferir/SendPanel.tsx`
 - Test: `apps/web/src/components/transferir/SendPanel.test.tsx`
 - Modify: `packages/ui/src/icons/index.ts`
 
 **Interfaces:**
+
 - Consumes: `UseFileTransferResult` from `../../lib/use-file-transfer.js`; `SIZE_CLASS_LABELS`, `formatBytes` from `../../lib/transfer-format.js`; `Button`, `Badge`, `StateScreen`, `ProgressBar`, `CheckCircle2`, `XCircle`, `AlertTriangle`, `Upload`, `FileText` from `@transfergo/ui`.
 - Produces: `function SendPanel(props: { transfer: UseFileTransferResult }): JSX.Element`
 
@@ -2553,14 +2705,25 @@ const base: UseFileTransferResult = {
   cancel: vi.fn()
 };
 
-const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({ ...base, ...over });
+const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({
+  ...base,
+  ...over
+});
 
 describe("SendPanel", () => {
   it("lists selected files with a size badge and a total", () => {
     render(
       <SendPanel
         transfer={withOverrides({
-          selectedFiles: [{ id: "f1", name: "a.jpg", size: 5 * 1024 * 1024, type: "image/jpeg", sizeClass: "small" }],
+          selectedFiles: [
+            {
+              id: "f1",
+              name: "a.jpg",
+              size: 5 * 1024 * 1024,
+              type: "image/jpeg",
+              sizeClass: "small"
+            }
+          ],
           totalBytes: 5 * 1024 * 1024
         })}
       />
@@ -2577,7 +2740,8 @@ describe("SendPanel", () => {
         transfer={withOverrides({
           selectedFiles: [{ id: "f1", name: "big.bin", size: 9e9, type: "", sizeClass: "large" }],
           totalBytes: 9e9,
-          limitError: "Você selecionou 8.4 GB. O limite por envio é 5 GB. Remova alguns arquivos para continuar."
+          limitError:
+            "Você selecionou 8.4 GB. O limite por envio é 5 GB. Remova alguns arquivos para continuar."
         })}
       />
     );
@@ -2616,13 +2780,20 @@ describe("SendPanel", () => {
   });
 
   it("shows the success screen when completed", () => {
-    render(<SendPanel transfer={withOverrides({ phase: "completed", overall: { done: 2, total: 2 } })} />);
+    render(
+      <SendPanel transfer={withOverrides({ phase: "completed", overall: { done: 2, total: 2 } })} />
+    );
     expect(screen.getByText("2 arquivos transferidos com sucesso")).toBeInTheDocument();
   });
 
   it("shows the error screen when failed", () => {
     render(
-      <SendPanel transfer={withOverrides({ phase: "failed", errorMessage: "O outro lado recusou a transferência." })} />
+      <SendPanel
+        transfer={withOverrides({
+          phase: "failed",
+          errorMessage: "O outro lado recusou a transferência."
+        })}
+      />
     );
     expect(screen.getByText("O outro lado recusou a transferência.")).toBeInTheDocument();
   });
@@ -2642,7 +2813,17 @@ Create `apps/web/src/components/transferir/SendPanel.tsx`:
 "use client";
 
 import { useRef } from "react";
-import { AlertTriangle, Badge, Button, CheckCircle2, FileText, ProgressBar, StateScreen, Upload, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  Badge,
+  Button,
+  CheckCircle2,
+  FileText,
+  ProgressBar,
+  StateScreen,
+  Upload,
+  XCircle
+} from "@transfergo/ui";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { formatBytes, SIZE_CLASS_LABELS } from "../../lib/transfer-format.js";
 
@@ -2658,7 +2839,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
       <StateScreen
         icon={CheckCircle2}
         tone="success"
-        title={n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`}
+        title={
+          n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`
+        }
         description="Os arquivos chegaram ao outro dispositivo."
         actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
       />
@@ -2693,7 +2876,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
     return (
       <div className="w-full max-w-md">
         <p className="mb-4 text-center text-sm font-medium text-text">
-          {phase === "offering" ? "Aguardando o outro lado aceitar…" : `Enviando ${transfer.overall.done} de ${transfer.overall.total}…`}
+          {phase === "offering"
+            ? "Aguardando o outro lado aceitar…"
+            : `Enviando ${transfer.overall.done} de ${transfer.overall.total}…`}
         </p>
         {transfer.overall.total > 0 && (
           <ProgressBar
@@ -2706,9 +2891,18 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
           {transfer.selectedFiles.map((file) => {
             const status = transfer.perFile[file.id]?.state ?? "queued";
             const label =
-              status === "completed" ? "Concluído" : status === "active" ? "Enviando" : status === "failed" ? "Falhou" : "Aguardando";
+              status === "completed"
+                ? "Concluído"
+                : status === "active"
+                  ? "Enviando"
+                  : status === "failed"
+                    ? "Falhou"
+                    : "Aguardando";
             return (
-              <li key={file.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+              <li
+                key={file.id}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+              >
                 <span className="flex items-center gap-2 truncate">
                   <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
                   <span className="truncate">{file.name}</span>
@@ -2747,14 +2941,19 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
         <>
           <ul className="mt-4 flex flex-col gap-2">
             {transfer.selectedFiles.map((file) => (
-              <li key={file.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+              <li
+                key={file.id}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+              >
                 <span className="flex min-w-0 items-center gap-2">
                   <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
                   <span className="truncate">{file.name}</span>
                 </span>
                 <span className="ml-3 flex shrink-0 items-center gap-2">
                   <span className="text-text-muted">{formatBytes(file.size)}</span>
-                  <Badge tone={SIZE_BADGE_TONE[file.sizeClass]}>{SIZE_CLASS_LABELS[file.sizeClass]}</Badge>
+                  <Badge tone={SIZE_BADGE_TONE[file.sizeClass]}>
+                    {SIZE_CLASS_LABELS[file.sizeClass]}
+                  </Badge>
                   <button
                     type="button"
                     className="text-text-muted hover:text-text"
@@ -2768,7 +2967,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
             ))}
           </ul>
           <p className="mt-3 text-center text-xs text-text-muted">
-            {transfer.selectedFiles.length} {transfer.selectedFiles.length === 1 ? "arquivo" : "arquivos"} · {formatBytes(transfer.totalBytes)}
+            {transfer.selectedFiles.length}{" "}
+            {transfer.selectedFiles.length === 1 ? "arquivo" : "arquivos"} ·{" "}
+            {formatBytes(transfer.totalBytes)}
           </p>
         </>
       )}
@@ -2781,7 +2982,9 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
 
       <Button
         className="mt-4 w-full"
-        disabled={!transfer.ready || transfer.selectedFiles.length === 0 || transfer.limitError !== null}
+        disabled={
+          !transfer.ready || transfer.selectedFiles.length === 0 || transfer.limitError !== null
+        }
         onClick={transfer.startSend}
       >
         Enviar
@@ -2817,10 +3020,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 10: `ReceivePanel` component (`apps/web`)
 
 **Files:**
+
 - Create: `apps/web/src/components/s/ReceivePanel.tsx`
 - Test: `apps/web/src/components/s/ReceivePanel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `UseFileTransferResult` from `../../lib/use-file-transfer.js`; `Button`, `StateScreen`, `ProgressBar`, `Inbox`, `Download`, `CheckCircle2`, `XCircle`, `AlertTriangle`, `FileText` from `@transfergo/ui`.
 - Produces: `function ReceivePanel(props: { transfer: UseFileTransferResult }): JSX.Element`
 
@@ -2853,7 +3058,10 @@ const base: UseFileTransferResult = {
   errorMessage: null,
   cancel: vi.fn()
 };
-const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({ ...base, ...over });
+const withOverrides = (over: Partial<UseFileTransferResult>): UseFileTransferResult => ({
+  ...base,
+  ...over
+});
 
 describe("ReceivePanel", () => {
   it("waits for files when there is no incoming batch", () => {
@@ -2916,19 +3124,30 @@ describe("ReceivePanel", () => {
   });
 
   it("shows the progress header while transferring", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "transferring", overall: { done: 2, total: 4 } })} />);
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "transferring", overall: { done: 2, total: 4 } })}
+      />
+    );
     expect(screen.getByText("Recebendo 2 de 4…")).toBeInTheDocument();
   });
 
   it("shows the success screen when completed", () => {
-    render(<ReceivePanel transfer={withOverrides({ phase: "completed", overall: { done: 3, total: 3 } })} />);
+    render(
+      <ReceivePanel
+        transfer={withOverrides({ phase: "completed", overall: { done: 3, total: 3 } })}
+      />
+    );
     expect(screen.getByText("3 arquivos recebidos com sucesso")).toBeInTheDocument();
   });
 
   it("shows the error screen when failed", () => {
     render(
       <ReceivePanel
-        transfer={withOverrides({ phase: "failed", errorMessage: "Um arquivo chegou incompleto. A transferência foi interrompida." })}
+        transfer={withOverrides({
+          phase: "failed",
+          errorMessage: "Um arquivo chegou incompleto. A transferência foi interrompida."
+        })}
       />
     );
     expect(screen.getByText(/chegou incompleto/)).toBeInTheDocument();
@@ -2948,7 +3167,17 @@ Create `apps/web/src/components/s/ReceivePanel.tsx`:
 ```tsx
 "use client";
 
-import { AlertTriangle, Button, CheckCircle2, Download, FileText, Inbox, ProgressBar, StateScreen, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  Button,
+  CheckCircle2,
+  Download,
+  FileText,
+  Inbox,
+  ProgressBar,
+  StateScreen,
+  XCircle
+} from "@transfergo/ui";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 
 export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) {
@@ -3005,9 +3234,18 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
           {(incomingBatch?.files ?? []).map((file) => {
             const status = transfer.perFile[file.id]?.state ?? "queued";
             const label =
-              status === "completed" ? "Concluído" : status === "active" ? "Recebendo" : status === "failed" ? "Falhou" : "Aguardando";
+              status === "completed"
+                ? "Concluído"
+                : status === "active"
+                  ? "Recebendo"
+                  : status === "failed"
+                    ? "Falhou"
+                    : "Aguardando";
             return (
-              <li key={file.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+              <li
+                key={file.id}
+                className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+              >
                 <span className="flex min-w-0 items-center gap-2">
                   <FileText className="size-4 shrink-0 text-text-muted" aria-hidden="true" />
                   <span className="truncate">{file.name}</span>
@@ -3042,7 +3280,8 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
       />
       {incomingBatch.requiresMemoryWarning && (
         <p className="mt-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
-          Este navegador vai precisar segurar o arquivo inteiro na memória. Para arquivos grandes, use o Chrome ou o Edge no computador.
+          Este navegador vai precisar segurar o arquivo inteiro na memória. Para arquivos grandes,
+          use o Chrome ou o Edge no computador.
         </p>
       )}
     </div>
@@ -3074,12 +3313,14 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ## Task 11: Wire the panels into both pages + full gate
 
 **Files:**
+
 - Modify: `apps/web/src/app/transferir/page.tsx`
 - Modify: `apps/web/src/app/transferir/page.test.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.tsx`
 - Modify: `apps/web/src/app/s/[token]/page.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `usePeerConnection` (now its `{ dataChannel, channelState }` return is used), `useFileTransfer`, `SendPanel`, `ReceivePanel`.
 - Produces: nothing new — page-level composition only.
 
@@ -3099,7 +3340,8 @@ import { useFileTransfer } from "../../lib/use-file-transfer.js";
 import { useSignalingSocket } from "../../lib/signaling-socket.js";
 
 export default function TransferPage() {
-  const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } = useSignalingSocket();
+  const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } =
+    useSignalingSocket();
   const { dataChannel, channelState } = usePeerConnection({
     role,
     accepted: session?.status === "accepted",
@@ -3111,7 +3353,12 @@ export default function TransferPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
-        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="Tentando reconectar..."
+        />
       )}
       {session?.status === "accepted" && channelState === "open" ? (
         <SendPanel transfer={transfer} />
@@ -3122,7 +3369,11 @@ export default function TransferPage() {
   );
 }
 
-function renderContent(session: Session | null | undefined, peerOnline: boolean, onCreateSession: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  peerOnline: boolean,
+  onCreateSession: () => void
+) {
   if (!session) {
     return (
       <StateScreen
@@ -3182,7 +3433,15 @@ function renderContent(session: Session | null | undefined, peerOnline: boolean,
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@transfergo/shared";
-import { AlertTriangle, CheckCircle2, Clock, ShieldCheck, StateScreen, WifiOff, XCircle } from "@transfergo/ui";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
+  StateScreen,
+  WifiOff,
+  XCircle
+} from "@transfergo/ui";
 import { ReceivePanel } from "../../../components/s/ReceivePanel.js";
 import { usePeerConnection } from "../../../lib/peer-connection.js";
 import { useFileTransfer } from "../../../lib/use-file-transfer.js";
@@ -3190,7 +3449,8 @@ import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
   const { token } = useParams<{ token: string }>();
-  const { session, connectionState, role, sendSignal, lastSignal, joinSession, accept, reject } = useSignalingSocket();
+  const { session, connectionState, role, sendSignal, lastSignal, joinSession, accept, reject } =
+    useSignalingSocket();
 
   useEffect(() => {
     joinSession(token);
@@ -3207,7 +3467,12 @@ export default function SessionInvitePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
-        <StateScreen icon={WifiOff} tone="danger" title="Conexão perdida" description="Tentando reconectar..." />
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="Tentando reconectar..."
+        />
       )}
       {session?.status === "accepted" && channelState === "open" ? (
         <ReceivePanel transfer={transfer} />
@@ -3218,9 +3483,15 @@ export default function SessionInvitePage() {
   );
 }
 
-function renderContent(session: Session | null | undefined, onAccept: () => void, onReject: () => void) {
+function renderContent(
+  session: Session | null | undefined,
+  onAccept: () => void,
+  onReject: () => void
+) {
   if (session === undefined) {
-    return <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />;
+    return (
+      <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />
+    );
   }
 
   if (session === null) {
@@ -3258,7 +3529,12 @@ function renderContent(session: Session | null | undefined, onAccept: () => void
       );
     case "rejected":
       return (
-        <StateScreen icon={XCircle} tone="danger" title="Convite recusado" description="Você recusou esta transferência." />
+        <StateScreen
+          icon={XCircle}
+          tone="danger"
+          title="Convite recusado"
+          description="Você recusou esta transferência."
+        />
       );
     case "expired":
       return (
@@ -3321,20 +3597,20 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **1. Spec coverage**
 
-| Spec section | Task(s) |
-| --- | --- |
-| §1 objective — host→guest multi-file over the data channel, automatic | Tasks 3–5 (engine), 8–11 (wiring + UI) |
-| §2 unit split (protocol / sender / receiver / types / classify / adapters / hook / panels) | Tasks 2, 3, 4, 1, 6, 8, 9, 10 |
-| §3 protocol — control frames, binary frames, flow, no signaling-server change | Task 2 (frames), Tasks 3–4 (flow); Global Constraints (no `signaling.ts` change) |
-| §4 sender — host only, backpressure, 16 KiB default, progress throttle, cancel, error | Task 3 |
-| §5 receiver — validate limits, sanitize, openSink, size check, cancel/abort, ordered writes | Task 4 |
-| §6 security — no server, path safety, both-side limits, frame caps, no execution, privacy | Task 2 (`sanitizeFileName`, `validateBatchOffer`, caps), Task 4 (enforcement), Global Constraints |
-| §7 resume preparation — stable id, `offset` field, positional sink | Task 2 (`file-begin` carries `offset`), Task 4 (`openSink(meta, offset)`) |
-| §8 save location — FS Access preferred, download fallback, detection, large-file warning | Task 6 (`pickSaveTarget`, sinks, `isFileSystemAccessSupported`), Task 8 (`requiresMemoryWarning`), Task 10 (warning copy) |
-| §9 out of scope | Respected — no SHA-256, no bidirectional (`role` gates sender/receiver), no rich progress bar, no security levels, no TURN, no real resume |
-| §10 hook + panels + pt-BR copy | Tasks 8, 9, 10, 11 |
-| §11 tests — shared, engine unit, loopback, web hook/io/panels, manual | Tasks 1–11 each ship colocated tests; Task 5 loopback; Task 11 step 6 manual |
-| §12 completion criteria — turbo gate, loopback proof, no bytes via signaling, limits both sides, sanitized names, pt-BR status copy, `dataChannel` consumed, no Plano 5 regression | Task 11 step 5 (gate), Task 5 (loopback), Global Constraints, Tasks 9–10 (copy), Task 11 (wiring + page tests) |
+| Spec section                                                                                                                                                                       | Task(s)                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| §1 objective — host→guest multi-file over the data channel, automatic                                                                                                              | Tasks 3–5 (engine), 8–11 (wiring + UI)                                                                                                     |
+| §2 unit split (protocol / sender / receiver / types / classify / adapters / hook / panels)                                                                                         | Tasks 2, 3, 4, 1, 6, 8, 9, 10                                                                                                              |
+| §3 protocol — control frames, binary frames, flow, no signaling-server change                                                                                                      | Task 2 (frames), Tasks 3–4 (flow); Global Constraints (no `signaling.ts` change)                                                           |
+| §4 sender — host only, backpressure, 16 KiB default, progress throttle, cancel, error                                                                                              | Task 3                                                                                                                                     |
+| §5 receiver — validate limits, sanitize, openSink, size check, cancel/abort, ordered writes                                                                                        | Task 4                                                                                                                                     |
+| §6 security — no server, path safety, both-side limits, frame caps, no execution, privacy                                                                                          | Task 2 (`sanitizeFileName`, `validateBatchOffer`, caps), Task 4 (enforcement), Global Constraints                                          |
+| §7 resume preparation — stable id, `offset` field, positional sink                                                                                                                 | Task 2 (`file-begin` carries `offset`), Task 4 (`openSink(meta, offset)`)                                                                  |
+| §8 save location — FS Access preferred, download fallback, detection, large-file warning                                                                                           | Task 6 (`pickSaveTarget`, sinks, `isFileSystemAccessSupported`), Task 8 (`requiresMemoryWarning`), Task 10 (warning copy)                  |
+| §9 out of scope                                                                                                                                                                    | Respected — no SHA-256, no bidirectional (`role` gates sender/receiver), no rich progress bar, no security levels, no TURN, no real resume |
+| §10 hook + panels + pt-BR copy                                                                                                                                                     | Tasks 8, 9, 10, 11                                                                                                                         |
+| §11 tests — shared, engine unit, loopback, web hook/io/panels, manual                                                                                                              | Tasks 1–11 each ship colocated tests; Task 5 loopback; Task 11 step 6 manual                                                               |
+| §12 completion criteria — turbo gate, loopback proof, no bytes via signaling, limits both sides, sanitized names, pt-BR status copy, `dataChannel` consumed, no Plano 5 regression | Task 11 step 5 (gate), Task 5 (loopback), Global Constraints, Tasks 9–10 (copy), Task 11 (wiring + page tests)                             |
 
 No gaps.
 

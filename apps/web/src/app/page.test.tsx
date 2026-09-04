@@ -6,9 +6,14 @@ describe("HomePage", () => {
   it("renders the hero headline and primary call to action", () => {
     render(<HomePage />);
     expect(
-      screen.getByRole("heading", { name: "Transfira arquivos com segurança entre seus dispositivos." })
+      screen.getByRole("heading", {
+        name: "Transfira arquivos com segurança entre seus dispositivos."
+      })
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Nova transferência" })).toHaveAttribute("href", "/transferir");
+    expect(screen.getByRole("link", { name: "Nova transferência" })).toHaveAttribute(
+      "href",
+      "/transferir"
+    );
   });
 
   it("renders the three how-it-works steps in order", () => {

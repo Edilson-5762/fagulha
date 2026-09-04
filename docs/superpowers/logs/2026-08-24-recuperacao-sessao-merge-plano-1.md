@@ -53,7 +53,7 @@ escolhendo "merge local no main":
 2. **Fast-forward merge** — `git merge worktree-v1-01-fundacao-monorepo`
    avançou `main` de `c33827b` para `14d002e` sem conflitos de conteúdo.
 3. **Reverificação pós-merge** — `pnpm install` + `pnpm turbo run lint
-   typecheck test build` no `main` mesclado: **19/19 tarefas passando**
+typecheck test build` no `main` mesclado: **19/19 tarefas passando**
    novamente.
 4. **Limpeza do worktree** — a remoção inicial (`git worktree remove`) foi
    recusada por uma alteração não commitada em `apps/web/next-env.d.ts`
@@ -64,11 +64,11 @@ escolhendo "merge local no main":
    `Remove-Item -Recurse -Force` via PowerShell nos diretórios
    `.claude/worktrees/v1-01-fundacao-monorepo` e
    `.git/worktrees/v1-01-fundacao-monorepo`, seguido de `git worktree
-   prune`.
+prune`.
 5. **Branch local apagado**: `git branch -d worktree-v1-01-fundacao-monorepo`.
 6. **Push para o remoto**: `git push origin main` (`c33827b..14d002e`).
 7. **Branch remoto apagado**: `git push origin --delete
-   worktree-v1-01-fundacao-monorepo` (já mesclado, ficaria órfão no
+worktree-v1-01-fundacao-monorepo` (já mesclado, ficaria órfão no
    GitHub).
 
 ## Estado final

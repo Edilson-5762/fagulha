@@ -18,7 +18,9 @@ export const InviteConfirmation: Story = {
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Convite para transferência</DialogTitle>
-        <DialogDescription>Um dispositivo deseja estabelecer uma sessão de compartilhamento.</DialogDescription>
+        <DialogDescription>
+          Um dispositivo deseja estabelecer uma sessão de compartilhamento.
+        </DialogDescription>
       </DialogContent>
     </Dialog>
   )

@@ -40,17 +40,17 @@ dispositivo de quem recebeu, com as mensagens "…com sucesso" nos dois lados.
 
 ## 2. Divisão em unidades
 
-| Unidade | Onde | Responsabilidade | Depende de |
-| --- | --- | --- | --- |
-| **Protocolo de transferência** | `packages/transfer-engine/src/protocol.ts` | Formato das mensagens de controle (JSON) e dos quadros binários que trafegam pelo `RTCDataChannel`; funções puras de `encode`/`decode`/validação. Nenhum estado. | nada |
-| **Emissor** (`TransferSender`) | `packages/transfer-engine/src/sender.ts` | Máquina de estados que percorre a fila de arquivos, lê cada um em pedaços via um `ChunkSource`, respeita o backpressure do canal, emite eventos de progresso. | protocolo, `types.ts` |
-| **Receptor** (`TransferReceiver`) | `packages/transfer-engine/src/receiver.ts` | Máquina de estados que consome os quadros, valida limites e nomes, escreve cada arquivo num `FileSink`, confere o tamanho recebido, emite eventos de progresso. | protocolo, `types.ts` |
-| **Contratos de I/O** | `packages/transfer-engine/src/types.ts` | `DataChannelLike`, `ChunkSource`, `FileSink`, tipos de evento de progresso, `TransferError`. São as costuras que deixam o motor rodar tanto no navegador quanto em Node puro. | nada |
-| **Classificação de tamanho** | `packages/shared/src/file-size.ts` | `classifyFileSize(bytes) → "small" \| "medium" \| "large"` + os limiares e os limites de lote (50 arquivos / 5 GiB). Fica em `shared` porque tanto a UI quanto a checagem de limite do receptor usam. | nada |
-| **Adaptadores de navegador** | `apps/web/src/lib/file-system-sink.ts` | Implementações reais de `ChunkSource` (a partir de um `File`) e de `FileSink`: a preferencial via File System Access API e a de reserva via acúmulo em `Blob` + download. Detecção de qual usar. | `transfer-engine` |
-| **Hook de transferência** | `apps/web/src/lib/use-file-transfer.ts` | Liga o motor ao `RTCDataChannel` real (vindo do `usePeerConnection`), aos `File` reais e aos adaptadores. Expõe estado e ações para a UI. | `transfer-engine`, adaptadores |
-| **UI do emissor** | `apps/web/src/components/transferir/SendPanel.tsx` | Escolher arquivos, lista com nome/tamanho/tipo/etiqueta, checagem de limite, botão Enviar, status geral e por arquivo, tela final. | hook |
-| **UI do receptor** | `apps/web/src/components/s/ReceivePanel.tsx` | Resumo do lote que está chegando (quantidade + tipos + total), Recusar/Receber, lista por arquivo, tela final. | hook |
+| Unidade                           | Onde                                               | Responsabilidade                                                                                                                                                                                      | Depende de                     |
+| --------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **Protocolo de transferência**    | `packages/transfer-engine/src/protocol.ts`         | Formato das mensagens de controle (JSON) e dos quadros binários que trafegam pelo `RTCDataChannel`; funções puras de `encode`/`decode`/validação. Nenhum estado.                                      | nada                           |
+| **Emissor** (`TransferSender`)    | `packages/transfer-engine/src/sender.ts`           | Máquina de estados que percorre a fila de arquivos, lê cada um em pedaços via um `ChunkSource`, respeita o backpressure do canal, emite eventos de progresso.                                         | protocolo, `types.ts`          |
+| **Receptor** (`TransferReceiver`) | `packages/transfer-engine/src/receiver.ts`         | Máquina de estados que consome os quadros, valida limites e nomes, escreve cada arquivo num `FileSink`, confere o tamanho recebido, emite eventos de progresso.                                       | protocolo, `types.ts`          |
+| **Contratos de I/O**              | `packages/transfer-engine/src/types.ts`            | `DataChannelLike`, `ChunkSource`, `FileSink`, tipos de evento de progresso, `TransferError`. São as costuras que deixam o motor rodar tanto no navegador quanto em Node puro.                         | nada                           |
+| **Classificação de tamanho**      | `packages/shared/src/file-size.ts`                 | `classifyFileSize(bytes) → "small" \| "medium" \| "large"` + os limiares e os limites de lote (50 arquivos / 5 GiB). Fica em `shared` porque tanto a UI quanto a checagem de limite do receptor usam. | nada                           |
+| **Adaptadores de navegador**      | `apps/web/src/lib/file-system-sink.ts`             | Implementações reais de `ChunkSource` (a partir de um `File`) e de `FileSink`: a preferencial via File System Access API e a de reserva via acúmulo em `Blob` + download. Detecção de qual usar.      | `transfer-engine`              |
+| **Hook de transferência**         | `apps/web/src/lib/use-file-transfer.ts`            | Liga o motor ao `RTCDataChannel` real (vindo do `usePeerConnection`), aos `File` reais e aos adaptadores. Expõe estado e ações para a UI.                                                             | `transfer-engine`, adaptadores |
+| **UI do emissor**                 | `apps/web/src/components/transferir/SendPanel.tsx` | Escolher arquivos, lista com nome/tamanho/tipo/etiqueta, checagem de limite, botão Enviar, status geral e por arquivo, tela final.                                                                    | hook                           |
+| **UI do receptor**                | `apps/web/src/components/s/ReceivePanel.tsx`       | Resumo do lote que está chegando (quantidade + tipos + total), Recusar/Receber, lista por arquivo, tela final.                                                                                        | hook                           |
 
 O `packages/transfer-engine` hoje só tem um placeholder (`PACKAGE_NAME`); este
 plano é o primeiro conteúdo real dele.
@@ -73,16 +73,16 @@ type ControlFrame =
   | { t: "batch-offer"; batch: { id: string; files: FileMeta[] } }
   | { t: "batch-accept" }
   | { t: "batch-reject"; reason: "declined" | "over-limit" | "busy" }
-  | { t: "file-begin"; id: string; offset: number }   // offset sempre 0 neste plano (ver §7)
+  | { t: "file-begin"; id: string; offset: number } // offset sempre 0 neste plano (ver §7)
   | { t: "file-end"; id: string; bytesSent: number }
   | { t: "batch-complete" }
   | { t: "cancel"; scope: "batch" };
 
 interface FileMeta {
-  id: string;        // gerado pelo emissor, estável dentro do lote
-  name: string;      // nome original; o receptor sanitiza antes de usar (ver §6)
-  size: number;      // bytes, declarado pelo emissor
-  type: string;      // MIME informado pelo navegador; pode ser "" — apenas informativo
+  id: string; // gerado pelo emissor, estável dentro do lote
+  name: string; // nome original; o receptor sanitiza antes de usar (ver §6)
+  size: number; // bytes, declarado pelo emissor
+  type: string; // MIME informado pelo navegador; pode ser "" — apenas informativo
 }
 ```
 
@@ -146,11 +146,11 @@ class TransferSender {
   constructor(params: {
     channel: DataChannelLike;
     files: { id: string; meta: FileMeta; source: ChunkSource }[];
-    chunkSize?: number;            // default 16 KiB
-    highWaterMark?: number;        // default 8 MiB
-    lowWaterMark?: number;         // default 1 MiB
+    chunkSize?: number; // default 16 KiB
+    highWaterMark?: number; // default 8 MiB
+    lowWaterMark?: number; // default 1 MiB
   });
-  start(): void;                   // envia batch-offer e espera batch-accept
+  start(): void; // envia batch-offer e espera batch-accept
   cancel(): void;
   on<K extends keyof SenderEvents>(event: K, cb: SenderEvents[K]): void;
 }
@@ -190,7 +190,7 @@ Regras internas:
 ```ts
 interface ReceiverEvents {
   batchOffered: (offer: { batchId: string; files: FileMeta[]; totalBytes: number }) => void;
-  progress: (p: { /* mesma forma do progress do emissor */ }) => void;
+  progress: (p: {/* mesma forma do progress do emissor */}) => void;
   fileComplete: (fileId: string) => void;
   batchComplete: () => void;
   error: (e: TransferError) => void;
@@ -200,9 +200,9 @@ interface ReceiverEvents {
 class TransferReceiver {
   constructor(params: {
     channel: DataChannelLike;
-    openSink: (meta: FileMeta, offset: number) => Promise<FileSink>;  // chamado em cada file-begin; offset é 0 neste plano (ver §7)
+    openSink: (meta: FileMeta, offset: number) => Promise<FileSink>; // chamado em cada file-begin; offset é 0 neste plano (ver §7)
   });
-  accept(): void;                 // envia batch-accept; a UI chama isso no clique "Receber"
+  accept(): void; // envia batch-accept; a UI chama isso no clique "Receber"
   reject(reason?: "declined"): void;
   cancel(): void;
   on<K extends keyof ReceiverEvents>(event: K, cb: ReceiverEvents[K]): void;
@@ -215,9 +215,9 @@ Regras internas:
   - `files.length` entre 1 e **50**;
   - soma de `size` ≤ **5 GiB**;
   - cada `name` não vazio após sanitização (§6).
-  Falhou → responde `batch-reject` com `reason: "over-limit"` e emite `error`.
-  Já tem um lote ativo → `batch-reject` com `reason: "busy"`.
-  Passou → emite `batchOffered` (a UI mostra o resumo e os botões).
+    Falhou → responde `batch-reject` com `reason: "over-limit"` e emite `error`.
+    Já tem um lote ativo → `batch-reject` com `reason: "busy"`.
+    Passou → emite `batchOffered` (a UI mostra o resumo e os botões).
 - `accept()` envia `batch-accept`. A partir daí:
   - `file-begin` → `openSink(meta)` (a UI/adaptador decide onde gravar); zera o
     contador de bytes do arquivo.
@@ -286,12 +286,12 @@ protocolo deste plano impede isso.
 
 Duas implementações de `FileSink`, escolhidas em tempo de execução:
 
-| | Preferencial | Reserva |
-| --- | --- | --- |
-| **API** | File System Access (`showSaveFilePicker` / `showDirectoryPicker` + `FileSystemWritableFileStream`) | acúmulo em `ArrayBuffer[]` → `Blob` → `URL.createObjectURL` + `<a download>` sintético |
-| **Onde funciona** | Chrome/Edge no desktop | todos os navegadores, incl. celular e Firefox |
-| **Memória** | plana — cada pedaço vai direto pro disco | segura o arquivo inteiro em RAM até `file-end` |
-| **Rastro** | grava direto no lugar final escolhido | passagem temporária no navegador, apagada depois |
+|                   | Preferencial                                                                                       | Reserva                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **API**           | File System Access (`showSaveFilePicker` / `showDirectoryPicker` + `FileSystemWritableFileStream`) | acúmulo em `ArrayBuffer[]` → `Blob` → `URL.createObjectURL` + `<a download>` sintético |
+| **Onde funciona** | Chrome/Edge no desktop                                                                             | todos os navegadores, incl. celular e Firefox                                          |
+| **Memória**       | plana — cada pedaço vai direto pro disco                                                           | segura o arquivo inteiro em RAM até `file-end`                                         |
+| **Rastro**        | grava direto no lugar final escolhido                                                              | passagem temporária no navegador, apagada depois                                       |
 
 - **Detecção:** `typeof window.showSaveFilePicker === "function"` **e** contexto
   seguro. As APIs de File System Access exigem gesto do usuário — o clique em
@@ -300,9 +300,9 @@ Duas implementações de `FileSink`, escolhidas em tempo de execução:
   dentro dela. Sem a API, vai para a reserva, um download por arquivo ao final
   de cada um.
 - **Arquivo "grande" (> 500 MiB) + só a reserva disponível:** a UI mostra o
-  aviso antes de começar — *"Este navegador vai precisar segurar o arquivo
+  aviso antes de começar — _"Este navegador vai precisar segurar o arquivo
   inteiro na memória. Para arquivos grandes, use o Chrome ou o Edge no
-  computador."* O usuário decide se continua. Limite conhecido e aceito para
+  computador."_ O usuário decide se continua. Limite conhecido e aceito para
   este plano (não dá pra fugir dele sem app instalado, e a V1 é "sem
   instalação").
 - `ChunkSource` do navegador: envolve `File` — `read(offset, length)` faz
@@ -344,19 +344,19 @@ Duas implementações de `FileSink`, escolhidas em tempo de execução:
 ```ts
 function useFileTransfer(params: {
   role: ConnectionRole | undefined;
-  dataChannel: RTCDataChannel | null;      // do usePeerConnection
+  dataChannel: RTCDataChannel | null; // do usePeerConnection
   channelState: PeerChannelState;
 }): {
   // emissor (host)
-  selectedFiles: SelectedFile[];           // { id, name, size, type, sizeClass, state }
+  selectedFiles: SelectedFile[]; // { id, name, size, type, sizeClass, state }
   totalBytes: number;
-  limitError: string | null;               // mensagem pt-BR pronta, ou null
+  limitError: string | null; // mensagem pt-BR pronta, ou null
   addFiles: (files: FileList | File[]) => void;
   removeFile: (id: string) => void;
   startSend: () => void;
   // receptor (guest)
   incomingBatch: { files: FileMeta[]; totalBytes: number; summary: string } | null;
-  acceptBatch: () => void;                  // dispara o pedido de pasta + receiver.accept()
+  acceptBatch: () => void; // dispara o pedido de pasta + receiver.accept()
   rejectBatch: () => void;
   // comum
   phase: "idle" | "offering" | "transferring" | "completed" | "cancelled" | "failed";
@@ -369,7 +369,7 @@ function useFileTransfer(params: {
 - Instancia `TransferSender` (host) ou `TransferReceiver` (guest) quando
   `channelState === "open"`; fecha tudo no cleanup / quando o canal cai.
 - `summary` do `incomingBatch` é montado em pt-BR a partir dos tipos:
-  *"5 arquivos — 3 fotos, 2 PDFs — 320 MB"*. Agrupa por categoria simples
+  _"5 arquivos — 3 fotos, 2 PDFs — 320 MB"_. Agrupa por categoria simples
   derivada do MIME (`image/*` → "foto", `video/*` → "vídeo", `application/pdf`
   → "PDF", resto → "arquivo").
 - Reusa `usePeerConnection` já existente (que passa a **também** expor o
@@ -385,14 +385,14 @@ Substitui o `StateScreen` "Convite aceito" da página quando o canal abre.
   pequeno/médio/grande (`@transfergo/ui` `Badge`), botão remover. Rodapé com
   **total** e contagem.
 - Se `limitError` → `Toast`/faixa de aviso com a mensagem
-  (*"Você selecionou 6,2 GB. O limite por envio é 5 GB. Remova alguns arquivos
-  para continuar."*), botão Enviar desabilitado.
-- Botão **"Enviar"** → `phase: "offering"` → *"Aguardando o outro lado
-  aceitar…"*.
+  (_"Você selecionou 6,2 GB. O limite por envio é 5 GB. Remova alguns arquivos
+  para continuar."_), botão Enviar desabilitado.
+- Botão **"Enviar"** → `phase: "offering"` → _"Aguardando o outro lado
+  aceitar…"_.
 - Durante: por item, label **Aguardando → Enviando → Concluído**; topo
-  *"Enviando 3 de 5…"*; opcional `ProgressBar` simples de arquivos concluídos.
-- Fim: `StateScreen` `tone="success"` — *"Arquivo transferido com sucesso"* /
-  *"5 arquivos transferidos com sucesso"*. Botão "Enviar mais arquivos" volta ao
+  _"Enviando 3 de 5…"_; opcional `ProgressBar` simples de arquivos concluídos.
+- Fim: `StateScreen` `tone="success"` — _"Arquivo transferido com sucesso"_ /
+  _"5 arquivos transferidos com sucesso"_. Botão "Enviar mais arquivos" volta ao
   início (mesma sessão/canal).
 - Cancelar disponível durante o envio.
 
@@ -400,14 +400,14 @@ Substitui o `StateScreen` "Convite aceito" da página quando o canal abre.
 
 Substitui o `StateScreen` "Convite aceito" quando o canal abre.
 
-- Enquanto `incomingBatch === null`: *"Conectado. Aguardando os arquivos…"*.
+- Enquanto `incomingBatch === null`: _"Conectado. Aguardando os arquivos…"_.
 - Ao chegar o lote: `StateScreen` com o **resumo** (`summary`) e ações
   **[ Recusar ] [ Receber ]**. "Receber" → (pedido de pasta, se
   File System Access) → `acceptBatch()`.
 - Durante: lista por arquivo **Aguardando → Recebendo → Concluído**; topo
-  *"Recebendo 3 de 5…"*.
-- Fim: `StateScreen` `tone="success"` — *"Arquivo recebido com sucesso"* /
-  *"5 arquivos recebidos com sucesso"*. Na reserva (download), o navegador
+  _"Recebendo 3 de 5…"_.
+- Fim: `StateScreen` `tone="success"` — _"Arquivo recebido com sucesso"_ /
+  _"5 arquivos recebidos com sucesso"_. Na reserva (download), o navegador
   dispara o "Salvar como" de cada arquivo conforme completa.
 - `batch-reject`/`over-limit`/`cancel` → telas dedicadas (`XCircle` /
   `AlertTriangle`) com texto claro.

@@ -38,7 +38,11 @@ export interface ReceiverOptions {
 
 export type OpenSink = (meta: FileMeta, offset: number) => Promise<FileSink>;
 
-const DEFAULTS = { progressIntervalMs: 250, maxBinaryFrameBytes: MAX_BINARY_FRAME_BYTES, createHasher: createSha256Hasher };
+const DEFAULTS = {
+  progressIntervalMs: 250,
+  maxBinaryFrameBytes: MAX_BINARY_FRAME_BYTES,
+  createHasher: createSha256Hasher
+};
 
 export class TransferReceiver {
   private readonly channel: DataChannelLike;
@@ -79,7 +83,12 @@ export class TransferReceiver {
     this.queue = this.queue.then(() => this.handleFrame(data)).catch(() => undefined);
   };
 
-  constructor(channel: DataChannelLike, openSink: OpenSink, callbacks: ReceiverCallbacks = {}, options: ReceiverOptions = {}) {
+  constructor(
+    channel: DataChannelLike,
+    openSink: OpenSink,
+    callbacks: ReceiverCallbacks = {},
+    options: ReceiverOptions = {}
+  ) {
     this.channel = channel;
     this.openSink = openSink;
     this.cb = callbacks;
@@ -154,7 +163,11 @@ export class TransferReceiver {
           return;
         }
         const files = frame.batch.files.map((f) => ({ ...f, name: sanitizeFileName(f.name) }));
-        this.batch = { batchId: frame.batch.id, files, totalBytes: files.reduce((s, f) => s + f.size, 0) };
+        this.batch = {
+          batchId: frame.batch.id,
+          files,
+          totalBytes: files.reduce((s, f) => s + f.size, 0)
+        };
         this.cb.onBatchOffered?.(this.batch);
         return;
       }
@@ -186,12 +199,18 @@ export class TransferReceiver {
         if (this.currentBytes !== this.currentMeta.size) {
           // Check the size BEFORE committing: fail() aborts the sink so the
           // partial write is discarded, never close()d.
-          return this.fail("size-mismatch", `expected ${this.currentMeta.size} bytes, got ${this.currentBytes}`);
+          return this.fail(
+            "size-mismatch",
+            `expected ${this.currentMeta.size} bytes, got ${this.currentBytes}`
+          );
         }
         const actual = this.currentHash!.digest();
         if (actual !== frame.sha256) {
           // Verifica ANTES do close(): fail() aborta o sink, o arquivo corrompido nunca é gravado.
-          return this.fail("integrity", `sha256 mismatch for ${frame.id}: expected ${frame.sha256}, got ${actual}`);
+          return this.fail(
+            "integrity",
+            `sha256 mismatch for ${frame.id}: expected ${frame.sha256}, got ${actual}`
+          );
         }
         await this.currentSink.close();
         this.filesDone += 1;

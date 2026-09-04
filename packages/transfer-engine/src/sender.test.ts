@@ -19,10 +19,16 @@ class FakeChannel implements DataChannelLike {
   send(data: string | ArrayBuffer): void {
     this.sent.push(data);
   }
-  addEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  addEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     (this.listeners[type] ??= []).push(listener);
   }
-  removeEventListener(type: "message" | "bufferedamountlow", listener: (event: { data?: unknown }) => void): void {
+  removeEventListener(
+    type: "message" | "bufferedamountlow",
+    listener: (event: { data?: unknown }) => void
+  ): void {
     this.listeners[type] = (this.listeners[type] ?? []).filter((l) => l !== listener);
   }
   emitMessage(data: unknown): void {
@@ -58,9 +64,14 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 describe("TransferSender", () => {
   it("sends a batch-offer on start()", () => {
     const ch = new FakeChannel();
-    const input: SenderInput = { meta: meta({ size: 4 }), source: bytesSource(new Uint8Array([1, 2, 3, 4])) };
+    const input: SenderInput = {
+      meta: meta({ size: 4 }),
+      source: bytesSource(new Uint8Array([1, 2, 3, 4]))
+    };
     new TransferSender(ch, "b1", [input]).start();
-    expect(ch.controlFrames).toEqual([{ t: "batch-offer", batch: { id: "b1", files: [meta({ size: 4 })] } }]);
+    expect(ch.controlFrames).toEqual([
+      { t: "batch-offer", batch: { id: "b1", files: [meta({ size: 4 })] } }
+    ]);
   });
 
   it("after batch-accept: file-begin, ordered chunks that reassemble, file-end, batch-complete", async () => {
@@ -119,7 +130,12 @@ describe("TransferSender", () => {
   it("maps a peer batch-reject to onError('rejected')", async () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }], { onError }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }],
+      { onError }
+    ).start();
     ch.emitMessage(JSON.stringify({ t: "batch-reject", reason: "declined" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "rejected" }));
@@ -128,7 +144,12 @@ describe("TransferSender", () => {
   it("fires onAccepted once when the peer accepts, before any chunk", () => {
     const ch = new FakeChannel();
     const onAccepted = vi.fn();
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 4 }), source: bytesSource(new Uint8Array(4)) }], { onAccepted }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 4 }), source: bytesSource(new Uint8Array(4)) }],
+      { onAccepted }
+    ).start();
     expect(onAccepted).not.toHaveBeenCalled();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     expect(onAccepted).toHaveBeenCalledOnce();
@@ -137,7 +158,12 @@ describe("TransferSender", () => {
   it("cancel() sends a cancel frame and fires onCancelled", () => {
     const ch = new FakeChannel();
     const onCancelled = vi.fn();
-    const sender = new TransferSender(ch, "b1", [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }], { onCancelled });
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 1 }), source: bytesSource(new Uint8Array(1)) }],
+      { onCancelled }
+    );
     sender.start();
     sender.cancel();
     expect(ch.controlFrames).toContainEqual({ t: "cancel", scope: "batch" });
@@ -200,7 +226,13 @@ describe("TransferSender", () => {
     const onError = vi.fn();
     // Reports 10 bytes but every read yields nothing — a truncated / broken source.
     const emptySource = { size: 10, read: () => Promise.resolve(new ArrayBuffer(0)) };
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 10 }), source: emptySource }], { onError }, { chunkSize: 4 }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 10 }), source: emptySource }],
+      { onError },
+      { chunkSize: 4 }
+    ).start();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "channel-error" }));
@@ -211,7 +243,13 @@ describe("TransferSender", () => {
     const ch = new FakeChannel();
     const onError = vi.fn();
     const failing = { size: 10, read: () => Promise.reject(new Error("disk gone")) };
-    new TransferSender(ch, "b1", [{ meta: meta({ size: 10 }), source: failing }], { onError }, { chunkSize: 4 }).start();
+    new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ size: 10 }), source: failing }],
+      { onError },
+      { chunkSize: 4 }
+    ).start();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     await flush();
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: "channel-error" }));
@@ -224,7 +262,10 @@ describe("TransferSender", () => {
     let resolveRead: (buf: ArrayBuffer) => void = () => {};
     const gated = {
       size: 4,
-      read: () => new Promise<ArrayBuffer>((resolve) => { resolveRead = resolve; })
+      read: () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          resolveRead = resolve;
+        })
     };
     const sender = new TransferSender(
       ch,
@@ -249,8 +290,20 @@ describe("TransferSender", () => {
     const ch = new FakeChannel();
     const onCancelled = vi.fn();
     let resolveRead: (buf: ArrayBuffer) => void = () => {};
-    const gated = { size: 4, read: () => new Promise<ArrayBuffer>((resolve) => { resolveRead = resolve; }) };
-    const sender = new TransferSender(ch, "b1", [{ meta: meta({ id: "f1", size: 4 }), source: gated }], { onCancelled }, { chunkSize: 4 });
+    const gated = {
+      size: 4,
+      read: () =>
+        new Promise<ArrayBuffer>((resolve) => {
+          resolveRead = resolve;
+        })
+    };
+    const sender = new TransferSender(
+      ch,
+      "b1",
+      [{ meta: meta({ id: "f1", size: 4 }), source: gated }],
+      { onCancelled },
+      { chunkSize: 4 }
+    );
     sender.start();
     ch.emitMessage(JSON.stringify({ t: "batch-accept" }));
     await flush();

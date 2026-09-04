@@ -73,7 +73,10 @@ export function decodeControl(raw: string): ControlFrame | null {
         ? { t: "batch-reject", reason: f.reason }
         : null;
     case "file-begin":
-      return typeof f.id === "string" && f.id.length > 0 && typeof f.offset === "number" && f.offset >= 0
+      return typeof f.id === "string" &&
+        f.id.length > 0 &&
+        typeof f.offset === "number" &&
+        f.offset >= 0
         ? { t: "file-begin", id: f.id, offset: f.offset }
         : null;
     case "file-end":
