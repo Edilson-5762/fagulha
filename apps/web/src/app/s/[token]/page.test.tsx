@@ -52,7 +52,7 @@ const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
 const mockedUsePeerConnection = vi.mocked(usePeerConnection);
 
 beforeEach(() => {
-  mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "connecting" });
+  mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "connecting", failureReason: null });
 });
 
 function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSignalingSocketResult {
@@ -170,7 +170,8 @@ describe("SessionInvitePage", () => {
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
     mockedUsePeerConnection.mockReturnValue({
       dataChannel: {} as RTCDataChannel,
-      channelState: "open"
+      channelState: "open",
+      failureReason: null
     });
     render(<SessionInvitePage />);
 
@@ -187,12 +188,13 @@ describe("SessionInvitePage", () => {
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
     mockedUsePeerConnection.mockReturnValue({
       dataChannel: {} as RTCDataChannel,
-      channelState: "open"
+      channelState: "open",
+      failureReason: null
     });
     const { rerender } = render(<SessionInvitePage />);
     expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
 
-    mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "failed" });
+    mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "failed", failureReason: null });
     rerender(<SessionInvitePage />);
 
     expect(screen.queryByRole("heading", { name: "Convite aceito" })).not.toBeInTheDocument();

@@ -14,7 +14,7 @@ import {
   WifiOff,
   XCircle
 } from "@fagulha/ui";
-import type { PeerChannelState } from "../../lib/peer-connection.js";
+import type { ChannelFailureReason, PeerChannelState } from "../../lib/peer-connection.js";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import {
   formatBytes,
@@ -27,10 +27,12 @@ const SIZE_BADGE_TONE = { small: "neutral", medium: "warning", large: "danger" }
 
 export function SendPanel({
   transfer,
-  channelState
+  channelState,
+  failureReason
 }: {
   transfer: UseFileTransferResult;
   channelState?: PeerChannelState;
+  failureReason?: ChannelFailureReason | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -167,7 +169,9 @@ export function SendPanel({
       {channelState && channelState !== "open" && (
         <p className="mb-4 flex items-center justify-center gap-1.5 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-center text-xs text-danger">
           <WifiOff className="size-3.5 shrink-0" aria-hidden="true" />
-          Conexão com o outro dispositivo perdida. Peça um novo link para tentar de novo.
+          {failureReason === "turn_unavailable"
+            ? "Não foi possível usar o servidor de apoio à conexão agora. Tente novamente mais tarde ou use outra rede (Wi-Fi em vez de dados móveis)."
+            : "Conexão com o outro dispositivo perdida. Peça um novo link para tentar de novo."}
         </p>
       )}
       <input

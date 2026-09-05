@@ -46,6 +46,19 @@ describe("ReceivePanel", () => {
     expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
   });
 
+  it("shows the TURN-specific description when failureReason is turn_unavailable", () => {
+    render(
+      <ReceivePanel
+        transfer={withOverrides({})}
+        channelState="failed"
+        failureReason="turn_unavailable"
+      />
+    );
+    expect(
+      screen.getByText(/Não foi possível usar o servidor de apoio à conexão agora/)
+    ).toBeInTheDocument();
+  });
+
   it("shows the batch summary and Receber / Recusar actions", () => {
     render(
       <ReceivePanel

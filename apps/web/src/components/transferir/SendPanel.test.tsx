@@ -247,6 +247,20 @@ describe("SendPanel", () => {
     expect(screen.getByText(/Conexão com o outro dispositivo perdida/)).toBeInTheDocument();
   });
 
+  it("shows the TURN-specific notice when failureReason is turn_unavailable", () => {
+    render(
+      <SendPanel
+        transfer={withOverrides({ phase: "idle" })}
+        channelState="failed"
+        failureReason="turn_unavailable"
+      />
+    );
+    expect(
+      screen.getByText(/Não foi possível usar o servidor de apoio à conexão agora/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Conexão com o outro dispositivo perdida/)).not.toBeInTheDocument();
+  });
+
   it("shows no connection-lost notice on the idle screen while the channel is open", () => {
     render(<SendPanel transfer={withOverrides({ phase: "idle" })} channelState="open" />);
     expect(screen.queryByText(/Conexão com o outro dispositivo perdida/)).not.toBeInTheDocument();

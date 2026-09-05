@@ -27,7 +27,7 @@ export default function SessionInvitePage() {
     joinSession(token);
   }, [token, joinSession]);
 
-  const { dataChannel, channelState } = usePeerConnection({
+  const { dataChannel, channelState, failureReason } = usePeerConnection({
     role,
     accepted: session?.status === "accepted",
     sendSignal,
@@ -57,7 +57,7 @@ export default function SessionInvitePage() {
         />
       )}
       {everConnected ? (
-        <ReceivePanel transfer={transfer} channelState={channelState} />
+        <ReceivePanel transfer={transfer} channelState={channelState} failureReason={failureReason} />
       ) : (
         renderContent(session, accept, reject, () => router.push("/transferir"))
       )}

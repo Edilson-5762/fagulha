@@ -12,7 +12,7 @@ import { useSignalingSocket } from "../../lib/signaling-socket.js";
 export default function TransferPage() {
   const { session, peerOnline, connectionState, role, sendSignal, lastSignal, createSession } =
     useSignalingSocket();
-  const { dataChannel, channelState } = usePeerConnection({
+  const { dataChannel, channelState, failureReason } = usePeerConnection({
     role,
     accepted: session?.status === "accepted",
     sendSignal,
@@ -47,7 +47,7 @@ export default function TransferPage() {
         />
       )}
       {everConnected ? (
-        <SendPanel transfer={transfer} channelState={channelState} />
+        <SendPanel transfer={transfer} channelState={channelState} failureReason={failureReason} />
       ) : (
         renderContent(session, peerOnline, createSession)
       )}

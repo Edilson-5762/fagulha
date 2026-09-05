@@ -13,16 +13,18 @@ import {
   WifiOff,
   XCircle
 } from "@fagulha/ui";
-import type { PeerChannelState } from "../../lib/peer-connection.js";
+import type { ChannelFailureReason, PeerChannelState } from "../../lib/peer-connection.js";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { formatBytes, formatDuration, formatSpeed } from "../../lib/transfer-format.js";
 
 export function ReceivePanel({
   transfer,
-  channelState
+  channelState,
+  failureReason
 }: {
   transfer: UseFileTransferResult;
   channelState?: PeerChannelState;
+  failureReason?: ChannelFailureReason | null;
 }) {
   const router = useRouter();
   const { phase, incomingBatch } = transfer;
@@ -171,7 +173,11 @@ export function ReceivePanel({
           icon={WifiOff}
           tone="danger"
           title="Conexão perdida"
-          description="A conexão com o outro dispositivo caiu. Peça um novo link para tentar de novo."
+          description={
+            failureReason === "turn_unavailable"
+              ? "Não foi possível usar o servidor de apoio à conexão agora. Tente novamente mais tarde ou use outra rede (Wi-Fi em vez de dados móveis)."
+              : "A conexão com o outro dispositivo caiu. Peça um novo link para tentar de novo."
+          }
           actions={[exitAction]}
         />
       );
