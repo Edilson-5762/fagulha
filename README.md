@@ -55,9 +55,14 @@ pnpm build
 
 ## Limitações conhecidas da V1
 
-- **Sem TURN real** — só STUN público. Redes muito restritivas (alguns
-  NATs corporativos / carrier-grade) podem impedir a conexão direta. O
-  caminho para adicionar um TURN gerenciado já está marcado no código.
+- **Sem TURN real, por decisão deliberada** — só STUN público. Redes muito
+  restritivas (alguns NATs corporativos / carrier-grade) podem impedir a
+  conexão direta. Avaliamos provedores gratuitos de TURN; o único com cota
+  boa sem cartão (ExpressTURN) só oferece credencial **fixa** no plano
+  grátis — ela fica visível no navegador de qualquer visitante e, se
+  copiada, nunca expira sozinha (o risco é alguém usar nossa cota de banda
+  pra outra coisa, não vazar arquivos — o conteúdo continua cifrado ponta a
+  ponta independente disso). Decidimos não assumir esse risco por ora.
 - **Transferência unidirecional** por sessão (quem cria envia; o
   convidado recebe). Bidirecional simultânea fica para depois.
 - **Sem domínio próprio** — a demo sai nas URLs gratuitas
@@ -70,5 +75,7 @@ pnpm build
 
 Planos 1–8 (fundação, design system, sessões, sinalização, WebRTC, motor
 de transferência, progresso/cancelamento, integridade SHA-256) concluídos.
-Plano 9 em andamento: deploy + demo pública, depois TURN, transferência
-bidirecional e endurecimento de segurança.
+Plano 9 (deploy + demo pública) concluído. Faltando para fechar a V1:
+transferência bidirecional, endurecimento de segurança, validação formal
+cross-browser/mobile. TURN real fica de fora por ora (ver limitações
+acima).
