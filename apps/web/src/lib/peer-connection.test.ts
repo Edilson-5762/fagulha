@@ -24,6 +24,8 @@ class FakePeerConnection {
   onicecandidate: ((event: { candidate: FakeCandidate | null }) => void) | null = null;
   onicecandidateerror: ((event: FakeIceErrorEvent) => void) | null = null;
   ondatachannel: ((event: { channel: FakeDataChannel }) => void) | null = null;
+  onconnectionstatechange: (() => void) | null = null;
+  connectionState: RTCPeerConnectionState = "new";
   closed = false;
 
   localDescriptions: unknown[] = [];
@@ -33,7 +35,11 @@ class FakePeerConnection {
   iceServers: RTCIceServer[];
 
   constructor(config?: { iceServers?: RTCIceServer[] }) {
-    this.iceServers = config?.iceServers ?? [];
+    const iceServers = config?.iceServers ?? [];
+    if (iceServers.some((server) => server.urls === "malformed")) {
+      throw new Error("malformed ICE server entry");
+    }
+    this.iceServers = iceServers;
     FakePeerConnection.instances.push(this);
   }
 
@@ -476,6 +482,88 @@ describe("usePeerConnection", () => {
       act(() => channel.onclose?.());
 
       expect(result.current.failureReason).toBe("connection_lost");
+    });
+
+    it("answers an offer that arrives before the TURN-credentials fetch resolves (Fix 1)", async () => {
+      // Simulates the guest, on a slow network, receiving the host's offer while its own
+      // /turn-credentials fetch is still pending — a signal that arrives before pcRef.current
+      // is assigned must not be dropped forever. Deliberately no flushAsync() before the
+      // rerender: the offer must land while setup()'s fetch is still an unresolved promise.
+      const sendSignal = vi.fn();
+      const { rerender } = renderHook(
+        (props: { lastSignal: SignalPayload | null }) =>
+          usePeerConnection({
+            role: "guest",
+            accepted: true,
+            sendSignal,
+            lastSignal: props.lastSignal
+          }),
+        { initialProps: { lastSignal: null as SignalPayload | null } }
+      );
+
+      rerender({ lastSignal: { kind: "offer", sdp: "remote-offer-sdp" } });
+
+      await flushAsync();
+
+      expect(latestPeerConnection().remoteDescriptions).toEqual([
+        { type: "offer", sdp: "remote-offer-sdp" }
+      ]);
+      expect(sendSignal).toHaveBeenCalledWith({ kind: "answer", sdp: "answer-sdp" });
+    });
+
+    it("marks channelState as failed when the RTCPeerConnection's connectionState becomes failed (Fix 3)", async () => {
+      const sendSignal = vi.fn();
+      const { result } = renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+      );
+      await flushAsync();
+
+      const pc = latestPeerConnection();
+      act(() => {
+        pc.connectionState = "failed";
+        pc.onconnectionstatechange?.();
+      });
+
+      expect(result.current.channelState).toBe("failed");
+    });
+
+    it("clears a stale TURN error once the channel opens successfully, so a later unrelated close is reported as connection_lost, not turn_unavailable (Fix 4)", async () => {
+      const sendSignal = vi.fn();
+      const { result } = renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+      );
+      await flushAsync();
+
+      // TURN quota exhausted / credentials rejected during ICE gathering, before the
+      // channel ever opens — but STUN alone still manages to connect.
+      act(() =>
+        latestPeerConnection().onicecandidateerror?.({
+          url: "turn:example.metered.live:80",
+          errorCode: 403
+        })
+      );
+
+      const channel = result.current.dataChannel as unknown as FakeDataChannel;
+      act(() => channel.open());
+      expect(result.current.channelState).toBe("open");
+
+      // Some later, unrelated disconnect (e.g. a backgrounded mobile tab).
+      act(() => channel.onclose?.());
+
+      expect(result.current.channelState).toBe("failed");
+      expect(result.current.failureReason).toBe("connection_lost");
+    });
+
+    it("falls back to STUN-only when constructing RTCPeerConnection with the fetched TURN servers throws (Fix 5)", async () => {
+      fetchMock.mockImplementation(() => fetchOk({ iceServers: [{ urls: "malformed" }] }));
+
+      renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      );
+      await flushAsync();
+
+      expect(FakePeerConnection.instances).toHaveLength(1);
+      expect(latestPeerConnection().iceServers).toEqual([{ urls: "stun:stun.l.google.com:19302" }]);
     });
   });
 });

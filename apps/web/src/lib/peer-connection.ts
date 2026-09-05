@@ -54,6 +54,11 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const [channelState, setChannelState] = useState<PeerChannelState>("idle");
   const [failureReason, setFailureReason] = useState<ChannelFailureReason | null>(null);
+  // Incrementado assim que pcRef.current é preenchido dentro de setup() (a busca
+  // pelas credenciais TURN é assíncrona, então isso não acontece de imediato).
+  // Faz parte das deps do effect 2 abaixo para que um sinal que chegou enquanto
+  // o pc ainda não existia seja reprocessado assim que ele passar a existir.
+  const [pcReadyTick, setPcReadyTick] = useState(0);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const remoteDescriptionSetRef = useRef(false);
@@ -80,7 +85,14 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
     function bindDataChannel(channel: RTCDataChannel): void {
       setDataChannel(channel);
       setChannelState("connecting");
-      channel.onopen = () => setChannelState("open");
+      channel.onopen = () => {
+        // Um canal aberto com sucesso prova que esta conexão não precisou do
+        // TURN para funcionar — qualquer falha futura não deve ser atribuída a
+        // um erro de TURN antigo e já irrelevante (ex.: quota esgotada durante
+        // a busca por candidatos, mas o STUN bastou desta vez).
+        turnErrorSeenRef.current = false;
+        setChannelState("open");
+      };
       channel.onclose = () => markFailed();
     }
 
@@ -90,8 +102,24 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
         return;
       }
 
-      const pc = new RTCPeerConnection({ iceServers: [...STUN_SERVERS, ...turnServers] });
+      let pc: RTCPeerConnection;
+      try {
+        pc = new RTCPeerConnection({ iceServers: [...STUN_SERVERS, ...turnServers] });
+      } catch {
+        // Uma entrada TURN malformada vinda do servidor de sinalização pode
+        // fazer o construtor lançar de forma síncrona. STUN_SERVERS é um valor
+        // fixo e válido, então esta segunda tentativa não pode falhar pelo
+        // mesmo motivo — garante o fallback STUN-only mesmo nesse caso.
+        pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+      }
       pcRef.current = pc;
+      setPcReadyTick((tick) => tick + 1);
+
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === "failed") {
+          markFailed();
+        }
+      };
 
       pc.onicecandidate = (event) => {
         if (!event.candidate) {
@@ -189,9 +217,11 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
         pendingCandidatesRef.current.push(candidate);
       }
     }
-    // `accepted` is a dependency so a signal buffered before effect 1 has created the
-    // peer connection (pcRef.current still null) gets reprocessed once it exists.
-  }, [lastSignal, accepted]);
+    // `pcReadyTick` is a dependency so a signal that arrives before effect 1 has
+    // finished creating the peer connection (pcRef.current still null, e.g. while
+    // the TURN-credentials fetch is pending) gets reprocessed once the pc exists,
+    // instead of being silently dropped.
+  }, [lastSignal, accepted, pcReadyTick]);
 
   return { dataChannel, channelState, failureReason };
 }
