@@ -1360,11 +1360,13 @@ Depois de salvar, o Render reimplanta o serviço automaticamente.
 
 Suba os dois servidores localmente (`pnpm dev`), configure `METERED_SECRET_KEY`/`METERED_TURN_BASE_URL` no `.env` local do `apps/signaling-server`, e confirme com um script (ex.: `curl http://localhost:4000/turn-credentials -H "Origin: http://localhost:3000"`) que a resposta traz `iceServers` não-vazio contendo pelo menos uma entrada `turn:`.
 
-- [ ] **Step 4: Verificação manual com 2 dispositivos em produção (só o usuário consegue)**
+- [x] **Step 4: Verificação manual com 2 dispositivos em produção (só o usuário consegue)**
 
 Depois do deploy, o teste que só o usuário pode fazer é confirmar que dois dispositivos em redes restritivas de verdade (ex. ambos no 4G/5G de operadoras diferentes) agora conseguem se conectar — isso já estava na lista de pendências da V1 ("validação formal cross-browser/mobile").
 
-- [ ] **Step 5: Commit final (se o Step 1 gerou algum ajuste)**
+Confirmado em 2026-09-05: envio de vídeo de 31,7 MB entre dois celulares em dados móveis (sinais de operadoras diferentes) concluído com sucesso — lento pelo sinal fraco do local, não pela conexão em si.
+
+- [x] **Step 5: Commit final (se o Step 1 gerou algum ajuste)**
 
 Se o portão completo não exigiu nenhuma correção, nada a commitar aqui — marque o plano como concluído.
 
