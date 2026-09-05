@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Session } from "@fagulha/shared";
 import { AlertTriangle, CheckCircle2, Share2, StateScreen, WifiOff, XCircle } from "@fagulha/ui";
 import { SessionLinkPanel } from "../../components/transferir/SessionLinkPanel.js";
@@ -19,6 +20,22 @@ export default function TransferPage() {
   });
   const transfer = useFileTransfer({ role, dataChannel, channelState });
 
+  // Uma vez que o canal abriu, fica com o painel de envio na tela pro resto da
+  // vida da página — sem isso, o canal fechar sozinho depois de concluído (comum
+  // no celular, ex.: navegador em segundo plano) fazia a tela voltar pro "Convite
+  // aceito" estático em vez de mostrar a tela de sucesso/erro do próprio painel.
+  // Ajuste de estado durante o render (padrão documentado do React para "derivar
+  // de uma mudança de prop/valor externo"), não em efeito — só uma bandeira que
+  // liga e nunca desliga de novo.
+  const [everConnected, setEverConnected] = useState(channelState === "open");
+  const [prevChannelState, setPrevChannelState] = useState(channelState);
+  if (channelState !== prevChannelState) {
+    setPrevChannelState(channelState);
+    if (channelState === "open" && !everConnected) {
+      setEverConnected(true);
+    }
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
@@ -29,8 +46,8 @@ export default function TransferPage() {
           description="Tentando reconectar..."
         />
       )}
-      {session?.status === "accepted" && channelState === "open" ? (
-        <SendPanel transfer={transfer} />
+      {everConnected ? (
+        <SendPanel transfer={transfer} channelState={channelState} />
       ) : (
         renderContent(session, peerOnline, createSession)
       )}

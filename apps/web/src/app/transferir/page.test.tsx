@@ -6,6 +6,10 @@ import { useSignalingSocket, type UseSignalingSocketResult } from "../../lib/sig
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import TransferPage from "./page.js";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() })
+}));
+
 vi.mock("../../lib/signaling-socket.js", () => ({
   useSignalingSocket: vi.fn()
 }));
@@ -123,6 +127,31 @@ describe("TransferPage", () => {
       channelState: "open"
     });
     render(<TransferPage />);
+    expect(screen.getByRole("button", { name: "Escolher arquivos" })).toBeInTheDocument();
+  });
+
+  it("keeps showing the send panel after the channel closes post-connection", () => {
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "host" }));
+    mockedUsePeerConnection.mockReturnValue({
+      dataChannel: {} as RTCDataChannel,
+      channelState: "open"
+    });
+    const { rerender } = render(<TransferPage />);
+    expect(screen.getByRole("button", { name: "Escolher arquivos" })).toBeInTheDocument();
+
+    // The RTCDataChannel can close on its own after a successful transfer (e.g. a
+    // backgrounded mobile tab) — the page must not fall back to the static
+    // "Convite aceito" screen once it has shown the panel.
+    mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "failed" });
+    rerender(<TransferPage />);
+
+    expect(screen.queryByRole("heading", { name: "Convite aceito" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Escolher arquivos" })).toBeInTheDocument();
   });
 

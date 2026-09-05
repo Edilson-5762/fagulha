@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Badge,
@@ -10,8 +11,10 @@ import {
   ProgressBar,
   StateScreen,
   Upload,
+  WifiOff,
   XCircle
 } from "@fagulha/ui";
+import type { PeerChannelState } from "../../lib/peer-connection.js";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import {
   formatBytes,
@@ -22,9 +25,21 @@ import {
 
 const SIZE_BADGE_TONE = { small: "neutral", medium: "warning", large: "danger" } as const;
 
-export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
+export function SendPanel({
+  transfer,
+  channelState
+}: {
+  transfer: UseFileTransferResult;
+  channelState?: PeerChannelState;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const { phase } = transfer;
+  const exitAction = {
+    label: "Sair",
+    variant: "secondary" as const,
+    onClick: () => router.push("/")
+  };
 
   if (phase === "completed") {
     const n = transfer.overall.filesTotal;
@@ -36,7 +51,7 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
           n === 1 ? "Arquivo transferido com sucesso" : `${n} arquivos transferidos com sucesso`
         }
         description="Os arquivos chegaram ao outro dispositivo."
-        actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }]}
+        actions={[{ label: "Enviar mais arquivos", onClick: transfer.clearSelection }, exitAction]}
       />
     );
   }
@@ -48,7 +63,7 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
         tone="danger"
         title="A transferência falhou"
         description={transfer.errorMessage ?? "Algo deu errado durante a transferência."}
-        actions={[{ label: "Tentar de novo", onClick: transfer.clearSelection }]}
+        actions={[{ label: "Tentar de novo", onClick: transfer.clearSelection }, exitAction]}
       />
     );
   }
@@ -64,7 +79,7 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
         description={
           saved === 0 ? "Nenhum arquivo chegou." : `${saved} de ${total} arquivos chegaram.`
         }
-        actions={[{ label: "Nova transferência", onClick: transfer.clearSelection }]}
+        actions={[{ label: "Nova transferência", onClick: transfer.clearSelection }, exitAction]}
       />
     );
   }
@@ -149,6 +164,12 @@ export function SendPanel({ transfer }: { transfer: UseFileTransferResult }) {
   // phase === "idle"
   return (
     <div className="w-full max-w-md">
+      {channelState && channelState !== "open" && (
+        <p className="mb-4 flex items-center justify-center gap-1.5 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-center text-xs text-danger">
+          <WifiOff className="size-3.5 shrink-0" aria-hidden="true" />
+          Conexão com o outro dispositivo perdida. Peça um novo link para tentar de novo.
+        </p>
+      )}
       <input
         ref={inputRef}
         type="file"

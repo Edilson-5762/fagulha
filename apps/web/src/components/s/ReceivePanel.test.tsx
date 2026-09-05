@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { ReceivePanel } from "./ReceivePanel.js";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() })
+}));
+
 const base: UseFileTransferResult = {
   ready: true,
   selectedFiles: [],
@@ -34,6 +38,12 @@ describe("ReceivePanel", () => {
   it("waits for files when there is no incoming batch", () => {
     render(<ReceivePanel transfer={withOverrides({})} />);
     expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
+  });
+
+  it("shows a connection-lost screen instead of waiting when the channel isn't open", () => {
+    render(<ReceivePanel transfer={withOverrides({})} channelState="failed" />);
+    expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
   });
 
   it("shows the batch summary and Receber / Recusar actions", () => {
@@ -257,6 +267,11 @@ describe("ReceivePanel", () => {
     expect(screen.getByText("3 arquivos recebidos com sucesso")).toBeInTheDocument();
   });
 
+  it("offers an exit action on the success screen", () => {
+    render(<ReceivePanel transfer={withOverrides({ phase: "completed" })} />);
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
+  });
+
   it("shows the error screen when failed", () => {
     render(
       <ReceivePanel
@@ -267,6 +282,7 @@ describe("ReceivePanel", () => {
       />
     );
     expect(screen.getByText(/chegou incompleto/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
   });
 
   it("labels a finished file 'Verificado' during an active transfer", () => {

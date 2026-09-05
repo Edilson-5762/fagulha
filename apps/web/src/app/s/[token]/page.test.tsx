@@ -10,7 +10,8 @@ import type { UseFileTransferResult } from "../../../lib/use-file-transfer.js";
 import SessionInvitePage from "./page.js";
 
 vi.mock("next/navigation", () => ({
-  useParams: () => ({ token: "abc123" })
+  useParams: () => ({ token: "abc123" }),
+  useRouter: () => ({ push: vi.fn() })
 }));
 
 vi.mock("../../../lib/signaling-socket.js", () => ({
@@ -137,6 +138,28 @@ describe("SessionInvitePage", () => {
     render(<SessionInvitePage />);
 
     expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
+  });
+
+  it("keeps showing the receive panel after the channel closes post-connection", () => {
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
+    mockedUsePeerConnection.mockReturnValue({
+      dataChannel: {} as RTCDataChannel,
+      channelState: "open"
+    });
+    const { rerender } = render(<SessionInvitePage />);
+    expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
+
+    mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "failed" });
+    rerender(<SessionInvitePage />);
+
+    expect(screen.queryByRole("heading", { name: "Convite aceito" })).not.toBeInTheDocument();
+    expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
   });
 
   it("calls accept when the accept button is clicked", async () => {

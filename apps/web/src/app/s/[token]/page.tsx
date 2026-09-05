@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { Session } from "@fagulha/shared";
 import {
@@ -34,6 +34,17 @@ export default function SessionInvitePage() {
   });
   const transfer = useFileTransfer({ role, dataChannel, channelState });
 
+  // Mesmo raciocínio do lado de quem envia: uma vez aberto o canal, fica com o
+  // painel de recebimento na tela, mesmo que o canal feche sozinho depois.
+  const [everConnected, setEverConnected] = useState(channelState === "open");
+  const [prevChannelState, setPrevChannelState] = useState(channelState);
+  if (channelState !== prevChannelState) {
+    setPrevChannelState(channelState);
+    if (channelState === "open" && !everConnected) {
+      setEverConnected(true);
+    }
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6">
       {connectionState === "reconnecting" && (
@@ -44,8 +55,8 @@ export default function SessionInvitePage() {
           description="Tentando reconectar..."
         />
       )}
-      {session?.status === "accepted" && channelState === "open" ? (
-        <ReceivePanel transfer={transfer} />
+      {everConnected ? (
+        <ReceivePanel transfer={transfer} channelState={channelState} />
       ) : (
         renderContent(session, accept, reject)
       )}

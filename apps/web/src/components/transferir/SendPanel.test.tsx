@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { SendPanel } from "./SendPanel.js";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() })
+}));
+
 const base: UseFileTransferResult = {
   ready: true,
   selectedFiles: [],
@@ -214,6 +218,12 @@ describe("SendPanel", () => {
     expect(screen.getByText("2 arquivos transferidos com sucesso")).toBeInTheDocument();
   });
 
+  it("offers an exit action alongside 'Enviar mais arquivos' when completed", () => {
+    render(<SendPanel transfer={withOverrides({ phase: "completed" })} />);
+    expect(screen.getByRole("button", { name: "Enviar mais arquivos" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
+  });
+
   it("shows the error screen when failed", () => {
     render(
       <SendPanel
@@ -224,6 +234,22 @@ describe("SendPanel", () => {
       />
     );
     expect(screen.getByText("O outro lado recusou a transferência.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
+  });
+
+  it("offers an exit action on the cancelled screen", () => {
+    render(<SendPanel transfer={withOverrides({ phase: "cancelled" })} />);
+    expect(screen.getByRole("button", { name: "Sair" })).toBeInTheDocument();
+  });
+
+  it("shows a connection-lost notice on the idle screen when the channel isn't open", () => {
+    render(<SendPanel transfer={withOverrides({ phase: "idle" })} channelState="failed" />);
+    expect(screen.getByText(/Conexão com o outro dispositivo perdida/)).toBeInTheDocument();
+  });
+
+  it("shows no connection-lost notice on the idle screen while the channel is open", () => {
+    render(<SendPanel transfer={withOverrides({ phase: "idle" })} channelState="open" />);
+    expect(screen.queryByText(/Conexão com o outro dispositivo perdida/)).not.toBeInTheDocument();
   });
 
   it("keeps the sender per-file label as 'Concluído' (the sender verified nothing)", () => {

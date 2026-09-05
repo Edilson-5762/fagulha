@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Button,
@@ -9,13 +10,27 @@ import {
   Inbox,
   ProgressBar,
   StateScreen,
+  WifiOff,
   XCircle
 } from "@fagulha/ui";
+import type { PeerChannelState } from "../../lib/peer-connection.js";
 import type { UseFileTransferResult } from "../../lib/use-file-transfer.js";
 import { formatBytes, formatDuration, formatSpeed } from "../../lib/transfer-format.js";
 
-export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) {
+export function ReceivePanel({
+  transfer,
+  channelState
+}: {
+  transfer: UseFileTransferResult;
+  channelState?: PeerChannelState;
+}) {
+  const router = useRouter();
   const { phase, incomingBatch } = transfer;
+  const exitAction = {
+    label: "Sair",
+    variant: "secondary" as const,
+    onClick: () => router.push("/")
+  };
 
   if (phase === "completed") {
     const n = transfer.overall.filesTotal;
@@ -26,6 +41,7 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
           tone="success"
           title={n === 1 ? "Arquivo recebido com sucesso" : `${n} arquivos recebidos com sucesso`}
           description="Os arquivos foram salvos neste dispositivo."
+          actions={[exitAction]}
         />
         {transfer.integrityVerified && (
           <p className="-mt-6 flex items-center justify-center gap-1 text-xs text-success">
@@ -44,6 +60,7 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
         tone="danger"
         title="A transferência falhou"
         description={transfer.errorMessage ?? "Algo deu errado durante a transferência."}
+        actions={[exitAction]}
       />
     );
   }
@@ -61,6 +78,7 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
             ? "Nenhum arquivo foi salvo."
             : `${saved} de ${total} arquivos foram salvos neste dispositivo.`
         }
+        actions={[exitAction]}
       />
     );
   }
@@ -147,6 +165,17 @@ export function ReceivePanel({ transfer }: { transfer: UseFileTransferResult }) 
 
   // phase === "idle"
   if (!incomingBatch) {
+    if (channelState && channelState !== "open") {
+      return (
+        <StateScreen
+          icon={WifiOff}
+          tone="danger"
+          title="Conexão perdida"
+          description="A conexão com o outro dispositivo caiu. Peça um novo link para tentar de novo."
+          actions={[exitAction]}
+        />
+      );
+    }
     return <StateScreen icon={Inbox} title="Conectado" description="Aguardando os arquivos…" />;
   }
 
