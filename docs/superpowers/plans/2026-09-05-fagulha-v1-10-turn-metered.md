@@ -67,7 +67,7 @@
   - `export async function fetchTurnIceServers(options: FetchTurnIceServersOptions): Promise<IceServer[]>` — nunca lança.
   - Rota `GET /turn-credentials` em `server.ts`: `200 { iceServers: IceServer[] }` com header `access-control-allow-origin: {WEB_ORIGIN}`; `403 { error: "forbidden" }` se a origem não bater com `WEB_ORIGIN`.
 
-- [ ] **Step 1: Escrever o teste que falha — `turn-credentials.test.ts`**
+- [x] **Step 1: Escrever o teste que falha — `turn-credentials.test.ts`**
 
 Crie `apps/signaling-server/src/turn-credentials.test.ts`:
 
@@ -196,12 +196,12 @@ describe("fetchTurnIceServers", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `pnpm --filter @fagulha/signaling-server test -- turn-credentials`
 Expected: FAIL — `Cannot find module './turn-credentials.js'`.
 
-- [ ] **Step 3: Implementar `turn-credentials.ts`**
+- [x] **Step 3: Implementar `turn-credentials.ts`**
 
 Crie `apps/signaling-server/src/turn-credentials.ts`:
 
@@ -264,12 +264,12 @@ export async function fetchTurnIceServers(
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `pnpm --filter @fagulha/signaling-server test -- turn-credentials`
 Expected: PASS (7/7).
 
-- [ ] **Step 5: Escrever os testes que falham — rota em `server.test.ts`**
+- [x] **Step 5: Escrever os testes que falham — rota em `server.test.ts`**
 
 Em `apps/signaling-server/src/server.test.ts`, acrescente ao final do arquivo (dentro de um novo `describe`, mesmo nível do existente):
 
@@ -305,12 +305,12 @@ describe("GET /turn-credentials", () => {
 
 > Este arquivo já importa `afterEach` de `"vitest"` no topo — confirme e acrescente se faltar.
 
-- [ ] **Step 6: Rodar e ver falhar**
+- [x] **Step 6: Rodar e ver falhar**
 
 Run: `pnpm --filter @fagulha/signaling-server test -- server`
 Expected: FAIL — `404` em vez de `200`/`403` (a rota não existe ainda).
 
-- [ ] **Step 7: Implementar a rota em `server.ts`**
+- [x] **Step 7: Implementar a rota em `server.ts`**
 
 Em `apps/signaling-server/src/server.ts`, acrescente o import no topo:
 
@@ -361,17 +361,17 @@ No corpo de `createServer`, dentro do handler HTTP existente, acrescente a rota 
     handleNotFound(res);
 ```
 
-- [ ] **Step 8: Rodar e ver passar**
+- [x] **Step 8: Rodar e ver passar**
 
 Run: `pnpm --filter @fagulha/signaling-server test -- server`
 Expected: PASS.
 
-- [ ] **Step 9: Portão do pacote**
+- [x] **Step 9: Portão do pacote**
 
 Run: `pnpm --filter @fagulha/signaling-server run lint typecheck test`
 Expected: tudo verde.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add apps/signaling-server/src/turn-credentials.ts apps/signaling-server/src/turn-credentials.test.ts apps/signaling-server/src/server.ts apps/signaling-server/src/server.test.ts
@@ -397,7 +397,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
   - `UsePeerConnectionResult` ganha `failureReason: ChannelFailureReason | null`.
   - O `RTCPeerConnection` só é criado depois que o fetch de `/turn-credentials` resolve (sucesso ou falha) — nunca lança, sempre segue com STUN se o TURN não vier.
 
-- [ ] **Step 1: Escrever o teste que falha — reescrever `peer-connection.test.ts`**
+- [x] **Step 1: Escrever o teste que falha — reescrever `peer-connection.test.ts`**
 
 Substitua o conteúdo inteiro de `apps/web/src/lib/peer-connection.test.ts` por:
 
@@ -843,12 +843,12 @@ describe("usePeerConnection", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `pnpm --filter @fagulha/web test -- peer-connection`
 Expected: FAIL — a maioria dos testes falha porque `FakePeerConnection.instances` ainda está vazio nas asserções síncronas (o hook antigo cria o `RTCPeerConnection` de forma síncrona, então o `fetchMock` nem existe como conceito para ele) — na prática, como o código de produção ainda não busca `fetch`, alguns testes antigos passam mas os novos (`describe("credenciais TURN …")`) falham, e `failureReason` é `undefined` em todos.
 
-- [ ] **Step 3: Reescrever `peer-connection.ts`**
+- [x] **Step 3: Reescrever `peer-connection.ts`**
 
 Substitua o conteúdo inteiro de `apps/web/src/lib/peer-connection.ts` por:
 
@@ -1052,17 +1052,17 @@ export function usePeerConnection(params: UsePeerConnectionParams): UsePeerConne
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `pnpm --filter @fagulha/web test -- peer-connection`
 Expected: PASS (todos os testes, antigos e novos).
 
-- [ ] **Step 5: Portão do pacote (parcial — outros arquivos ainda quebram, resolvidos na Task 3)**
+- [x] **Step 5: Portão do pacote (parcial — outros arquivos ainda quebram, resolvidos na Task 3)**
 
 Run: `pnpm --filter @fagulha/web run typecheck`
 Expected: falha em `SendPanel.tsx`, `ReceivePanel.tsx`, `transferir/page.tsx`, `s/[token]/page.tsx` e seus testes — nenhum ainda usa `failureReason`, mas `UsePeerConnectionResult` também não obriga ninguém a lê-lo (é só um campo a mais no objeto de retorno), então o typecheck real só quebra nos mocks de `usePeerConnection` em `*.page.test.tsx`, que tipam o retorno contra `UsePeerConnectionResult` inteiro. Isso é esperado e resolvido na Task 3 — **não** tente corrigir aqui.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web/src/lib/peer-connection.ts apps/web/src/lib/peer-connection.test.ts
@@ -1091,7 +1091,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Consumes: `ChannelFailureReason` de `../../lib/peer-connection.js` (Task 2).
 - Produces: nenhum contrato novo além de um prop `failureReason?: ChannelFailureReason | null` em `SendPanel` e `ReceivePanel`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 Em `apps/web/src/components/transferir/SendPanel.test.tsx`, logo depois do teste `"shows a connection-lost notice on the idle screen when the channel isn't open"` (por volta da linha 248), acrescente:
 
@@ -1157,12 +1157,12 @@ Em `apps/web/src/app/transferir/page.test.tsx`, acrescente `failureReason: null`
 
 Aplique o mesmo padrão (as mesmas 4 formas, mesmas posições relativas) em `apps/web/src/app/s/[token]/page.test.tsx` (linhas 55, ~171-174, ~188-191, 195).
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `pnpm --filter @fagulha/web test -- SendPanel ReceivePanel`
 Expected: FAIL — o texto novo não existe ainda; `pnpm --filter @fagulha/web run typecheck` também falha nos 4 arquivos de página/teste por causa do campo `failureReason` que falta no tipo `UsePeerConnectionResult` usado nos mocks.
 
-- [ ] **Step 3: Implementar — `SendPanel.tsx`**
+- [x] **Step 3: Implementar — `SendPanel.tsx`**
 
 No topo do arquivo, troque o import de tipo:
 
@@ -1197,7 +1197,7 @@ No bloco da tela `idle` (por volta da linha 167), troque o texto fixo pela mensa
       )}
 ```
 
-- [ ] **Step 4: Implementar — `ReceivePanel.tsx`**
+- [x] **Step 4: Implementar — `ReceivePanel.tsx`**
 
 No topo do arquivo, troque o import de tipo:
 
@@ -1239,7 +1239,7 @@ No bloco `phase === "idle"` sem `incomingBatch` (por volta da linha 167-178), tr
     }
 ```
 
-- [ ] **Step 5: Implementar — repassar o prop nas páginas**
+- [x] **Step 5: Implementar — repassar o prop nas páginas**
 
 Em `apps/web/src/app/transferir/page.tsx`, troque:
 
@@ -1267,12 +1267,12 @@ por:
 
 Em `apps/web/src/app/s/[token]/page.tsx`, aplique a mesma troca (`usePeerConnection` desestrutura `failureReason`; `<ReceivePanel transfer={transfer} channelState={channelState} failureReason={failureReason} />`).
 
-- [ ] **Step 6: Rodar e ver passar**
+- [x] **Step 6: Rodar e ver passar**
 
 Run: `pnpm --filter @fagulha/web run typecheck test`
 Expected: tudo verde.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/src/components/transferir/SendPanel.tsx apps/web/src/components/transferir/SendPanel.test.tsx apps/web/src/components/s/ReceivePanel.tsx apps/web/src/components/s/ReceivePanel.test.tsx apps/web/src/app/transferir/page.tsx apps/web/src/app/transferir/page.test.tsx "apps/web/src/app/s/[token]/page.tsx" "apps/web/src/app/s/[token]/page.test.tsx"
@@ -1292,7 +1292,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Interfaces:** nenhuma — só configuração e documentação.
 
-- [ ] **Step 1: Acrescentar as variáveis ao `render.yaml`**
+- [x] **Step 1: Acrescentar as variáveis ao `render.yaml`**
 
 Em `render.yaml`, dentro de `envVars`, acrescente depois de `WEB_ORIGIN`:
 
@@ -1303,7 +1303,7 @@ Em `render.yaml`, dentro de `envVars`, acrescente depois de `WEB_ORIGIN`:
         sync: false
 ```
 
-- [ ] **Step 2: Atualizar o README**
+- [x] **Step 2: Atualizar o README**
 
 Em `README.md`, substitua o primeiro bullet da seção "Limitações conhecidas da V1" (linhas 58-65):
 
@@ -1327,7 +1327,7 @@ concluído. Faltando para fechar a V1: transferência bidirecional,
 endurecimento de segurança, validação formal cross-browser/mobile.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add render.yaml README.md
@@ -1342,7 +1342,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Files:** nenhum (a menos que o portão aponte algo).
 
-- [ ] **Step 1: Portão do monorepo**
+- [x] **Step 1: Portão do monorepo**
 
 Run: `pnpm turbo run lint typecheck test build`
 Expected: tudo verde em todos os pacotes.
@@ -1356,7 +1356,7 @@ No painel do Render, no serviço `fagulha-signaling`, adicionar:
 
 Depois de salvar, o Render reimplanta o serviço automaticamente.
 
-- [ ] **Step 3: Verificação manual (feita pelo agente, não pelo usuário)**
+- [x] **Step 3: Verificação manual (feita pelo agente, não pelo usuário)**
 
 Suba os dois servidores localmente (`pnpm dev`), configure `METERED_SECRET_KEY`/`METERED_TURN_BASE_URL` no `.env` local do `apps/signaling-server`, e confirme com um script (ex.: `curl http://localhost:4000/turn-credentials -H "Origin: http://localhost:3000"`) que a resposta traz `iceServers` não-vazio contendo pelo menos uma entrada `turn:`.
 
