@@ -439,5 +439,43 @@ describe("usePeerConnection", () => {
 
       expect(result.current.failureReason).toBe("connection_lost");
     });
+
+    it("keeps failureReason as connection_lost for a turn: URL with a non-auth error code", async () => {
+      const sendSignal = vi.fn();
+      const { result } = renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+      );
+      await flushAsync();
+
+      act(() =>
+        latestPeerConnection().onicecandidateerror?.({
+          url: "turn:example.metered.live:80",
+          errorCode: 701
+        })
+      );
+      const channel = result.current.dataChannel as unknown as FakeDataChannel;
+      act(() => channel.onclose?.());
+
+      expect(result.current.failureReason).toBe("connection_lost");
+    });
+
+    it("keeps failureReason as connection_lost for an auth error code from a non-TURN URL", async () => {
+      const sendSignal = vi.fn();
+      const { result } = renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+      );
+      await flushAsync();
+
+      act(() =>
+        latestPeerConnection().onicecandidateerror?.({
+          url: "stun:stun.l.google.com:19302",
+          errorCode: 403
+        })
+      );
+      const channel = result.current.dataChannel as unknown as FakeDataChannel;
+      act(() => channel.onclose?.());
+
+      expect(result.current.failureReason).toBe("connection_lost");
+    });
   });
 });
