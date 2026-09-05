@@ -15,12 +15,14 @@ class FakeDataChannel {
 }
 
 type FakeCandidate = { candidate: string; sdpMid: string | null; sdpMLineIndex: number | null };
+type FakeIceErrorEvent = { url: string; errorCode: number };
 
 class FakePeerConnection {
   static instances: FakePeerConnection[] = [];
   static shouldFailSetRemoteDescription = false;
 
   onicecandidate: ((event: { candidate: FakeCandidate | null }) => void) | null = null;
+  onicecandidateerror: ((event: FakeIceErrorEvent) => void) | null = null;
   ondatachannel: ((event: { channel: FakeDataChannel }) => void) | null = null;
   closed = false;
 
@@ -28,8 +30,10 @@ class FakePeerConnection {
   remoteDescriptions: unknown[] = [];
   addedCandidates: unknown[] = [];
   createdDataChannels: string[] = [];
+  iceServers: RTCIceServer[];
 
-  constructor() {
+  constructor(config?: { iceServers?: RTCIceServer[] }) {
+    this.iceServers = config?.iceServers ?? [];
     FakePeerConnection.instances.push(this);
   }
 
@@ -83,10 +87,18 @@ async function flushAsync(): Promise<void> {
   });
 }
 
+function fetchOk(body: unknown): Promise<Response> {
+  return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+}
+
+let fetchMock: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   FakePeerConnection.instances = [];
   FakePeerConnection.shouldFailSetRemoteDescription = false;
   vi.stubGlobal("RTCPeerConnection", FakePeerConnection);
+  fetchMock = vi.fn().mockImplementation(() => fetchOk({ iceServers: [] }));
+  vi.stubGlobal("fetch", fetchMock);
 });
 
 afterEach(() => {
@@ -99,13 +111,15 @@ describe("usePeerConnection", () => {
       usePeerConnection({ role: "host", accepted: false, sendSignal: vi.fn(), lastSignal: null })
     );
     expect(FakePeerConnection.instances).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("creates the peer connection only once across re-renders", () => {
+  it("creates the peer connection only once across re-renders", async () => {
     const sendSignal = vi.fn();
     const { rerender } = renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
     rerender();
     rerender();
     expect(FakePeerConnection.instances).toHaveLength(1);
@@ -117,12 +131,10 @@ describe("usePeerConnection", () => {
     const { result } = renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
 
     expect(latestPeerConnection().createdDataChannels).toEqual(["fagulha"]);
     expect(result.current.channelState).toBe("connecting");
-
-    await flushAsync();
-
     expect(sendSignal).toHaveBeenCalledWith({ kind: "offer", sdp: "offer-sdp" });
   });
 
@@ -138,6 +150,7 @@ describe("usePeerConnection", () => {
         }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
+    await flushAsync();
 
     rerender({ lastSignal: { kind: "offer", sdp: "remote-offer-sdp" } });
     await flushAsync();
@@ -165,6 +178,7 @@ describe("usePeerConnection", () => {
         }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
+    await flushAsync();
 
     rerender({ lastSignal: { kind: "candidate", candidate } });
     expect(latestPeerConnection().addedCandidates).toEqual([]);
@@ -175,11 +189,12 @@ describe("usePeerConnection", () => {
     expect(latestPeerConnection().addedCandidates).toEqual([candidate]);
   });
 
-  it("forwards local ICE candidates to sendSignal", () => {
+  it("forwards local ICE candidates to sendSignal", async () => {
     const sendSignal = vi.fn();
     renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
 
     const candidate = {
       candidate: "candidate:1 1 UDP 1 1.2.3.4 5000 typ host",
@@ -191,22 +206,28 @@ describe("usePeerConnection", () => {
     expect(sendSignal).toHaveBeenCalledWith({ kind: "candidate", candidate });
   });
 
-  it("ignores a null candidate from onicecandidate (end-of-gathering marker)", () => {
+  it("ignores a null candidate from onicecandidate (end-of-gathering marker)", async () => {
     const sendSignal = vi.fn();
     renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
+    // The host's offer is sent as soon as setup resolves (see the test above), so by the
+    // time we get here sendSignal has already been called once. What this test actually
+    // guards is that the null end-of-gathering marker doesn't trigger a further call.
+    const callsBeforeNullCandidate = sendSignal.mock.calls.length;
 
     act(() => latestPeerConnection().onicecandidate?.({ candidate: null }));
 
-    expect(sendSignal).not.toHaveBeenCalled();
+    expect(sendSignal).toHaveBeenCalledTimes(callsBeforeNullCandidate);
   });
 
-  it("reflects the data channel opening in channelState", () => {
+  it("reflects the data channel opening in channelState", async () => {
     const sendSignal = vi.fn();
     const { result } = renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
 
     expect(result.current.channelState).toBe("connecting");
     act(() => (result.current.dataChannel as unknown as FakeDataChannel).open());
@@ -226,6 +247,7 @@ describe("usePeerConnection", () => {
         }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
+    await flushAsync();
 
     rerender({ lastSignal: { kind: "answer", sdp: "remote-answer-sdp" } });
     await flushAsync();
@@ -235,11 +257,12 @@ describe("usePeerConnection", () => {
     ]);
   });
 
-  it("as guest: binds the data channel delivered via ondatachannel", () => {
+  it("as guest: binds the data channel delivered via ondatachannel", async () => {
     const sendSignal = vi.fn();
     const { result } = renderHook(() =>
       usePeerConnection({ role: "guest", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
 
     const channel = new FakeDataChannel();
     act(() => latestPeerConnection().ondatachannel?.({ channel }));
@@ -248,11 +271,12 @@ describe("usePeerConnection", () => {
     expect(result.current.channelState).toBe("connecting");
   });
 
-  it("transitions channelState to failed when the data channel closes", () => {
+  it("transitions channelState to failed when the data channel closes", async () => {
     const sendSignal = vi.fn();
     const { result } = renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
     );
+    await flushAsync();
 
     const channel = result.current.dataChannel as unknown as FakeDataChannel;
     act(() => channel.open());
@@ -260,15 +284,14 @@ describe("usePeerConnection", () => {
 
     act(() => channel.onclose?.());
     expect(result.current.channelState).toBe("failed");
+    expect(result.current.failureReason).toBe("connection_lost");
   });
 
-  it("does not recreate the peer connection when sendSignal has a new identity every render", () => {
-    // Regression test: sendSignal is now latched behind sendSignalRef, so an unstable
-    // (freshly-created-per-render) sendSignal must no longer cause the effect to
-    // tear down and recreate the RTCPeerConnection on every render.
+  it("does not recreate the peer connection when sendSignal has a new identity every render", async () => {
     const { rerender } = renderHook(() =>
       usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
     );
+    await flushAsync();
 
     rerender();
     rerender();
@@ -289,6 +312,7 @@ describe("usePeerConnection", () => {
         }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
+    await flushAsync();
 
     rerender({ lastSignal: { kind: "offer", sdp: "offer-sdp-1" } });
     await flushAsync();
@@ -314,10 +338,106 @@ describe("usePeerConnection", () => {
         }),
       { initialProps: { lastSignal: null as SignalPayload | null } }
     );
+    await flushAsync();
 
     rerender({ lastSignal: { kind: "offer", sdp: "remote-offer-sdp" } });
     await flushAsync();
 
     expect(result.current.channelState).toBe("failed");
+    expect(result.current.failureReason).toBe("connection_lost");
+  });
+
+  describe("credenciais TURN (Plano 10)", () => {
+    it("fetches /turn-credentials before creating the RTCPeerConnection", async () => {
+      renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      );
+      expect(FakePeerConnection.instances).toHaveLength(0);
+
+      await flushAsync();
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://localhost:4000/turn-credentials",
+        expect.objectContaining({ signal: expect.anything() })
+      );
+      expect(FakePeerConnection.instances).toHaveLength(1);
+    });
+
+    it("merges the fetched TURN servers with the fixed STUN server", async () => {
+      const turnServer = { urls: "turn:example.metered.live:80", username: "u", credential: "p" };
+      fetchMock.mockImplementation(() => fetchOk({ iceServers: [turnServer] }));
+
+      renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      );
+      await flushAsync();
+
+      expect(latestPeerConnection().iceServers).toEqual([
+        { urls: "stun:stun.l.google.com:19302" },
+        turnServer
+      ]);
+    });
+
+    it("falls back to STUN-only when the credentials fetch rejects", async () => {
+      fetchMock.mockImplementation(() => Promise.reject(new Error("network down")));
+
+      renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      );
+      await flushAsync();
+
+      expect(latestPeerConnection().iceServers).toEqual([{ urls: "stun:stun.l.google.com:19302" }]);
+    });
+
+    it("falls back to STUN-only when the credentials endpoint responds with an error status", async () => {
+      fetchMock.mockImplementation(() =>
+        Promise.resolve({ ok: false, json: () => Promise.resolve({}) } as Response)
+      );
+
+      renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal: vi.fn(), lastSignal: null })
+      );
+      await flushAsync();
+
+      expect(latestPeerConnection().iceServers).toEqual([{ urls: "stun:stun.l.google.com:19302" }]);
+    });
+
+    it("marks failureReason as turn_unavailable after a 401/403 ICE candidate error from a turn: URL", async () => {
+      const sendSignal = vi.fn();
+      const { result } = renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+      );
+      await flushAsync();
+
+      act(() =>
+        latestPeerConnection().onicecandidateerror?.({
+          url: "turn:example.metered.live:80",
+          errorCode: 403
+        })
+      );
+      const channel = result.current.dataChannel as unknown as FakeDataChannel;
+      act(() => channel.onclose?.());
+
+      expect(result.current.failureReason).toBe("turn_unavailable");
+    });
+
+    it("keeps failureReason as connection_lost for a non-TURN or non-auth ICE candidate error", async () => {
+      const sendSignal = vi.fn();
+      const { result } = renderHook(() =>
+        usePeerConnection({ role: "host", accepted: true, sendSignal, lastSignal: null })
+      );
+      await flushAsync();
+
+      act(() =>
+        latestPeerConnection().onicecandidateerror?.({
+          url: "stun:stun.l.google.com:19302",
+          errorCode: 701
+        })
+      );
+      const channel = result.current.dataChannel as unknown as FakeDataChannel;
+      act(() => channel.onclose?.());
+
+      expect(result.current.failureReason).toBe("connection_lost");
+    });
   });
 });
