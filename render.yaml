@@ -12,3 +12,7 @@ services:
         value: "24"
       - key: WEB_ORIGIN
         sync: false
+      - key: METERED_SECRET_KEY
+        sync: false
+      - key: METERED_TURN_BASE_URL
+        sync: false
