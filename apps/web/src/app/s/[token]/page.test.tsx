@@ -52,7 +52,11 @@ const mockedUseSignalingSocket = vi.mocked(useSignalingSocket);
 const mockedUsePeerConnection = vi.mocked(usePeerConnection);
 
 beforeEach(() => {
-  mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "connecting", failureReason: null });
+  mockedUsePeerConnection.mockReturnValue({
+    dataChannel: null,
+    channelState: "connecting",
+    failureReason: null
+  });
 });
 
 function makeResult(overrides: Partial<UseSignalingSocketResult> = {}): UseSignalingSocketResult {
@@ -194,11 +198,34 @@ describe("SessionInvitePage", () => {
     const { rerender } = render(<SessionInvitePage />);
     expect(screen.getByText("Aguardando os arquivos…")).toBeInTheDocument();
 
-    mockedUsePeerConnection.mockReturnValue({ dataChannel: null, channelState: "failed", failureReason: null });
+    mockedUsePeerConnection.mockReturnValue({
+      dataChannel: null,
+      channelState: "failed",
+      failureReason: null
+    });
     rerender(<SessionInvitePage />);
 
     expect(screen.queryByRole("heading", { name: "Convite aceito" })).not.toBeInTheDocument();
     expect(screen.getByText("Conexão perdida")).toBeInTheDocument();
+  });
+
+  it("shows the receive panel (not the static accepted screen) when the connection fails before ever opening", () => {
+    const session = {
+      token: "abc123",
+      status: "accepted" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session, role: "guest" }));
+    mockedUsePeerConnection.mockReturnValue({
+      dataChannel: null,
+      channelState: "failed",
+      failureReason: "connection_lost"
+    });
+    render(<SessionInvitePage />);
+
+    expect(screen.queryByRole("heading", { name: "Convite aceito" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Conexão perdida" })).toBeInTheDocument();
   });
 
   it("calls accept when the accept button is clicked", async () => {

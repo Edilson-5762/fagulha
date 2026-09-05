@@ -56,8 +56,12 @@ export default function SessionInvitePage() {
           description="Tentando reconectar..."
         />
       )}
-      {everConnected ? (
-        <ReceivePanel transfer={transfer} channelState={channelState} failureReason={failureReason} />
+      {everConnected || channelState === "failed" ? (
+        <ReceivePanel
+          transfer={transfer}
+          channelState={channelState}
+          failureReason={failureReason}
+        />
       ) : (
         renderContent(session, accept, reject, () => router.push("/transferir"))
       )}

@@ -46,7 +46,7 @@ export default function TransferPage() {
           description="Tentando reconectar..."
         />
       )}
-      {everConnected ? (
+      {everConnected || channelState === "failed" ? (
         <SendPanel transfer={transfer} channelState={channelState} failureReason={failureReason} />
       ) : (
         renderContent(session, peerOnline, createSession)
