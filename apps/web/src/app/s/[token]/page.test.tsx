@@ -9,9 +9,11 @@ import {
 import type { UseFileTransferResult } from "../../../lib/use-file-transfer.js";
 import SessionInvitePage from "./page.js";
 
+const mockPush = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useParams: () => ({ token: "abc123" }),
-  useRouter: () => ({ push: vi.fn() })
+  useRouter: () => ({ push: mockPush })
 }));
 
 vi.mock("../../../lib/signaling-socket.js", () => ({
@@ -106,6 +108,41 @@ describe("SessionInvitePage", () => {
     mockedUseSignalingSocket.mockReturnValue(makeResult({ session: null }));
     render(<SessionInvitePage />);
     expect(screen.getByRole("heading", { name: "Link expirado" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Criar minha transferência" })).toBeInTheDocument();
+  });
+
+  it("offers a way to start a fresh transfer on the rejected screen", () => {
+    const session = {
+      token: "abc123",
+      status: "rejected" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
+    render(<SessionInvitePage />);
+    expect(screen.getByRole("heading", { name: "Convite recusado" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Criar minha transferência" })).toBeInTheDocument();
+  });
+
+  it("offers a way to start a fresh transfer on the expired-status screen", () => {
+    const session = {
+      token: "abc123",
+      status: "expired" as const,
+      createdAt: "t0",
+      expiresAt: "t1"
+    };
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session }));
+    render(<SessionInvitePage />);
+    expect(screen.getByRole("heading", { name: "Link expirado" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Criar minha transferência" })).toBeInTheDocument();
+  });
+
+  it("navigates to /transferir when 'Criar minha transferência' is clicked", async () => {
+    mockedUseSignalingSocket.mockReturnValue(makeResult({ session: null }));
+    const user = userEvent.setup();
+    render(<SessionInvitePage />);
+    await user.click(screen.getByRole("button", { name: "Criar minha transferência" }));
+    expect(mockPush).toHaveBeenCalledWith("/transferir");
   });
 
   it("starts the peer connection once the invite is accepted", () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { Session } from "@fagulha/shared";
 import {
   AlertTriangle,
@@ -19,6 +19,7 @@ import { useSignalingSocket } from "../../../lib/signaling-socket.js";
 
 export default function SessionInvitePage() {
   const { token } = useParams<{ token: string }>();
+  const router = useRouter();
   const { session, connectionState, role, sendSignal, lastSignal, joinSession, accept, reject } =
     useSignalingSocket();
 
@@ -58,7 +59,7 @@ export default function SessionInvitePage() {
       {everConnected ? (
         <ReceivePanel transfer={transfer} channelState={channelState} />
       ) : (
-        renderContent(session, accept, reject)
+        renderContent(session, accept, reject, () => router.push("/transferir"))
       )}
     </main>
   );
@@ -67,8 +68,15 @@ export default function SessionInvitePage() {
 function renderContent(
   session: Session | null | undefined,
   onAccept: () => void,
-  onReject: () => void
+  onReject: () => void,
+  onCreateOwn: () => void
 ) {
+  const createOwnAction = {
+    label: "Criar minha transferência",
+    variant: "secondary" as const,
+    onClick: onCreateOwn
+  };
+
   if (session === undefined) {
     return (
       <StateScreen icon={Clock} title="Carregando" description="Verificando o link recebido." />
@@ -82,6 +90,7 @@ function renderContent(
         tone="danger"
         title="Link expirado"
         description="Peça um novo link a quem te convidou."
+        actions={[createOwnAction]}
       />
     );
   }
@@ -115,6 +124,7 @@ function renderContent(
           tone="danger"
           title="Convite recusado"
           description="Você recusou esta transferência."
+          actions={[createOwnAction]}
         />
       );
     case "expired":
@@ -124,6 +134,7 @@ function renderContent(
           tone="danger"
           title="Link expirado"
           description="Peça um novo link a quem te convidou."
+          actions={[createOwnAction]}
         />
       );
     default: {
