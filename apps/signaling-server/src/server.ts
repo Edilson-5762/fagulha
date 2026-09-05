@@ -4,6 +4,7 @@ import { WebSocketServer } from "ws";
 import { createConnectionRegistry } from "./connection-registry.js";
 import { createSessionStore, type SessionStore } from "./session-store.js";
 import { createWsHandler } from "./ws-handler.js";
+import { fetchTurnIceServers } from "./turn-credentials.js";
 
 const ALLOWED_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:3000";
 
@@ -20,12 +21,40 @@ function handleNotFound(res: ServerResponse): void {
   sendJson(res, 404, { error: "not_found" });
 }
 
+function sendJsonWithCors(res: ServerResponse, statusCode: number, body: unknown): void {
+  res.writeHead(statusCode, {
+    "content-type": "application/json",
+    "access-control-allow-origin": ALLOWED_ORIGIN
+  });
+  res.end(JSON.stringify(body));
+}
+
+async function handleTurnCredentials(res: ServerResponse): Promise<void> {
+  const secretKey = process.env.METERED_SECRET_KEY;
+  const baseUrl = process.env.METERED_TURN_BASE_URL;
+  if (!secretKey || !baseUrl) {
+    sendJsonWithCors(res, 200, { iceServers: [] });
+    return;
+  }
+  const iceServers = await fetchTurnIceServers({ secretKey, baseUrl });
+  sendJsonWithCors(res, 200, { iceServers });
+}
+
 export function createServer(store: SessionStore = createSessionStore()) {
   const httpServer = createHttpServer((req: IncomingMessage, res: ServerResponse) => {
     const { pathname } = new URL(req.url ?? "/", "http://localhost");
 
     if (req.method === "GET" && pathname === "/health") {
       handleHealthCheck(res);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/turn-credentials") {
+      if (req.headers.origin !== ALLOWED_ORIGIN) {
+        sendJson(res, 403, { error: "forbidden" });
+        return;
+      }
+      void handleTurnCredentials(res);
       return;
     }
 
